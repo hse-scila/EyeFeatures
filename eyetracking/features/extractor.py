@@ -1,0 +1,90 @@
+import numpy as np
+import pandas as pd
+
+from typing import List, Union
+from sklearn.base import BaseEstimator, TransformerMixin
+
+
+class BaseTransformer(BaseEstimator, TransformerMixin):
+    def __init__(
+        self,
+        x: str = None,
+        y: str = None,
+        t: str = None,
+        aoi: str = None,
+        pk: List[str] = None,
+        return_df: bool = True
+    ):
+        self.x = x
+        self.y = y
+        self.t = t
+        self.pk = pk
+        self.aoi = aoi
+        self.return_df = return_df
+
+    def set_data(
+        self,
+        x: str = None,
+        y: str = None,
+        t: str = None,
+        aoi: str = None,
+        pk: List[str] = None,
+    ):
+        self.x = x
+        self.y = y
+        self.t = t
+        self.pk = pk
+        self.aoi = aoi
+
+    def fit(self, X: pd.DataFrame, y=None):
+        return self
+
+    def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
+        return X if self.return_df else X.values
+
+
+class Extractor(BaseEstimator, TransformerMixin):
+    def __init__(
+        self,
+        features: List[BaseTransformer] = None,
+        x: str = None,
+        y: str = None,
+        t: str = None,
+        aoi: str = None,
+        pk: List[str] = None,
+        extra: List[str] = None,
+        return_df: bool = True,
+    ):
+        self.features = features
+        self.x = x
+        self.y = y
+        self.t = t
+        self.aoi = aoi
+        self.pk = pk
+        self.extra = extra
+        self.return_df = return_df
+
+    def fit(self, X: pd.DataFrame, y=None):
+        return self
+
+    def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
+        if self.features is None:
+            return X if self.return_df else X.values
+
+        assert self.x is not None, "Error: provide x column before calling transform"
+        assert self.y is not None, "Error: provide y column before calling transform"
+        assert self.t is not None, "Error: provide t column before calling transform"
+
+        gathered_features = []
+        data_df: pd.DataFrame = X[[self.x, self.y, self.t]]
+
+        for feature in self.features:
+            feature.set_data(x=self.x, y=self.y, t=self.t, aoi=self.aoi, pk=self.pk)
+            gathered_features.append(feature.transform(data_df))
+
+        if self.extra is not None:
+            gathered_features.append(X[self.extra])
+
+        features_df = pd.concat(gathered_features, axis=1)
+
+        return features_df if self.return_df else features_df.values
