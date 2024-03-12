@@ -3,7 +3,7 @@ import pandas as pd
 
 from numba import jit
 
-from typing import List
+from typing import List, Union
 from extractor import BaseTransformer
 
 
@@ -22,7 +22,7 @@ class SaccadeLength(BaseTransformer):
         self.stats = stats
 
     @jit(forceobj=True, looplift=True)
-    def transform(self, X: pd.DataFrame) -> pd.DataFrame:
+    def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
         if self.stats is None:
             return X if self.return_df else X.values
 
@@ -50,7 +50,9 @@ class SaccadeLength(BaseTransformer):
                         f'sac_len_{stat}_{"_".join([str(g) for g in group])}'
                     )
                     gathered_features.append([sac_len.apply(stat)])
+
         features_df = pd.DataFrame(
             data=np.array(gathered_features).T, columns=column_names
         )
+
         return features_df if self.return_df else features_df.values

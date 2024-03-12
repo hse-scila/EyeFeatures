@@ -70,7 +70,12 @@ class Extractor(BaseEstimator, TransformerMixin):
         self.aggr_extra = aggr_extra
         self.return_df = return_df
 
+    @jit(forceobj=True, looplift=True)
     def fit(self, X: pd.DataFrame, y=None):
+        if self.features is not None:
+            for feature in self.features:
+                feature.fit(X)
+
         return self
 
     @jit(forceobj=True, looplift=True)
