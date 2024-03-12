@@ -1,6 +1,8 @@
 import numpy as np
 import pandas as pd
 
+from numba import jit
+
 from typing import List, Union
 from sklearn.base import BaseEstimator, TransformerMixin
 
@@ -13,7 +15,7 @@ class BaseTransformer(BaseEstimator, TransformerMixin):
         t: str = None,
         aoi: str = None,
         pk: List[str] = None,
-        return_df: bool = True
+        return_df: bool = True,
     ):
         self.x = x
         self.y = y
@@ -29,12 +31,14 @@ class BaseTransformer(BaseEstimator, TransformerMixin):
         t: str = None,
         aoi: str = None,
         pk: List[str] = None,
+        return_df: bool = True,
     ):
         self.x = x
         self.y = y
         self.t = t
         self.pk = pk
         self.aoi = aoi
+        self.return_df = return_df
 
     def fit(self, X: pd.DataFrame, y=None):
         return self
@@ -53,6 +57,7 @@ class Extractor(BaseEstimator, TransformerMixin):
         aoi: str = None,
         pk: List[str] = None,
         extra: List[str] = None,
+        aggr_extra: str = None,
         return_df: bool = True,
     ):
         self.features = features
@@ -62,11 +67,13 @@ class Extractor(BaseEstimator, TransformerMixin):
         self.aoi = aoi
         self.pk = pk
         self.extra = extra
+        self.aggr_extra = aggr_extra
         self.return_df = return_df
 
     def fit(self, X: pd.DataFrame, y=None):
         return self
 
+    @jit(forceobj=True, looplift=True)
     def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
         if self.features is None:
             return X if self.return_df else X.values
@@ -77,13 +84,24 @@ class Extractor(BaseEstimator, TransformerMixin):
 
         gathered_features = []
         data_df: pd.DataFrame = X[[self.x, self.y, self.t]]
+        if self.pk is not None:
+            data_df = pd.concat([data_df, X[self.pk]], axis=1)
 
         for feature in self.features:
-            feature.set_data(x=self.x, y=self.y, t=self.t, aoi=self.aoi, pk=self.pk)
+            feature.set_data(
+                x=self.x,
+                y=self.y,
+                t=self.t,
+                aoi=self.aoi,
+                pk=self.pk,
+                return_df=self.return_df,
+            )
             gathered_features.append(feature.transform(data_df))
 
         if self.extra is not None:
-            gathered_features.append(X[self.extra])
+            gathered_features.append(
+                X[self.extra].groupby(self.pk).apply(self.aggr_extra)
+            )
 
         features_df = pd.concat(gathered_features, axis=1)
 
