@@ -14,11 +14,12 @@ class SaccadeLength(BaseTransformer):
         x: str = None,
         y: str = None,
         t: str = None,
+        duration: str = None,
         aoi: str = None,
         pk: List[str] = None,
         return_df: bool = True,
     ):
-        super().__init__(x, y, t, aoi, pk, return_df)
+        super().__init__(x, y, t, duration, aoi, pk, return_df)
         self.stats = stats
 
     @jit(forceobj=True, looplift=True)

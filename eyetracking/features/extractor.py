@@ -13,6 +13,7 @@ class BaseTransformer(BaseEstimator, TransformerMixin):
         x: str = None,
         y: str = None,
         t: str = None,
+        duration: str = None,
         aoi: str = None,
         pk: List[str] = None,
         return_df: bool = True,
@@ -20,6 +21,7 @@ class BaseTransformer(BaseEstimator, TransformerMixin):
         self.x = x
         self.y = y
         self.t = t
+        self.duration = duration
         self.pk = pk
         self.aoi = aoi
         self.return_df = return_df
@@ -29,6 +31,7 @@ class BaseTransformer(BaseEstimator, TransformerMixin):
         x: str = None,
         y: str = None,
         t: str = None,
+        duration: str = None,
         aoi: str = None,
         pk: List[str] = None,
         return_df: bool = True,
@@ -36,6 +39,7 @@ class BaseTransformer(BaseEstimator, TransformerMixin):
         self.x = x
         self.y = y
         self.t = t
+        self.duration = duration
         self.pk = pk
         self.aoi = aoi
         self.return_df = return_df
@@ -54,6 +58,7 @@ class Extractor(BaseEstimator, TransformerMixin):
         x: str = None,
         y: str = None,
         t: str = None,
+        duration: str = None,
         aoi: str = None,
         pk: List[str] = None,
         extra: List[str] = None,
@@ -64,6 +69,7 @@ class Extractor(BaseEstimator, TransformerMixin):
         self.x = x
         self.y = y
         self.t = t
+        self.duration = duration
         self.aoi = aoi
         self.pk = pk
         self.extra = extra
@@ -86,9 +92,10 @@ class Extractor(BaseEstimator, TransformerMixin):
         assert self.x is not None, "Error: provide x column before calling transform"
         assert self.y is not None, "Error: provide y column before calling transform"
         assert self.t is not None, "Error: provide t column before calling transform"
+        assert self.duration is not None, "Error: provide duration column before calling transform"
 
         gathered_features = []
-        data_df: pd.DataFrame = X[[self.x, self.y, self.t]]
+        data_df: pd.DataFrame = X[[self.x, self.y, self.t, self.duration]]
         if self.pk is not None:
             data_df = pd.concat([data_df, X[self.pk]], axis=1)
 
@@ -97,6 +104,7 @@ class Extractor(BaseEstimator, TransformerMixin):
                 x=self.x,
                 y=self.y,
                 t=self.t,
+                duration=self.duration,
                 aoi=self.aoi,
                 pk=self.pk,
                 return_df=self.return_df,
