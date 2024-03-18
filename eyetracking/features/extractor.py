@@ -16,6 +16,7 @@ class BaseTransformer(BaseEstimator, TransformerMixin):
         duration: str = None,
         dispersion: str = None,
         aoi: str = None,
+        path_pk: List[str] = None,
         pk: List[str] = None,
         return_df: bool = True,
     ):
@@ -24,6 +25,7 @@ class BaseTransformer(BaseEstimator, TransformerMixin):
         self.t = t
         self.duration = duration
         self.dispersion = dispersion
+        self.path_pk = path_pk
         self.pk = pk
         self.aoi = aoi
         self.return_df = return_df
@@ -36,6 +38,7 @@ class BaseTransformer(BaseEstimator, TransformerMixin):
         duration: str = None,
         dispersion: str = None,
         aoi: str = None,
+        path_pk: List[str] = None,
         pk: List[str] = None,
         return_df: bool = True,
     ):
@@ -44,6 +47,7 @@ class BaseTransformer(BaseEstimator, TransformerMixin):
         self.t = t
         self.duration = duration
         self.dispersion = dispersion
+        self.path_pk = (path_pk,)
         self.pk = pk
         self.aoi = aoi
         self.return_df = return_df
@@ -65,6 +69,7 @@ class Extractor(BaseEstimator, TransformerMixin):
         duration: str = None,
         dispersion: str = None,
         aoi: str = None,
+        path_pk: List[str] = None,
         pk: List[str] = None,
         extra: List[str] = None,
         aggr_extra: str = None,
@@ -77,6 +82,7 @@ class Extractor(BaseEstimator, TransformerMixin):
         self.duration = duration
         self.dispersion = dispersion
         self.aoi = aoi
+        self.path_pk = path_pk
         self.pk = pk
         self.extra = extra
         self.aggr_extra = aggr_extra
@@ -120,6 +126,7 @@ class Extractor(BaseEstimator, TransformerMixin):
                 duration=self.duration,
                 dispersion=self.dispersion,
                 aoi=self.aoi,
+                path_pk=self.path_pk,
                 pk=self.pk,
                 return_df=self.return_df,
             )

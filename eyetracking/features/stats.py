@@ -20,7 +20,16 @@ class SaccadeLength(BaseTransformer):
         pk: List[str] = None,
         return_df: bool = True,
     ):
-        super().__init__(x, y, t, duration, dispersion, aoi, pk, return_df)
+        super().__init__(
+            x=x,
+            y=y,
+            t=t,
+            duration=duration,
+            dispersion=dispersion,
+            aoi=aoi,
+            pk=pk,
+            return_df=return_df,
+        )
         self.stats = stats
 
     @jit(forceobj=True, looplift=True)
@@ -37,7 +46,7 @@ class SaccadeLength(BaseTransformer):
             dy = X[self.y].diff()
             sac_len: pd.DataFrame = np.sqrt(dx ** 2 + dy ** 2)
             column_names = [f"sac_len_{stat}" for stat in self.stats]
-            gathered_features = [[sac_len.apply(stat)] for stat in self.stats]
+            gathered_features = [sac_len.apply(stat) for stat in self.stats]
         else:
             groups = X[self.pk].drop_duplicates().values
             column_names = []
@@ -51,11 +60,9 @@ class SaccadeLength(BaseTransformer):
                     column_names.append(
                         f'sac_len_{stat}_{"_".join([str(g) for g in group])}'
                     )
-                    gathered_features.append([sac_len.apply(stat)])
+                    gathered_features.append(sac_len.apply(stat))
 
-        features_df = pd.DataFrame(
-            data=np.array(gathered_features).T, columns=column_names
-        )
+        features_df = pd.DataFrame(data=[gathered_features], columns=column_names)
 
         return features_df if self.return_df else features_df.values
 
@@ -73,7 +80,16 @@ class FixationDuration(BaseTransformer):
         pk: List[str] = None,
         return_df: bool = True,
     ):
-        super().__init__(x, y, t, duration, dispersion, aoi, pk, return_df)
+        super().__init__(
+            x=x,
+            y=y,
+            t=t,
+            duration=duration,
+            dispersion=dispersion,
+            aoi=aoi,
+            pk=pk,
+            return_df=return_df,
+        )
         self.stats = stats
 
     @jit(forceobj=True, looplift=True)
@@ -89,7 +105,7 @@ class FixationDuration(BaseTransformer):
             else:
                 fix_dur: pd.DataFrame = X[self.t]
             column_names = [f"fix_dur_{stat}" for stat in self.stats]
-            gathered_features = [[fix_dur.apply(stat)] for stat in self.stats]
+            gathered_features = [fix_dur.apply(stat) for stat in self.stats]
         else:
             groups = X[self.pk].drop_duplicates().values
             column_names = []
@@ -104,11 +120,9 @@ class FixationDuration(BaseTransformer):
                     column_names.append(
                         f'fix_dur_{stat}_{"_".join([str(g) for g in group])}'
                     )
-                    gathered_features.append([fix_dur.apply(stat)])
+                    gathered_features.append(fix_dur.apply(stat))
 
-        features_df = pd.DataFrame(
-            data=np.array(gathered_features).T, columns=column_names
-        )
+        features_df = pd.DataFrame(data=[gathered_features], columns=column_names)
 
         return features_df if self.return_df else features_df.values
 
@@ -127,7 +141,16 @@ class SaccadeVelocity(BaseTransformer):
         return_df: bool = True,
         eps: float = 1e-8,
     ):
-        super().__init__(x, y, t, duration, dispersion, aoi, pk, return_df)
+        super().__init__(
+            x=x,
+            y=y,
+            t=t,
+            duration=duration,
+            dispersion=dispersion,
+            aoi=aoi,
+            pk=pk,
+            return_df=return_df,
+        )
         self.stats = stats
         self.eps = eps
 
@@ -151,7 +174,7 @@ class SaccadeVelocity(BaseTransformer):
                 dt = X[self.t] - (X[self.t] + X[self.duration] / 1000).shift(1)
             sac_vel: pd.DataFrame = dr / (dt + self.eps)
             column_names = [f"sac_vel_{stat}" for stat in self.stats]
-            gathered_features = [[sac_vel.apply(stat)] for stat in self.stats]
+            gathered_features = [sac_vel.apply(stat) for stat in self.stats]
         else:
             groups = X[self.pk].drop_duplicates().values
             column_names = []
@@ -173,11 +196,9 @@ class SaccadeVelocity(BaseTransformer):
                     column_names.append(
                         f'sac_vel_{stat}_{"_".join([str(g) for g in group])}'
                     )
-                    gathered_features.append([sac_vel.apply(stat)])
+                    gathered_features.append(sac_vel.apply(stat))
 
-        features_df = pd.DataFrame(
-            data=np.array(gathered_features).T, columns=column_names
-        )
+        features_df = pd.DataFrame(data=[gathered_features], columns=column_names)
 
         return features_df if self.return_df else features_df.values
 
@@ -194,7 +215,16 @@ class RegressionCount(BaseTransformer):
         pk: List[str] = None,
         return_df: bool = True,
     ):
-        super().__init__(x, y, t, duration, dispersion, aoi, pk, return_df)
+        super().__init__(
+            x=x,
+            y=y,
+            t=t,
+            duration=duration,
+            dispersion=dispersion,
+            aoi=aoi,
+            pk=pk,
+            return_df=return_df,
+        )
 
     @jit(forceobj=True, looplift=True)
     def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
@@ -210,7 +240,7 @@ class RegressionCount(BaseTransformer):
                 (gaze_vec.norm_pos_x < 0) | (gaze_vec.norm_pos_y < 0)
             ].shape[0]
             column_names = [f"reg_count"]
-            gathered_features = [[reg_count]]
+            gathered_features = reg_count
         else:
             groups = X[self.pk].drop_duplicates().values
             column_names = []
@@ -224,10 +254,8 @@ class RegressionCount(BaseTransformer):
                     (gaze_vec.norm_pos_x < 0) | (gaze_vec.norm_pos_y < 0)
                 ].shape[0]
                 column_names.append(f'reg_count_{"_".join([str(g) for g in group])}')
-                gathered_features.append([reg_count])
-        features_df = pd.DataFrame(
-            data=np.array(gathered_features).T, columns=column_names
-        )
+                gathered_features.append(reg_count)
+        features_df = pd.DataFrame(data=[gathered_features], columns=column_names)
         return features_df if self.return_df else features_df.values
 
 
@@ -244,7 +272,16 @@ class FixationVAD(BaseTransformer):
         pk: List[str] = None,
         return_df: bool = True,
     ):
-        super().__init__(x, y, t, duration, dispersion, aoi, pk, return_df)
+        super().__init__(
+            x=x,
+            y=y,
+            t=t,
+            duration=duration,
+            dispersion=dispersion,
+            aoi=aoi,
+            pk=pk,
+            return_df=return_df,
+        )
         self.stats = stats
 
     @jit(forceobj=True, looplift=True)
@@ -259,7 +296,7 @@ class FixationVAD(BaseTransformer):
         if self.pk is None:
             fix_vad: pd.DataFrame = X[self.dispersion]
             column_names = [f"fix_disp_{stat}" for stat in self.stats]
-            gathered_features = [[fix_vad.apply(stat)] for stat in self.stats]
+            gathered_features = [fix_vad.apply(stat) for stat in self.stats]
         else:
             groups = X[self.pk].drop_duplicates().values
             column_names = []
@@ -271,10 +308,8 @@ class FixationVAD(BaseTransformer):
                     column_names.append(
                         f'fix_disp_{stat}_{"_".join([str(g) for g in group])}'
                     )
-                    gathered_features.append([fix_vad.apply(stat)])
+                    gathered_features.append(fix_vad.apply(stat))
 
-        features_df = pd.DataFrame(
-            data=np.array(gathered_features).T, columns=column_names
-        )
+        features_df = pd.DataFrame(data=[gathered_features], columns=column_names)
 
         return features_df if self.return_df else features_df.values
