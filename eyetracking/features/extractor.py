@@ -98,11 +98,17 @@ class Extractor(BaseEstimator, TransformerMixin):
         assert self.x is not None, "Error: provide x column before calling transform"
         assert self.y is not None, "Error: provide y column before calling transform"
         assert self.t is not None, "Error: provide t column before calling transform"
-        assert self.duration is not None, "Error: provide duration column before calling transform"
-        assert self.dispersion is not None, "Error: provide dispersion column before calling transform"
+        assert (
+            self.duration is not None
+        ), "Error: provide duration column before calling transform"
+        assert (
+            self.dispersion is not None
+        ), "Error: provide dispersion column before calling transform"
 
         gathered_features = []
-        data_df: pd.DataFrame = X[[self.x, self.y, self.t, self.duration, self.dispersion]]
+        data_df: pd.DataFrame = X[
+            [self.x, self.y, self.t, self.duration, self.dispersion]
+        ]
         if self.pk is not None:
             data_df = pd.concat([data_df, X[self.pk]], axis=1)
 
