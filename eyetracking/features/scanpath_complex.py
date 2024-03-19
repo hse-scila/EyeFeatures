@@ -1,10 +1,9 @@
+from typing import Dict, List, Union
+
 import numpy as np
 import pandas as pd
-
 from numba import jit
 from scipy.optimize import minimize
-
-from typing import List, Union, Dict
 
 
 def _target_norm(fwp: np.ndarray, fixations: np.ndarray) -> float:
@@ -13,13 +12,13 @@ def _target_norm(fwp: np.ndarray, fixations: np.ndarray) -> float:
 
 @jit(forceobj=True, looplift=True)
 def get_expected_path(
-        data: pd.DataFrame,
-        x: str,
-        y: str,
-        path_pk: List[str],
-        pk: List[str],
-        duration: str = None,
-        return_df: bool = True,
+    data: pd.DataFrame,
+    x: str,
+    y: str,
+    path_pk: List[str],
+    pk: List[str],
+    duration: str = None,
+    return_df: bool = True,
 ) -> Dict[str, Union[pd.DataFrame, np.ndarray]]:
     """
     Estimates expected path by a given method
@@ -85,7 +84,7 @@ def get_expected_path(
 
 
 def get_fill_path(
-        paths: List[pd.DataFrame], x: str, y: str, duration: str = None
+    paths: List[pd.DataFrame], x: str, y: str, duration: str = None
 ) -> pd.DataFrame:
     all_paths = pd.concat(
         [path.assign(pid=k) for k, path in enumerate(paths)], ignore_index=True

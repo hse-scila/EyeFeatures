@@ -1,6 +1,9 @@
 numpy>=1.21.5
 pandas>=1.4.4
-numba>=0.56.4
+numba>=0.55.2
 scikit-learn>=1.2.0
 scipy>=1.8.0
+black>=24.3
+isort>=5.13
+flake8>=7.0
 multimatch_gaze

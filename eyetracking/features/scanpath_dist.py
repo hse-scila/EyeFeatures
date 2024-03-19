@@ -1,13 +1,10 @@
-import numpy as np
-import pandas as pd
-
-from numba import jit
-
-from typing import List, Union, Dict
-from extractor import BaseTransformer
+from typing import Dict, List, Union
 
 import multimatch_gaze as mm
-
+import numpy as np
+import pandas as pd
+from extractor import BaseTransformer
+from numba import jit
 from scanpath_complex import get_expected_path, get_fill_path
 
 
@@ -592,7 +589,9 @@ class MannanDist(BaseTransformer):
 
             dist = len(expected_path) * sp + len(current_path) * sq
 
-            gathered_features.append(np.sqrt(dist / (4 * len(expected_path) * len(current_path))))
+            gathered_features.append(
+                np.sqrt(dist / (4 * len(expected_path) * len(current_path)))
+            )
 
         features_df = pd.DataFrame(data=[gathered_features], columns=column_names)
 
@@ -653,16 +652,16 @@ class EyeAnalysisDist(BaseTransformer):
     @jit(forceobj=True, looplift=True)
     def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
         assert (
-                self.x is not None
+            self.x is not None
         ), "Error: provide x column before calling transform from EyeAnalysisDist"
         assert (
-                self.y is not None
+            self.y is not None
         ), "Error: provide y column before calling transform from EyeAnalysisDist"
         assert (
-                self.path_pk is not None
+            self.path_pk is not None
         ), "Error: provide path_pk column before calling transform from EyeAnalysisDist"
         assert (
-                self.pk is not None
+            self.pk is not None
         ), "Error: provide pk column before calling transform from EyeAnalysisDist"
 
         groups = X[self.pk].drop_duplicates().values
@@ -755,16 +754,16 @@ class DFDist(BaseTransformer):
     @jit(forceobj=True, looplift=True)
     def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
         assert (
-                self.x is not None
+            self.x is not None
         ), "Error: provide x column before calling transform from DFDist"
         assert (
-                self.y is not None
+            self.y is not None
         ), "Error: provide y column before calling transform from DFDist"
         assert (
-                self.path_pk is not None
+            self.path_pk is not None
         ), "Error: provide path_pk column before calling transform from DFDist"
         assert (
-                self.pk is not None
+            self.pk is not None
         ), "Error: provide pk column before calling transform from DFDist"
 
         groups = X[self.pk].drop_duplicates().values
@@ -793,13 +792,20 @@ class DFDist(BaseTransformer):
             dp = np.ones((len(current_path), len(expected_path))) * (-1)
             dp[0, 0] = ((current_path[0] - expected_path[0]) ** 2).sum()
             for i in range(1, len(current_path)):
-                dp[i, 0] = max(dp[i - 1, 0], ((current_path[i] - expected_path[0]) ** 2).sum())
+                dp[i, 0] = max(
+                    dp[i - 1, 0], ((current_path[i] - expected_path[0]) ** 2).sum()
+                )
             for j in range(1, len(expected_path)):
-                dp[0, j] = max(dp[0, j - 1], ((current_path[0] - expected_path[j]) ** 2).sum())
+                dp[0, j] = max(
+                    dp[0, j - 1], ((current_path[0] - expected_path[j]) ** 2).sum()
+                )
 
             for i in range(1, len(current_path)):
                 for j in range(1, len(expected_path)):
-                    dp[i, j] = max(((current_path[i] - expected_path[j]) ** 2).sum(), min(dp[i - 1, j], dp[i, j - 1], dp[i - 1, j - 1]))
+                    dp[i, j] = max(
+                        ((current_path[i] - expected_path[j]) ** 2).sum(),
+                        min(dp[i - 1, j], dp[i, j - 1], dp[i - 1, j - 1]),
+                    )
 
             gathered_features.append(dp[-1, -1])
 
@@ -866,16 +872,16 @@ class TDEDist(BaseTransformer):
     @jit(forceobj=True, looplift=True)
     def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
         assert (
-                self.x is not None
+            self.x is not None
         ), "Error: provide x column before calling transform from TDEDist"
         assert (
-                self.y is not None
+            self.y is not None
         ), "Error: provide y column before calling transform from TDEDist"
         assert (
-                self.path_pk is not None
+            self.path_pk is not None
         ), "Error: provide path_pk column before calling transform from TDEDist"
         assert (
-                self.pk is not None
+            self.pk is not None
         ), "Error: provide pk column before calling transform from TDEDist"
 
         groups = X[self.pk].drop_duplicates().values
@@ -904,13 +910,15 @@ class TDEDist(BaseTransformer):
             dist = 0
             for i in range(len(current_path) // self.k):
                 for j in range(len(expected_path) // self.k):
-                    P = current_path[i * self.k: (i + 1) * self.k]
-                    Q = expected_path[j * self.k: (j + 1) * self.k]
+                    P = current_path[i * self.k : (i + 1) * self.k]
+                    Q = expected_path[j * self.k : (j + 1) * self.k]
                     if len(P) != len(Q):
                         break
                     dist += ((P - Q) ** 2).sum()
 
-            gathered_features.append(dist / ((len(current_path) // self.k) * (len(expected_path) // self.k)))
+            gathered_features.append(
+                dist / ((len(current_path) // self.k) * (len(expected_path) // self.k))
+            )
 
         features_df = pd.DataFrame(data=[gathered_features], columns=column_names)
 
@@ -940,7 +948,9 @@ class MultiMatchDist(BaseTransformer):
         :param fill_path: pd.DataFrame path which was returned from get_fill_path method for the same expected_paths
         :param return_df: Return pd.Dataframe object else np.ndarray
         """
-        super().__init__(x=x, y=y, duration=duration, path_pk=path_pk, pk=pk, return_df=return_df)
+        super().__init__(
+            x=x, y=y, duration=duration, path_pk=path_pk, pk=pk, return_df=return_df
+        )
         self.fill_path = fill_path
         self.expected_paths = expected_paths
 
@@ -959,12 +969,17 @@ class MultiMatchDist(BaseTransformer):
             self.pk is not None
         ), "Error: provide pk column before calling transform from MultiMatchDist"
         assert (
-                self.duration is not None
+            self.duration is not None
         ), "Error: provide duration column before calling transform from MultiMatchDist"
 
         if self.expected_paths is None:
             self.expected_paths = get_expected_path(
-                data=X, x=self.x, y=self.y, duration=self.duration, path_pk=self.path_pk, pk=self.pk
+                data=X,
+                x=self.x,
+                y=self.y,
+                duration=self.duration,
+                path_pk=self.path_pk,
+                pk=self.pk,
             )
         if self.fill_path is None:
             self.fill_path = get_fill_path(
@@ -976,19 +991,19 @@ class MultiMatchDist(BaseTransformer):
     @jit(forceobj=True, looplift=True)
     def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
         assert (
-                self.x is not None
+            self.x is not None
         ), "Error: provide x column before calling transform from MultiMatchDist"
         assert (
-                self.y is not None
+            self.y is not None
         ), "Error: provide y column before calling transform from MultiMatchDist"
         assert (
-                self.path_pk is not None
+            self.path_pk is not None
         ), "Error: provide path_pk column before calling transform from MultiMatchDist"
         assert (
-                self.pk is not None
+            self.pk is not None
         ), "Error: provide pk column before calling transform from MultiMatchDist"
         assert (
-                self.duration is not None
+            self.duration is not None
         ), "Error: provide duration column before calling transform from MultiMatchDist"
 
         groups = X[self.pk].drop_duplicates().values
@@ -1013,13 +1028,33 @@ class MultiMatchDist(BaseTransformer):
             current_path = current_path[[self.x, self.y, self.duration]]
             expected_path = expected_path[["x_est", "y_est", "duration_est"]]
 
-            current_path = current_path.rename(columns=dict([(self.x, "start_x"), (self.y, "start_y"), (self.duration, "duration")]))
-            expected_path = expected_path.rename(columns=dict([("x_est", "start_x"), ("y_est", "start_y"), ("duration_est", "duration")]))
+            current_path = current_path.rename(
+                columns=dict(
+                    [
+                        (self.x, "start_x"),
+                        (self.y, "start_y"),
+                        (self.duration, "duration"),
+                    ]
+                )
+            )
+            expected_path = expected_path.rename(
+                columns=dict(
+                    [
+                        ("x_est", "start_x"),
+                        ("y_est", "start_y"),
+                        ("duration_est", "duration"),
+                    ]
+                )
+            )
 
             current_path = current_path.reset_index()
             expected_path = expected_path.reset_index()
 
-            sim = mm.docomparison(fixation_vectors1=current_path, fixation_vectors2=expected_path, screensize=[1, 1])
+            sim = mm.docomparison(
+                fixation_vectors1=current_path,
+                fixation_vectors2=expected_path,
+                screensize=[1, 1],
+            )
 
             column_names.append(f'mm_shape_{"_".join([str(g) for g in group])}')
             column_names.append(f'mm_angle_{"_".join([str(g) for g in group])}')
