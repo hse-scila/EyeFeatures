@@ -47,7 +47,7 @@ class BaseTransformer(BaseEstimator, TransformerMixin):
         self.t = t
         self.duration = duration
         self.dispersion = dispersion
-        self.path_pk = (path_pk,)
+        self.path_pk = path_pk
         self.pk = pk
         self.aoi = aoi
         self.return_df = return_df
