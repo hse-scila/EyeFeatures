@@ -384,9 +384,9 @@ class RegressionLength(BaseTransformer):
             dy = X[self.y].diff()
             gaze_vec = pd.concat([dx, dy], axis=1)
             reg_only = gaze_vec[
-                (gaze_vec.norm_pos_x < 0) | (gaze_vec.norm_pos_y < 0)
+                (gaze_vec.iloc[:, 0] < 0) | (gaze_vec.iloc[:, 1] < 0)
                 ]
-            reg_len: pd.DataFrame = np.sqrt(reg_only.norm_pos_x ** 2 + reg_only.norm_pos_y ** 2)
+            reg_len: pd.DataFrame = np.sqrt(reg_only.iloc[:, 0] ** 2 + reg_only.iloc[:, 1] ** 2)
             column_names = [f"reg_len_{stat}" for stat in self.stats]
             gathered_features = [reg_len.apply(stat) for stat in self.stats]
         else:
@@ -399,9 +399,9 @@ class RegressionLength(BaseTransformer):
                 dy = current_X[self.y].diff()
                 gaze_vec = pd.concat([dx, dy], axis=1)
                 reg_only = gaze_vec[
-                    (gaze_vec.norm_pos_x < 0) | (gaze_vec.norm_pos_y < 0)
+                    (gaze_vec.iloc[:, 0] < 0) | (gaze_vec.iloc[:, 1] < 0)
                     ]
-                reg_len: pd.DataFrame = np.sqrt(reg_only.norm_pos_x ** 2 + reg_only.norm_pos_y ** 2)
+                reg_len: pd.DataFrame = np.sqrt(reg_only.iloc[:, 0] ** 2 + reg_only.iloc[:, 1] ** 2)
                 for stat in self.stats:
                     column_names.append(f'reg_len_{stat}_{"_".join([str(g) for g in group])}')
                     gathered_features.append(reg_len.apply(stat))
@@ -453,12 +453,13 @@ class RegressionVelocity(BaseTransformer):
                 dur = X[self.t].diff().shift(-1).fillna(0)
             else:
                 dur = X[self.duration]
-            gaze_vec = pd.concat([dx, dy, dur, X[self.t]],  axis=1)
+            gaze_vec = pd.concat([dx, dy],  axis=1)
             reg_only = gaze_vec[
-                (gaze_vec.norm_pos_x < 0) | (gaze_vec.norm_pos_y < 0)
+                (gaze_vec.iloc[:, 0] < 0) | (gaze_vec.iloc[:, 1] < 0)
                 ]
-            dr = np.sqrt(reg_only.norm_pos_x ** 2 + reg_only.norm_pos_y ** 2)
-            dt = reg_only.start_timestamp - (reg_only.start_timestamp + reg_only.duration / 1000).shift(1)
+            dr = np.sqrt(reg_only.iloc[:, 0] ** 2 + reg_only.iloc[:, 1] ** 2)
+            dt = X.start_timestamp - (X.start_timestamp + dur / 1000).shift(1)
+            dt = dt.loc[~dt.index.isin(reg_only)]
             reg_vel: pd.DataFrame = dr / (dt + self.eps)
             column_names = [f"reg_vel_{stat}" for stat in self.stats]
             gathered_features = [reg_vel.apply(stat) for stat in self.stats]
@@ -474,12 +475,13 @@ class RegressionVelocity(BaseTransformer):
                     dur = current_X[self.t].diff().shift(-1).fillna(0)
                 else:
                     dur = current_X[self.duration]
-                gaze_vec = pd.concat([dx, dy, dur, current_X[self.t]], axis=1)
+                gaze_vec = pd.concat([dx, dy], axis=1)
                 reg_only = gaze_vec[
-                    (gaze_vec.norm_pos_x < 0) | (gaze_vec.norm_pos_y < 0)
+                    (gaze_vec.iloc[:, 0] < 0) | (gaze_vec.iloc[:, 1] < 0)
                     ]
-                dr = np.sqrt(reg_only.norm_pos_x ** 2 + reg_only.norm_pos_y ** 2)
-                dt = reg_only.start_timestamp - (reg_only.start_timestamp + reg_only.duration / 1000).shift(1)
+                dr = np.sqrt(reg_only.iloc[:, 0] ** 2 + reg_only.iloc[:, 1] ** 2)
+                dt = current_X[self.t] - (current_X[self.t] + dur / 1000).shift(1)
+                dt = dt.loc[~dt.index.isin(reg_only)]
                 reg_vel: pd.DataFrame = dr / (dt + self.eps)
                 for stat in self.stats:
                     column_names.append(
@@ -537,12 +539,13 @@ class RegressionAcceleration(BaseTransformer):
                 dur = X[self.t].diff().shift(-1).fillna(0)
             else:
                 dur = X[self.duration]
-            gaze_vec = pd.concat([dx, dy, dur, X[self.t]], axis=1)
+            gaze_vec = pd.concat([dx, dy], axis=1)
             reg_only = gaze_vec[
-                (gaze_vec.norm_pos_x < 0) | (gaze_vec.norm_pos_y < 0)
+                (gaze_vec.iloc[:, 0] < 0) | (gaze_vec.iloc[:, 1] < 0)
                 ]
-            dr = np.sqrt(reg_only.norm_pos_x ** 2 + reg_only.norm_pos_y ** 2)
-            dt = reg_only.start_timestamp - (reg_only.start_timestamp + reg_only.duration / 1000).shift(1)
+            dr = np.sqrt(reg_only.iloc[:, 0] ** 2 + reg_only.iloc[:, 1] ** 2)
+            dt = X[self.t] - (X[self.t] + dur / 1000).shift(1)
+            dt = dt.loc[~dt.index.isin(reg_only)]
             reg_acc: pd.DataFrame = dr / (dt ** 2 + self.eps) * 1 / 2
             feature_names = [f"reg_acc_{stat}" for stat in self.stats]
             gathered_features = [reg_acc.apply(stat) for stat in self.stats]
@@ -558,12 +561,13 @@ class RegressionAcceleration(BaseTransformer):
                     dur = current_X[self.t].diff().shift(-1).fillna(0)
                 else:
                     dur = current_X[self.duration]
-                gaze_vec = pd.concat([dx, dy, dur, current_X[self.t]], axis=1)
+                gaze_vec = pd.concat([dx, dy], axis=1)
                 reg_only = gaze_vec[
-                    (gaze_vec.norm_pos_x < 0) | (gaze_vec.norm_pos_y < 0)
+                    (gaze_vec.iloc[:, 0] < 0) | (gaze_vec.iloc[:, 1] < 0)
                     ]
-                dr = np.sqrt(reg_only.norm_pos_x ** 2 + reg_only.norm_pos_y ** 2)
-                dt = reg_only.start_timestamp - (reg_only.start_timestamp + reg_only.duration / 1000).shift(1)
+                dr = np.sqrt(reg_only.iloc[:, 0] ** 2 + reg_only.iloc[:, 1] ** 2)
+                dt = current_X[self.t] - (current_X[self.t] + dur / 1000).shift(1)
+                dt = dt.loc[~dt.index.isin(reg_only)]
                 reg_acc: pd.DataFrame = dr / (dt ** 2 + self.eps) * 1 / 2
                 for stat in self.stats:
                     feature_names.append(
@@ -609,7 +613,7 @@ class RegressionCount(BaseTransformer):
             dy = X[self.y].diff()
             gaze_vec = pd.concat([dx, dy], axis=1)
             reg_count: pd.DataFrame = gaze_vec[
-                (gaze_vec.norm_pos_x < 0) | (gaze_vec.norm_pos_y < 0)
+                (gaze_vec.iloc[:, 0] < 0) | (gaze_vec.iloc[:, 1] < 0)
             ].shape[0]
             column_names = [f"reg_count"]
             gathered_features = reg_count
@@ -623,7 +627,7 @@ class RegressionCount(BaseTransformer):
                 dy = current_X[self.y].diff()
                 gaze_vec = pd.concat([dx, dy], axis=1)
                 reg_count: pd.DataFrame = gaze_vec[
-                    (gaze_vec.norm_pos_x < 0) | (gaze_vec.norm_pos_y < 0)
+                    (gaze_vec.iloc[:, 0] < 0) | (gaze_vec.iloc[:, 1] < 0)
                 ].shape[0]
                 column_names.append(f'reg_count_{"_".join([str(g) for g in group])}')
                 gathered_features.append(reg_count)
