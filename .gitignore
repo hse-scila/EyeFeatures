@@ -1,5 +1,5 @@
-*.env
-*.venv
+*.env;venv
+*.xlsx
 .idea/
 __pycache__/
 __pypackages__/
