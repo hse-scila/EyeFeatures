@@ -398,6 +398,7 @@ class RegressionLength(BaseTransformer):
                 dx = current_X[self.x].diff()
                 dy = current_X[self.y].diff()
                 gaze_vec = pd.concat([dx, dy], axis=1)
+                # TODO make regression recognition less sensitive and add square selection
                 reg_only = gaze_vec[
                     (gaze_vec.iloc[:, 0] < 0) | (gaze_vec.iloc[:, 1] < 0)
                     ]
@@ -458,7 +459,7 @@ class RegressionVelocity(BaseTransformer):
                 (gaze_vec.iloc[:, 0] < 0) | (gaze_vec.iloc[:, 1] < 0)
                 ]
             dr = np.sqrt(reg_only.iloc[:, 0] ** 2 + reg_only.iloc[:, 1] ** 2)
-            dt = X.start_timestamp - (X.start_timestamp + dur / 1000).shift(1)
+            dt = X[self.t] - (X[self.t] + dur / 1000).shift(1)
             dt = dt.loc[~dt.index.isin(reg_only)]
             reg_vel: pd.DataFrame = dr / (dt + self.eps)
             column_names = [f"reg_vel_{stat}" for stat in self.stats]
