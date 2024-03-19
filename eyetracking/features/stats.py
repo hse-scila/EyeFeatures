@@ -346,6 +346,234 @@ class FixationVAD(BaseTransformer):
 
         return features_df if self.return_df else features_df.values
 
+class RegressionLength(BaseTransformer):
+    def __init__(
+        self,
+        stats: List[str],
+        x: str = None,
+        y: str = None,
+        t: str = None,
+        duration: str = None,
+        dispersion: str = None,
+        aoi: str = None,
+        pk: List[str] = None,
+        return_df: bool = True,
+    ):
+        super().__init__(
+            x=x,
+            y=y,
+            t=t,
+            duration=duration,
+            dispersion=dispersion,
+            aoi=aoi,
+            pk=pk,
+            return_df=return_df,
+        )
+        self.stats = stats
+
+    @jit(forceobj=True, looplift=True)
+    def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
+        if self.stats is None:
+            return X if self.return_df else X.values
+
+        assert self.x is not None, "Error: provide x column before calling transform"
+        assert self.y is not None, "Error: provide y column before calling transform"
+
+        if self.pk is None:
+            dx = X[self.x].diff()
+            dy = X[self.y].diff()
+            gaze_vec = pd.concat([dx, dy], axis=1)
+            reg_only = gaze_vec[
+                (gaze_vec.norm_pos_x < 0) | (gaze_vec.norm_pos_y < 0)
+                ]
+            reg_len: pd.DataFrame = np.sqrt(reg_only.norm_pos_x ** 2 + reg_only.norm_pos_y ** 2)
+            column_names = [f"reg_len_{stat}" for stat in self.stats]
+            gathered_features = [reg_len.apply(stat) for stat in self.stats]
+        else:
+            groups = X[self.pk].drop_duplicates().values
+            column_names = []
+            gathered_features = []
+            for group in groups:
+                current_X = X[pd.DataFrame(X[self.pk] == group).all(axis=1)]
+                dx = current_X[self.x].diff()
+                dy = current_X[self.y].diff()
+                gaze_vec = pd.concat([dx, dy], axis=1)
+                reg_only = gaze_vec[
+                    (gaze_vec.norm_pos_x < 0) | (gaze_vec.norm_pos_y < 0)
+                    ]
+                reg_len: pd.DataFrame = np.sqrt(reg_only.norm_pos_x ** 2 + reg_only.norm_pos_y ** 2)
+                for stat in self.stats:
+                    column_names.append(f'reg_len_{stat}_{"_".join([str(g) for g in group])}')
+                    gathered_features.append(reg_len.apply(stat))
+
+        features_df = pd.DataFrame(data=[gathered_features], columns=column_names)
+        return features_df if self.return_df else features_df.values
+
+class RegressionVelocity(BaseTransformer):
+    def __init__(
+        self,
+        stats: List[str],
+        x: str = None,
+        y: str = None,
+        t: str = None,
+        duration: str = None,
+        dispersion: str = None,
+        aoi: str = None,
+        pk: List[str] = None,
+        return_df: bool = True,
+        eps: float = 1e-8
+    ):
+        super().__init__(
+            x=x,
+            y=y,
+            t=t,
+            duration=duration,
+            dispersion=dispersion,
+            aoi=aoi,
+            pk=pk,
+            return_df=return_df,
+        )
+        self.stats = stats
+        self.eps = eps
+
+    @jit(forceobj=True, looplift=True)
+    def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
+        if self.stats is None:
+            return X if self.return_df else X.values
+
+        assert self.x is not None, "Error: provide x column before calling transform"
+        assert self.y is not None, "Error: provide y column before calling transform"
+        assert self.t is not None, "Error: provide t column before calling transform"
+
+
+        if self.pk is None:
+            dx = X[self.x].diff()
+            dy = X[self.y].diff()
+            if self.duration is None:
+                dur = X[self.t].diff().shift(-1).fillna(0)
+            else:
+                dur = X[self.duration]
+            gaze_vec = pd.concat([dx, dy, dur, X[self.t]],  axis=1)
+            reg_only = gaze_vec[
+                (gaze_vec.norm_pos_x < 0) | (gaze_vec.norm_pos_y < 0)
+                ]
+            dr = np.sqrt(reg_only.norm_pos_x ** 2 + reg_only.norm_pos_y ** 2)
+            dt = reg_only.start_timestamp - (reg_only.start_timestamp + reg_only.duration / 1000).shift(1)
+            reg_vel: pd.DataFrame = dr / (dt + self.eps)
+            column_names = [f"reg_vel_{stat}" for stat in self.stats]
+            gathered_features = [reg_vel.apply(stat) for stat in self.stats]
+        else:
+            groups = X[self.pk].drop_duplicates().values
+            column_names = []
+            gathered_features = []
+            for group in groups:
+                current_X = X[pd.DataFrame(X[self.pk] == group).all(axis=1)]
+                dx = current_X[self.x].diff()
+                dy = current_X[self.y].diff()
+                if self.duration is None:
+                    dur = current_X[self.t].diff().shift(-1).fillna(0)
+                else:
+                    dur = current_X[self.duration]
+                gaze_vec = pd.concat([dx, dy, dur, current_X[self.t]], axis=1)
+                reg_only = gaze_vec[
+                    (gaze_vec.norm_pos_x < 0) | (gaze_vec.norm_pos_y < 0)
+                    ]
+                dr = np.sqrt(reg_only.norm_pos_x ** 2 + reg_only.norm_pos_y ** 2)
+                dt = reg_only.start_timestamp - (reg_only.start_timestamp + reg_only.duration / 1000).shift(1)
+                reg_vel: pd.DataFrame = dr / (dt + self.eps)
+                for stat in self.stats:
+                    column_names.append(
+                        f'reg_vel_{stat}_{"_".join([str(g) for g in group])}'
+                    )
+                    gathered_features.append(reg_vel.apply(stat))
+
+        features_df = pd.DataFrame(data=[gathered_features], columns=column_names)
+
+        return features_df if self.return_df else features_df.values
+
+class RegressionAcceleration(BaseTransformer):
+    def __init__(
+            self,
+            stats: List[str],
+            x: str = None,
+            y: str = None,
+            t: str = None,
+            duration: str = None,
+            dispersion: str = None,
+            aoi: str = None,
+            pk: List[str] = None,
+            return_df: bool = True,
+            eps: float = 1e-8,
+    ):
+        super().__init__(
+            x=x,
+            y=y,
+            t=t,
+            duration=duration,
+            dispersion=dispersion,
+            aoi=aoi,
+            pk=pk,
+            return_df=return_df,
+        )
+        self.stats = stats
+        self.eps = eps
+
+    def check_init(self) -> None:
+        assert self.x is not None, "Error: provide x column before calling transform"
+        assert self.y is not None, "Error: provide y column before calling transform"
+        assert self.t is not None, "Error: provide t column before calling transform"
+
+    @jit(forceobj=True, looplift=True)
+    def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
+        if self.stats is None:
+            return X if self.return_df else X.values
+
+        self.check_init()
+
+        if self.pk is None:
+            dx = X[self.x].diff()
+            dy = X[self.y].diff()
+            if self.duration is None:
+                dur = X[self.t].diff().shift(-1).fillna(0)
+            else:
+                dur = X[self.duration]
+            gaze_vec = pd.concat([dx, dy, dur, X[self.t]], axis=1)
+            reg_only = gaze_vec[
+                (gaze_vec.norm_pos_x < 0) | (gaze_vec.norm_pos_y < 0)
+                ]
+            dr = np.sqrt(reg_only.norm_pos_x ** 2 + reg_only.norm_pos_y ** 2)
+            dt = reg_only.start_timestamp - (reg_only.start_timestamp + reg_only.duration / 1000).shift(1)
+            reg_acc: pd.DataFrame = dr / (dt ** 2 + self.eps) * 1 / 2
+            feature_names = [f"reg_acc_{stat}" for stat in self.stats]
+            gathered_features = [reg_acc.apply(stat) for stat in self.stats]
+        else:
+            groups = X[self.pk].drop_duplicates().values
+            feature_names = []
+            gathered_features = []
+            for group in groups:
+                current_X = X[pd.DataFrame(X[self.pk] == group).all(axis=1)]
+                dx = current_X[self.x].diff()
+                dy = current_X[self.y].diff()
+                if self.duration is None:
+                    dur = current_X[self.t].diff().shift(-1).fillna(0)
+                else:
+                    dur = current_X[self.duration]
+                gaze_vec = pd.concat([dx, dy, dur, current_X[self.t]], axis=1)
+                reg_only = gaze_vec[
+                    (gaze_vec.norm_pos_x < 0) | (gaze_vec.norm_pos_y < 0)
+                    ]
+                dr = np.sqrt(reg_only.norm_pos_x ** 2 + reg_only.norm_pos_y ** 2)
+                dt = reg_only.start_timestamp - (reg_only.start_timestamp + reg_only.duration / 1000).shift(1)
+                reg_acc: pd.DataFrame = dr / (dt ** 2 + self.eps) * 1 / 2
+                for stat in self.stats:
+                    feature_names.append(
+                        f'reg_acc_{stat}_{"_".join([str(g) for g in group])}'
+                    )
+                    gathered_features.append(reg_acc.apply(stat))
+
+        features_df = pd.DataFrame(data=[gathered_features], columns=feature_names)
+
+        return features_df if self.return_df else features_df.values
 
 class RegressionCount(BaseTransformer):
     def __init__(
