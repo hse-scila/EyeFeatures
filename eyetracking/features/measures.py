@@ -49,6 +49,7 @@ class HurstExponent(BaseTransformer):
     def fit(self, X: pd.DataFrame, y=None):
         return self
 
+    @jit(forceobj=True, looplift=True)
     def _make_pow2(self, x: np.array) -> np.array:
         n = len(x)
         k = np.log2(len(x)).astype(np.int32)  # 2 ^ k <= n < 2 ^ (k + 1)
@@ -70,6 +71,7 @@ class HurstExponent(BaseTransformer):
         else:
             raise NotImplementedError
 
+    @jit(forceobj=True, looplift=True)
     def _compute_hurst(self, x):
         x = self._make_pow2(x)
         n = len(x)
@@ -105,6 +107,7 @@ class HurstExponent(BaseTransformer):
 
         return grad[1]
 
+    @jit(forceobj=True, looplift=True)
     def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
         self._check_init(X_len=len(X))
 
