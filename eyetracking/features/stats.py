@@ -346,6 +346,7 @@ class FixationVAD(BaseTransformer):
 
         return features_df if self.return_df else features_df.values
 
+
 class RegressionLength(BaseTransformer):
     def __init__(
         self,
@@ -383,10 +384,10 @@ class RegressionLength(BaseTransformer):
             dx = X[self.x].diff()
             dy = X[self.y].diff()
             gaze_vec = pd.concat([dx, dy], axis=1)
-            reg_only = gaze_vec[
-                (gaze_vec.iloc[:, 0] < 0) | (gaze_vec.iloc[:, 1] < 0)
-                ]
-            reg_len: pd.DataFrame = np.sqrt(reg_only.iloc[:, 0] ** 2 + reg_only.iloc[:, 1] ** 2)
+            reg_only = gaze_vec[(gaze_vec.iloc[:, 0] < 0) | (gaze_vec.iloc[:, 1] < 0)]
+            reg_len: pd.DataFrame = np.sqrt(
+                reg_only.iloc[:, 0] ** 2 + reg_only.iloc[:, 1] ** 2
+            )
             column_names = [f"reg_len_{stat}" for stat in self.stats]
             gathered_features = [reg_len.apply(stat) for stat in self.stats]
         else:
@@ -401,14 +402,19 @@ class RegressionLength(BaseTransformer):
                 # TODO make regression recognition less sensitive and add square selection
                 reg_only = gaze_vec[
                     (gaze_vec.iloc[:, 0] < 0) | (gaze_vec.iloc[:, 1] < 0)
-                    ]
-                reg_len: pd.DataFrame = np.sqrt(reg_only.iloc[:, 0] ** 2 + reg_only.iloc[:, 1] ** 2)
+                ]
+                reg_len: pd.DataFrame = np.sqrt(
+                    reg_only.iloc[:, 0] ** 2 + reg_only.iloc[:, 1] ** 2
+                )
                 for stat in self.stats:
-                    column_names.append(f'reg_len_{stat}_{"_".join([str(g) for g in group])}')
+                    column_names.append(
+                        f'reg_len_{stat}_{"_".join([str(g) for g in group])}'
+                    )
                     gathered_features.append(reg_len.apply(stat))
 
         features_df = pd.DataFrame(data=[gathered_features], columns=column_names)
         return features_df if self.return_df else features_df.values
+
 
 class RegressionVelocity(BaseTransformer):
     def __init__(
@@ -422,7 +428,7 @@ class RegressionVelocity(BaseTransformer):
         aoi: str = None,
         pk: List[str] = None,
         return_df: bool = True,
-        eps: float = 1e-8
+        eps: float = 1e-8,
     ):
         super().__init__(
             x=x,
@@ -446,7 +452,6 @@ class RegressionVelocity(BaseTransformer):
         assert self.y is not None, "Error: provide y column before calling transform"
         assert self.t is not None, "Error: provide t column before calling transform"
 
-
         if self.pk is None:
             dx = X[self.x].diff()
             dy = X[self.y].diff()
@@ -454,10 +459,8 @@ class RegressionVelocity(BaseTransformer):
                 dur = X[self.t].diff().shift(-1).fillna(0)
             else:
                 dur = X[self.duration]
-            gaze_vec = pd.concat([dx, dy],  axis=1)
-            reg_only = gaze_vec[
-                (gaze_vec.iloc[:, 0] < 0) | (gaze_vec.iloc[:, 1] < 0)
-                ]
+            gaze_vec = pd.concat([dx, dy], axis=1)
+            reg_only = gaze_vec[(gaze_vec.iloc[:, 0] < 0) | (gaze_vec.iloc[:, 1] < 0)]
             dr = np.sqrt(reg_only.iloc[:, 0] ** 2 + reg_only.iloc[:, 1] ** 2)
             dt = X[self.t] - (X[self.t] + dur / 1000).shift(1)
             dt = dt.loc[~dt.index.isin(reg_only)]
@@ -479,7 +482,7 @@ class RegressionVelocity(BaseTransformer):
                 gaze_vec = pd.concat([dx, dy], axis=1)
                 reg_only = gaze_vec[
                     (gaze_vec.iloc[:, 0] < 0) | (gaze_vec.iloc[:, 1] < 0)
-                    ]
+                ]
                 dr = np.sqrt(reg_only.iloc[:, 0] ** 2 + reg_only.iloc[:, 1] ** 2)
                 dt = current_X[self.t] - (current_X[self.t] + dur / 1000).shift(1)
                 dt = dt.loc[~dt.index.isin(reg_only)]
@@ -494,19 +497,20 @@ class RegressionVelocity(BaseTransformer):
 
         return features_df if self.return_df else features_df.values
 
+
 class RegressionAcceleration(BaseTransformer):
     def __init__(
-            self,
-            stats: List[str],
-            x: str = None,
-            y: str = None,
-            t: str = None,
-            duration: str = None,
-            dispersion: str = None,
-            aoi: str = None,
-            pk: List[str] = None,
-            return_df: bool = True,
-            eps: float = 1e-8,
+        self,
+        stats: List[str],
+        x: str = None,
+        y: str = None,
+        t: str = None,
+        duration: str = None,
+        dispersion: str = None,
+        aoi: str = None,
+        pk: List[str] = None,
+        return_df: bool = True,
+        eps: float = 1e-8,
     ):
         super().__init__(
             x=x,
@@ -541,13 +545,11 @@ class RegressionAcceleration(BaseTransformer):
             else:
                 dur = X[self.duration]
             gaze_vec = pd.concat([dx, dy], axis=1)
-            reg_only = gaze_vec[
-                (gaze_vec.iloc[:, 0] < 0) | (gaze_vec.iloc[:, 1] < 0)
-                ]
+            reg_only = gaze_vec[(gaze_vec.iloc[:, 0] < 0) | (gaze_vec.iloc[:, 1] < 0)]
             dr = np.sqrt(reg_only.iloc[:, 0] ** 2 + reg_only.iloc[:, 1] ** 2)
             dt = X[self.t] - (X[self.t] + dur / 1000).shift(1)
             dt = dt.loc[~dt.index.isin(reg_only)]
-            reg_acc: pd.DataFrame = dr / (dt ** 2 + self.eps) * 1 / 2
+            reg_acc: pd.DataFrame = dr / (dt**2 + self.eps) * 1 / 2
             feature_names = [f"reg_acc_{stat}" for stat in self.stats]
             gathered_features = [reg_acc.apply(stat) for stat in self.stats]
         else:
@@ -565,11 +567,11 @@ class RegressionAcceleration(BaseTransformer):
                 gaze_vec = pd.concat([dx, dy], axis=1)
                 reg_only = gaze_vec[
                     (gaze_vec.iloc[:, 0] < 0) | (gaze_vec.iloc[:, 1] < 0)
-                    ]
+                ]
                 dr = np.sqrt(reg_only.iloc[:, 0] ** 2 + reg_only.iloc[:, 1] ** 2)
                 dt = current_X[self.t] - (current_X[self.t] + dur / 1000).shift(1)
                 dt = dt.loc[~dt.index.isin(reg_only)]
-                reg_acc: pd.DataFrame = dr / (dt ** 2 + self.eps) * 1 / 2
+                reg_acc: pd.DataFrame = dr / (dt**2 + self.eps) * 1 / 2
                 for stat in self.stats:
                     feature_names.append(
                         f'reg_acc_{stat}_{"_".join([str(g) for g in group])}'
@@ -579,6 +581,7 @@ class RegressionAcceleration(BaseTransformer):
         features_df = pd.DataFrame(data=[gathered_features], columns=feature_names)
 
         return features_df if self.return_df else features_df.values
+
 
 class RegressionCount(BaseTransformer):
     def __init__(
