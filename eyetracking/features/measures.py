@@ -10,9 +10,10 @@ class HurstExponent(BaseTransformer):
     def __init__(
         self,
         n_iters=10,
-        fill_strategy: Literal["mean", "reduce", "last"] = "reduce",
+        fill_strategy: Literal["mean", "reduce", "last"] = "last",
         var: str = None,
         pk: List[str] = None,
+        eps: float = 1e-22,
         return_df: bool = True,
     ):
         """
@@ -25,12 +26,14 @@ class HurstExponent(BaseTransformer):
                 being the last value of vector (makes time-series constant at the end).
         :param var: column name of sequence points.
         :param pk: list of column names used to split pd.DataFrame.
+        :param eps: division epsilon.
         :param return_df: Return pd.Dataframe object else np.ndarray.
         """
         super().__init__(pk=pk, return_df=return_df)
         self.var = var
         self.n_iters = n_iters
         self.fill_strategy = fill_strategy
+        self.eps = eps
 
     def _check_init(self, X_len: int):
         assert (
@@ -59,12 +62,12 @@ class HurstExponent(BaseTransformer):
             return x[: 2**k]
 
         elif self.fill_strategy == "mean":
-            tail = np.zeros(n - 2**k)
+            tail = np.zeros(2 ** (k + 1) - n)
             tail[:] = x.mean()
             return np.hstack([x, tail])
 
         elif self.fill_strategy == "last":
-            tail = np.zeros(n - 2**k)
+            tail = np.zeros(2 ** (k + 1) - n)
             tail[:] = x[-1]
             return np.hstack([x, tail])
 
@@ -77,8 +80,8 @@ class HurstExponent(BaseTransformer):
         n = len(x)
 
         cnt = 0
-        rs = np.zeros(self.n_iters)  # r_to_s_ratios
-        bs = np.zeros(self.n_iters)  # block_sizes
+        rs = np.zeros(self.n_iters)  # range to std ratios
+        bs = np.zeros(self.n_iters)  # block sizes
         while cnt < self.n_iters and n > 2:
             bs[cnt] = n
 
@@ -86,9 +89,9 @@ class HurstExponent(BaseTransformer):
             blocks -= blocks.mean(axis=1)[:, None]  # center blocks individually
 
             stds = np.sqrt(np.square(blocks).sum(axis=1) / n)  # stds of blocks
-            blocks = blocks.cumsum(axis=1)  # cumulative sum of blocks
+            blocks = blocks.cumsum(axis=1)  # cumulative sums of blocks
             ranges = blocks.max(axis=1) - blocks.min(axis=1)  # ranges
-            ratio = (ranges / stds).mean()
+            ratio = (ranges / (stds + self.eps)).mean()
             rs[cnt] = ratio
 
             n //= 2
@@ -115,7 +118,7 @@ class HurstExponent(BaseTransformer):
 
         if self.pk is None:
             grad = self._compute_hurst(x)
-            features_names = ["hurst_exp"]
+            features_names = [f"he_{self.var}"]
             gathered_features = [grad]
         else:
             groups = X[self.pk].drop_duplicates().values
@@ -125,7 +128,7 @@ class HurstExponent(BaseTransformer):
                 current_X = X[pd.DataFrame(X[self.pk] == group).all(axis=1)]
                 x = current_X[self.var].values / 1000
                 grad = self._compute_hurst(x.copy())
-                features_names.append(f"hurst_exp_{'_'.join([str(g) for g in group])}")
+                features_names.append(f"he_{self.var}_{'_'.join([str(g) for g in group])}")
                 gathered_features.append(grad)
 
         features_df = pd.DataFrame(data=[gathered_features], columns=features_names)
