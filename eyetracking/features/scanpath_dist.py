@@ -75,7 +75,7 @@ class EucDist(BaseTransformer):
         ), "Error: provide pk column before calling transform from EucDist"
 
         groups = X[self.pk].drop_duplicates().values
-        column_names = []
+        column_names = ["euc_dist"]
         gathered_features = []
         for group in groups:
             current_path = X[pd.DataFrame(X[self.pk] == group).all(axis=1)]
@@ -87,8 +87,6 @@ class EucDist(BaseTransformer):
                 if path_group in self.expected_paths.keys()
                 else self.fill_path
             )
-
-            column_names.append(f'euc_{"_".join([str(g) for g in group])}')
 
             path_length = min(len(expected_path), len(current_path))
             if path_length == 0:
@@ -103,9 +101,9 @@ class EucDist(BaseTransformer):
             expected_path = expected_path[["x_est", "y_est"]].values
 
             dist = ((current_path - expected_path) ** 2).sum()
-            gathered_features.append(dist)
+            gathered_features.append([dist])
 
-        features_df = pd.DataFrame(data=[gathered_features], columns=column_names)
+        features_df = pd.DataFrame(data=gathered_features, columns=column_names)
 
         return features_df if self.return_df else features_df.values
 
@@ -177,7 +175,7 @@ class HauDist(BaseTransformer):
         ), "Error: provide pk column before calling transform from HauDist"
 
         groups = X[self.pk].drop_duplicates().values
-        column_names = []
+        column_names = ["hau_dist"]
         gathered_features = []
         for group in groups:
             current_path = X[pd.DataFrame(X[self.pk] == group).all(axis=1)]
@@ -189,8 +187,6 @@ class HauDist(BaseTransformer):
                 if path_group in self.expected_paths.keys()
                 else self.fill_path
             )
-
-            column_names.append(f'hau_{"_".join([str(g) for g in group])}')
 
             if len(current_path) * len(expected_path) == 0:
                 gathered_features.append(np.nan)
@@ -218,9 +214,9 @@ class HauDist(BaseTransformer):
                         break
                 cmax = np.maximum(cmax, cmin)
 
-            gathered_features.append(np.sqrt(cmax))
+            gathered_features.append([np.sqrt(cmax)])
 
-        features_df = pd.DataFrame(data=[gathered_features], columns=column_names)
+        features_df = pd.DataFrame(data=gathered_features, columns=column_names)
 
         return features_df if self.return_df else features_df.values
 
@@ -292,7 +288,7 @@ class DTWDist(BaseTransformer):
         ), "Error: provide pk column before calling transform from DTWDist"
 
         groups = X[self.pk].drop_duplicates().values
-        column_names = []
+        column_names = ["dtw_dist"]
         gathered_features = []
         for group in groups:
             current_path = X[pd.DataFrame(X[self.pk] == group).all(axis=1)]
@@ -304,8 +300,6 @@ class DTWDist(BaseTransformer):
                 if path_group in self.expected_paths.keys()
                 else self.fill_path
             )
-
-            column_names.append(f'dtw_{"_".join([str(g) for g in group])}')
 
             if len(current_path) * len(expected_path) == 0:
                 gathered_features.append(np.nan)
@@ -326,9 +320,9 @@ class DTWDist(BaseTransformer):
                     dp[i, j] = cdist + np.minimum(dp[i - 1, j], dp[i, j - 1])
                     dp[i, j] = np.minimum(dp[i, j], cdist + dp[i - 1, j - 1])
 
-            gathered_features.append(dp[-1, -1])
+            gathered_features.append([dp[-1, -1]])
 
-        features_df = pd.DataFrame(data=[gathered_features], columns=column_names)
+        features_df = pd.DataFrame(data=gathered_features, columns=column_names)
 
         return features_df if self.return_df else features_df.values
 
@@ -439,7 +433,7 @@ class ScanMatchDist(BaseTransformer):
         ), "Error: provide duration column before calling transform from ScanMatchDist"
 
         groups = X[self.pk].drop_duplicates().values
-        column_names = []
+        column_names = ["scan_match_dist"]
         gathered_features = []
         for group in groups:
             current_path = X[pd.DataFrame(X[self.pk] == group).all(axis=1)]
@@ -452,16 +446,17 @@ class ScanMatchDist(BaseTransformer):
                 else self.fill_path
             )
 
-            column_names.append(f'sm_{"_".join([str(g) for g in group])}')
-
             if len(current_path) * len(expected_path) == 0:
                 gathered_features.append(np.nan)
                 continue
 
-            current_path = current_path[[self.x, self.y, self.duration]]
-            query_filter = "0 <= x_est <= 1 and 0 <= y_est <= 1"
+            query_filter_exp = "0 <= x_est <= 1 and 0 <= y_est <= 1"
+            query_filter_cur = f"0 <= {self.x} <= 1 and 0 <= {self.y} <= 1"
+            current_path = current_path[[self.x, self.y, self.duration]].query(
+                query_filter_cur
+            )
             expected_path = expected_path[["x_est", "y_est", "duration_est"]].query(
-                query_filter
+                query_filter_exp
             )
 
             current_path = _transform_path(current_path, self.t_bin)
@@ -485,9 +480,9 @@ class ScanMatchDist(BaseTransformer):
                         cost = self.sub_mat[ord(p_x) - 97][ord(p_y) - 65]
                         dp[i, j] = np.minimum(dp[i, j], dp[i - 1, j - 1] + cost)
 
-            gathered_features.append(dp[-1, -1])
+            gathered_features.append([dp[-1, -1]])
 
-        features_df = pd.DataFrame(data=[gathered_features], columns=column_names)
+        features_df = pd.DataFrame(data=gathered_features, columns=column_names)
 
         return features_df if self.return_df else features_df.values
 
@@ -559,7 +554,7 @@ class MannanDist(BaseTransformer):
         ), "Error: provide pk column before calling transform from MannanDist"
 
         groups = X[self.pk].drop_duplicates().values
-        column_names = []
+        column_names = ["mannan_dist"]
         gathered_features = []
         for group in groups:
             current_path = X[pd.DataFrame(X[self.pk] == group).all(axis=1)]
@@ -571,8 +566,6 @@ class MannanDist(BaseTransformer):
                 if path_group in self.expected_paths.keys()
                 else self.fill_path
             )
-
-            column_names.append(f'man_{"_".join([str(g) for g in group])}')
 
             if len(current_path) * len(expected_path) == 0:
                 gathered_features.append(np.nan)
@@ -590,10 +583,10 @@ class MannanDist(BaseTransformer):
             dist = len(expected_path) * sp + len(current_path) * sq
 
             gathered_features.append(
-                np.sqrt(dist / (4 * len(expected_path) * len(current_path)))
+                [np.sqrt(dist / (4 * len(expected_path) * len(current_path)))]
             )
 
-        features_df = pd.DataFrame(data=[gathered_features], columns=column_names)
+        features_df = pd.DataFrame(data=gathered_features, columns=column_names)
 
         return features_df if self.return_df else features_df.values
 
@@ -665,7 +658,7 @@ class EyeAnalysisDist(BaseTransformer):
         ), "Error: provide pk column before calling transform from EyeAnalysisDist"
 
         groups = X[self.pk].drop_duplicates().values
-        column_names = []
+        column_names = ["ea_dist"]
         gathered_features = []
         for group in groups:
             current_path = X[pd.DataFrame(X[self.pk] == group).all(axis=1)]
@@ -677,8 +670,6 @@ class EyeAnalysisDist(BaseTransformer):
                 if path_group in self.expected_paths.keys()
                 else self.fill_path
             )
-
-            column_names.append(f'ea_{"_".join([str(g) for g in group])}')
 
             if len(current_path) * len(expected_path) == 0:
                 gathered_features.append(np.nan)
@@ -693,9 +684,11 @@ class EyeAnalysisDist(BaseTransformer):
             for q in expected_path:
                 dist += ((current_path - q) ** 2).sum(axis=1).min()
 
-            gathered_features.append(dist / max(len(current_path), len(expected_path)))
+            gathered_features.append(
+                [dist / max(len(current_path), len(expected_path))]
+            )
 
-        features_df = pd.DataFrame(data=[gathered_features], columns=column_names)
+        features_df = pd.DataFrame(data=gathered_features, columns=column_names)
 
         return features_df if self.return_df else features_df.values
 
@@ -767,7 +760,7 @@ class DFDist(BaseTransformer):
         ), "Error: provide pk column before calling transform from DFDist"
 
         groups = X[self.pk].drop_duplicates().values
-        column_names = []
+        column_names = ["df_dist"]
         gathered_features = []
         for group in groups:
             current_path = X[pd.DataFrame(X[self.pk] == group).all(axis=1)]
@@ -779,8 +772,6 @@ class DFDist(BaseTransformer):
                 if path_group in self.expected_paths.keys()
                 else self.fill_path
             )
-
-            column_names.append(f'df_{"_".join([str(g) for g in group])}')
 
             if len(current_path) * len(expected_path) == 0:
                 gathered_features.append(np.nan)
@@ -807,9 +798,9 @@ class DFDist(BaseTransformer):
                         min(dp[i - 1, j], dp[i, j - 1], dp[i - 1, j - 1]),
                     )
 
-            gathered_features.append(dp[-1, -1])
+            gathered_features.append([dp[-1, -1]])
 
-        features_df = pd.DataFrame(data=[gathered_features], columns=column_names)
+        features_df = pd.DataFrame(data=gathered_features, columns=column_names)
 
         return features_df if self.return_df else features_df.values
 
@@ -885,7 +876,7 @@ class TDEDist(BaseTransformer):
         ), "Error: provide pk column before calling transform from TDEDist"
 
         groups = X[self.pk].drop_duplicates().values
-        column_names = []
+        column_names = ["tde_dist"]
         gathered_features = []
         for group in groups:
             current_path = X[pd.DataFrame(X[self.pk] == group).all(axis=1)]
@@ -897,8 +888,6 @@ class TDEDist(BaseTransformer):
                 if path_group in self.expected_paths.keys()
                 else self.fill_path
             )
-
-            column_names.append(f'tde_{"_".join([str(g) for g in group])}')
 
             if self.k < min(len(current_path), len(expected_path)) == 0:
                 gathered_features.append(np.nan)
@@ -917,10 +906,13 @@ class TDEDist(BaseTransformer):
                     dist += ((P - Q) ** 2).sum()
 
             gathered_features.append(
-                dist / ((len(current_path) // self.k) * (len(expected_path) // self.k))
+                [
+                    dist
+                    / ((len(current_path) // self.k) * (len(expected_path) // self.k))
+                ]
             )
 
-        features_df = pd.DataFrame(data=[gathered_features], columns=column_names)
+        features_df = pd.DataFrame(data=gathered_features, columns=column_names)
 
         return features_df if self.return_df else features_df.values
 
@@ -1007,7 +999,7 @@ class MultiMatchDist(BaseTransformer):
         ), "Error: provide duration column before calling transform from MultiMatchDist"
 
         groups = X[self.pk].drop_duplicates().values
-        column_names = []
+        column_names = ["mm_shape", "mm_angle", "mm_len", "mm_pos", "mm_duration"]
         gathered_features = []
         for group in groups:
             current_path = X[pd.DataFrame(X[self.pk] == group).all(axis=1)]
@@ -1022,7 +1014,10 @@ class MultiMatchDist(BaseTransformer):
 
             if len(current_path) * len(expected_path) == 0:
                 gathered_features.append(np.nan)
-                column_names.append(f'mm_{"_".join([str(g) for g in group])}')
+                gathered_features.append(np.nan)
+                gathered_features.append(np.nan)
+                gathered_features.append(np.nan)
+                gathered_features.append(np.nan)
                 continue
 
             current_path = current_path[[self.x, self.y, self.duration]]
@@ -1055,16 +1050,8 @@ class MultiMatchDist(BaseTransformer):
                 fixation_vectors2=expected_path,
                 screensize=[1, 1],
             )
+            gathered_features.append([metric for metric in sim])
 
-            column_names.append(f'mm_shape_{"_".join([str(g) for g in group])}')
-            column_names.append(f'mm_angle_{"_".join([str(g) for g in group])}')
-            column_names.append(f'mm_len_{"_".join([str(g) for g in group])}')
-            column_names.append(f'mm_pos_{"_".join([str(g) for g in group])}')
-            column_names.append(f'mm_duration_{"_".join([str(g) for g in group])}')
-
-            for metric in sim:
-                gathered_features.append(metric)
-
-        features_df = pd.DataFrame(data=[gathered_features], columns=column_names)
+        features_df = pd.DataFrame(data=gathered_features, columns=column_names)
 
         return features_df if self.return_df else features_df.values

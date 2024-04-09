@@ -103,11 +103,6 @@ class HurstExponent(BaseTransformer):
         bs = np.vstack([np.ones(cnt), bs]).T
         grad = (np.linalg.inv(bs.T @ bs) @ bs.T) @ np.log(rs)
 
-        # COMPARISON  # TODO remove
-        # lr = LinearRegression(fit_intercept=True)
-        # lr.fit(bs, np.log(rs).reshape(-1, 1))
-        # print(grad, lr.coef_)
-
         return grad[1]
 
     @jit(forceobj=True, looplift=True)
@@ -116,22 +111,19 @@ class HurstExponent(BaseTransformer):
 
         x = X[self.var].values / 1000
 
+        features_names = [f"he_{self.var}"]
+
         if self.pk is None:
             grad = self._compute_hurst(x)
-            features_names = [f"he_{self.var}"]
-            gathered_features = [grad]
+            gathered_features = [[grad]]
         else:
             groups = X[self.pk].drop_duplicates().values
-            features_names = []
             gathered_features = []
             for group in groups:
                 current_X = X[pd.DataFrame(X[self.pk] == group).all(axis=1)]
                 x = current_X[self.var].values / 1000
                 grad = self._compute_hurst(x.copy())
-                features_names.append(
-                    f"he_{self.var}_{'_'.join([str(g) for g in group])}"
-                )
-                gathered_features.append(grad)
+                gathered_features.append([grad])
 
-        features_df = pd.DataFrame(data=[gathered_features], columns=features_names)
+        features_df = pd.DataFrame(data=gathered_features, columns=features_names)
         return features_df if self.return_df else features_df.values

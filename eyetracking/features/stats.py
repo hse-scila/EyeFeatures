@@ -40,28 +40,23 @@ class SaccadeLength(BaseTransformer):
         assert self.y is not None, "Error: provide y column before calling transform"
         assert self.t is not None, "Error: provide t column before calling transform"
 
+        column_names = [f"sac_len_{stat}" for stat in self.stats]
+
         if self.pk is None:
             dx = X[self.x].diff()
             dy = X[self.y].diff()
             sac_len: pd.DataFrame = np.sqrt(dx**2 + dy**2)
-            column_names = [f"sac_len_{stat}" for stat in self.stats]
-            gathered_features = [sac_len.apply(stat) for stat in self.stats]
+            gathered_features = [[sac_len.apply(stat) for stat in self.stats]]
         else:
             groups = X[self.pk].drop_duplicates().values
-            column_names = []
             gathered_features = []
             for group in groups:
                 current_X = X[pd.DataFrame(X[self.pk] == group).all(axis=1)]
                 dx = current_X[self.x].diff()
                 dy = current_X[self.y].diff()
                 sac_len: pd.DataFrame = np.sqrt(dx**2 + dy**2)
-                for stat in self.stats:
-                    column_names.append(
-                        f'sac_len_{stat}_{"_".join([str(g) for g in group])}'
-                    )
-                    gathered_features.append(sac_len.apply(stat))
-
-        features_df = pd.DataFrame(data=[gathered_features], columns=column_names)
+                gathered_features.append([sac_len.apply(stat) for stat in self.stats])
+        features_df = pd.DataFrame(data=gathered_features, columns=column_names)
 
         return features_df if self.return_df else features_df.values
 
@@ -111,6 +106,8 @@ class SaccadeAcceleration(BaseTransformer):
 
         self._check_init()
 
+        feature_names = [f"sac_acc_{stat}" for stat in self.stats]
+
         if self.pk is None:
             dx = X[self.x].diff()
             dy = X[self.y].diff()
@@ -121,11 +118,9 @@ class SaccadeAcceleration(BaseTransformer):
             else:
                 dt = X[self.t] - (X[self.t] + X[self.duration] / 1000).shift(1)
             sac_acc: pd.DataFrame = dr / (dt**2 + self.eps) * 1 / 2
-            feature_names = [f"sac_acc_{stat}" for stat in self.stats]
-            gathered_features = [sac_acc.apply(stat) for stat in self.stats]
+            gathered_features = [[sac_acc.apply(stat) for stat in self.stats]]
         else:
             groups = X[self.pk].drop_duplicates().values
-            feature_names = []
             gathered_features = []
             for group in groups:
                 current_X = X[pd.DataFrame(X[self.pk] == group).all(axis=1)]
@@ -140,13 +135,9 @@ class SaccadeAcceleration(BaseTransformer):
                         current_X[self.t] + current_X[self.duration] / 1000
                     ).shift(1)
                 sac_acc: pd.DataFrame = dr / (dt**2 + self.eps) * 1 / 2
-                for stat in self.stats:
-                    feature_names.append(
-                        f'sac_acc_{stat}_{"_".join([str(g) for g in group])}'
-                    )
-                    gathered_features.append(sac_acc.apply(stat))
+                gathered_features.append([sac_acc.apply(stat) for stat in self.stats])
 
-        features_df = pd.DataFrame(data=[gathered_features], columns=feature_names)
+        features_df = pd.DataFrame(data=gathered_features, columns=feature_names)
 
         return features_df if self.return_df else features_df.values
 
@@ -189,6 +180,8 @@ class SaccadeVelocity(
         assert self.y is not None, "Error: provide y column before calling transform"
         assert self.t is not None, "Error: provide t column before calling transform"
 
+        column_names = [f"sac_vel_{stat}" for stat in self.stats]
+
         if self.pk is None:
             dx = X[self.x].diff()
             dy = X[self.y].diff()
@@ -201,11 +194,9 @@ class SaccadeVelocity(
             else:
                 dt = X[self.t] - (X[self.t] + X[self.duration] / 1000).shift(1)
             sac_vel: pd.DataFrame = dr / (dt + self.eps)
-            column_names = [f"sac_vel_{stat}" for stat in self.stats]
-            gathered_features = [sac_vel.apply(stat) for stat in self.stats]
+            gathered_features = [[sac_vel.apply(stat) for stat in self.stats]]
         else:
             groups = X[self.pk].drop_duplicates().values
-            column_names = []
             gathered_features = []
             for group in groups:
                 current_X = X[pd.DataFrame(X[self.pk] == group).all(axis=1)]
@@ -220,13 +211,9 @@ class SaccadeVelocity(
                         current_X[self.t] + current_X[self.duration] / 1000
                     ).shift(1)
                 sac_vel: pd.DataFrame = dr / (dt + self.eps)
-                for stat in self.stats:
-                    column_names.append(
-                        f'sac_vel_{stat}_{"_".join([str(g) for g in group])}'
-                    )
-                    gathered_features.append(sac_vel.apply(stat))
+                gathered_features.append([sac_vel.apply(stat) for stat in self.stats])
 
-        features_df = pd.DataFrame(data=[gathered_features], columns=column_names)
+        features_df = pd.DataFrame(data=gathered_features, columns=column_names)
 
         return features_df if self.return_df else features_df.values
 
@@ -263,16 +250,16 @@ class FixationDuration(BaseTransformer):
 
         assert self.t is not None, "Error: provide t column before calling transform"
 
+        column_names = [f"fix_dur_{stat}" for stat in self.stats]
+
         if self.pk is None:
             if self.duration is None:
                 fix_dur: pd.DataFrame = X[self.t].diff()
             else:
                 fix_dur: pd.DataFrame = X[self.t]
-            column_names = [f"fix_dur_{stat}" for stat in self.stats]
-            gathered_features = [fix_dur.apply(stat) for stat in self.stats]
+            gathered_features = [[fix_dur.apply(stat) for stat in self.stats]]
         else:
             groups = X[self.pk].drop_duplicates().values
-            column_names = []
             gathered_features = []
             for group in groups:
                 current_X = X[pd.DataFrame(X[self.pk] == group).all(axis=1)]
@@ -280,13 +267,9 @@ class FixationDuration(BaseTransformer):
                     fix_dur: pd.DataFrame = current_X[self.t].diff()
                 else:
                     fix_dur: pd.DataFrame = current_X[self.duration]
-                for stat in self.stats:
-                    column_names.append(
-                        f'fix_dur_{stat}_{"_".join([str(g) for g in group])}'
-                    )
-                    gathered_features.append(fix_dur.apply(stat))
+                gathered_features.append([fix_dur.apply(stat) for stat in self.stats])
 
-        features_df = pd.DataFrame(data=[gathered_features], columns=column_names)
+        features_df = pd.DataFrame(data=gathered_features, columns=column_names)
 
         return features_df if self.return_df else features_df.values
 
@@ -325,24 +308,20 @@ class FixationVAD(BaseTransformer):
             self.dispersion is not None
         ), "Error: provide dispersion column before calling transform"
 
+        column_names = [f"fix_disp_{stat}" for stat in self.stats]
+
         if self.pk is None:
             fix_vad: pd.DataFrame = X[self.dispersion]
-            column_names = [f"fix_disp_{stat}" for stat in self.stats]
-            gathered_features = [fix_vad.apply(stat) for stat in self.stats]
+            gathered_features = [[fix_vad.apply(stat) for stat in self.stats]]
         else:
             groups = X[self.pk].drop_duplicates().values
-            column_names = []
             gathered_features = []
             for group in groups:
                 current_X = X[pd.DataFrame(X[self.pk] == group).all(axis=1)]
                 fix_vad: pd.DataFrame = current_X[self.dispersion]
-                for stat in self.stats:
-                    column_names.append(
-                        f'fix_disp_{stat}_{"_".join([str(g) for g in group])}'
-                    )
-                    gathered_features.append(fix_vad.apply(stat))
+                gathered_features.append([fix_vad.apply(stat) for stat in self.stats])
 
-        features_df = pd.DataFrame(data=[gathered_features], columns=column_names)
+        features_df = pd.DataFrame(data=gathered_features, columns=column_names)
 
         return features_df if self.return_df else features_df.values
 
@@ -380,6 +359,8 @@ class RegressionLength(BaseTransformer):
         assert self.x is not None, "Error: provide x column before calling transform"
         assert self.y is not None, "Error: provide y column before calling transform"
 
+        column_names = [f"reg_len_{stat}" for stat in self.stats]
+
         if self.pk is None:
             dx = X[self.x].diff()
             dy = X[self.y].diff()
@@ -388,11 +369,9 @@ class RegressionLength(BaseTransformer):
             reg_len: pd.DataFrame = np.sqrt(
                 reg_only.iloc[:, 0] ** 2 + reg_only.iloc[:, 1] ** 2
             )
-            column_names = [f"reg_len_{stat}" for stat in self.stats]
-            gathered_features = [reg_len.apply(stat) for stat in self.stats]
+            gathered_features = [[reg_len.apply(stat) for stat in self.stats]]
         else:
             groups = X[self.pk].drop_duplicates().values
-            column_names = []
             gathered_features = []
             for group in groups:
                 current_X = X[pd.DataFrame(X[self.pk] == group).all(axis=1)]
@@ -406,13 +385,9 @@ class RegressionLength(BaseTransformer):
                 reg_len: pd.DataFrame = np.sqrt(
                     reg_only.iloc[:, 0] ** 2 + reg_only.iloc[:, 1] ** 2
                 )
-                for stat in self.stats:
-                    column_names.append(
-                        f'reg_len_{stat}_{"_".join([str(g) for g in group])}'
-                    )
-                    gathered_features.append(reg_len.apply(stat))
+                gathered_features.append([reg_len.apply(stat) for stat in self.stats])
 
-        features_df = pd.DataFrame(data=[gathered_features], columns=column_names)
+        features_df = pd.DataFrame(data=gathered_features, columns=column_names)
         return features_df if self.return_df else features_df.values
 
 
@@ -452,6 +427,8 @@ class RegressionVelocity(BaseTransformer):
         assert self.y is not None, "Error: provide y column before calling transform"
         assert self.t is not None, "Error: provide t column before calling transform"
 
+        column_names = [f"reg_vel_{stat}" for stat in self.stats]
+
         if self.pk is None:
             dx = X[self.x].diff()
             dy = X[self.y].diff()
@@ -465,11 +442,9 @@ class RegressionVelocity(BaseTransformer):
             dt = X[self.t] - (X[self.t] + dur / 1000).shift(1)
             dt = dt.loc[~dt.index.isin(reg_only)]
             reg_vel: pd.DataFrame = dr / (dt + self.eps)
-            column_names = [f"reg_vel_{stat}" for stat in self.stats]
-            gathered_features = [reg_vel.apply(stat) for stat in self.stats]
+            gathered_features = [[reg_vel.apply(stat) for stat in self.stats]]
         else:
             groups = X[self.pk].drop_duplicates().values
-            column_names = []
             gathered_features = []
             for group in groups:
                 current_X = X[pd.DataFrame(X[self.pk] == group).all(axis=1)]
@@ -487,13 +462,9 @@ class RegressionVelocity(BaseTransformer):
                 dt = current_X[self.t] - (current_X[self.t] + dur / 1000).shift(1)
                 dt = dt.loc[~dt.index.isin(reg_only)]
                 reg_vel: pd.DataFrame = dr / (dt + self.eps)
-                for stat in self.stats:
-                    column_names.append(
-                        f'reg_vel_{stat}_{"_".join([str(g) for g in group])}'
-                    )
-                    gathered_features.append(reg_vel.apply(stat))
+                gathered_features.append([reg_vel.apply(stat) for stat in self.stats])
 
-        features_df = pd.DataFrame(data=[gathered_features], columns=column_names)
+        features_df = pd.DataFrame(data=gathered_features, columns=column_names)
 
         return features_df if self.return_df else features_df.values
 
@@ -537,6 +508,8 @@ class RegressionAcceleration(BaseTransformer):
 
         self.check_init()
 
+        feature_names = [f"reg_acc_{stat}" for stat in self.stats]
+
         if self.pk is None:
             dx = X[self.x].diff()
             dy = X[self.y].diff()
@@ -550,11 +523,9 @@ class RegressionAcceleration(BaseTransformer):
             dt = X[self.t] - (X[self.t] + dur / 1000).shift(1)
             dt = dt.loc[~dt.index.isin(reg_only)]
             reg_acc: pd.DataFrame = dr / (dt**2 + self.eps) * 1 / 2
-            feature_names = [f"reg_acc_{stat}" for stat in self.stats]
-            gathered_features = [reg_acc.apply(stat) for stat in self.stats]
+            gathered_features = [[reg_acc.apply(stat) for stat in self.stats]]
         else:
             groups = X[self.pk].drop_duplicates().values
-            feature_names = []
             gathered_features = []
             for group in groups:
                 current_X = X[pd.DataFrame(X[self.pk] == group).all(axis=1)]
@@ -572,13 +543,9 @@ class RegressionAcceleration(BaseTransformer):
                 dt = current_X[self.t] - (current_X[self.t] + dur / 1000).shift(1)
                 dt = dt.loc[~dt.index.isin(reg_only)]
                 reg_acc: pd.DataFrame = dr / (dt**2 + self.eps) * 1 / 2
-                for stat in self.stats:
-                    feature_names.append(
-                        f'reg_acc_{stat}_{"_".join([str(g) for g in group])}'
-                    )
-                    gathered_features.append(reg_acc.apply(stat))
+                gathered_features.append([reg_acc.apply(stat) for stat in self.stats])
 
-        features_df = pd.DataFrame(data=[gathered_features], columns=feature_names)
+        features_df = pd.DataFrame(data=gathered_features, columns=feature_names)
 
         return features_df if self.return_df else features_df.values
 
@@ -612,6 +579,8 @@ class RegressionCount(BaseTransformer):
         assert self.x is not None, "Error: provide x column before calling transform"
         assert self.y is not None, "Error: provide y column before calling transform"
 
+        column_names = [f"reg_count"]
+
         if self.pk is None:
             dx = X[self.x].diff()
             dy = X[self.y].diff()
@@ -619,11 +588,9 @@ class RegressionCount(BaseTransformer):
             reg_count: pd.DataFrame = gaze_vec[
                 (gaze_vec.iloc[:, 0] < 0) | (gaze_vec.iloc[:, 1] < 0)
             ].shape[0]
-            column_names = [f"reg_count"]
-            gathered_features = reg_count
+            gathered_features = [reg_count]
         else:
             groups = X[self.pk].drop_duplicates().values
-            column_names = []
             gathered_features = []
             for group in groups:
                 current_X = X[pd.DataFrame(X[self.pk] == group).all(axis=1)]
@@ -633,9 +600,9 @@ class RegressionCount(BaseTransformer):
                 reg_count: pd.DataFrame = gaze_vec[
                     (gaze_vec.iloc[:, 0] < 0) | (gaze_vec.iloc[:, 1] < 0)
                 ].shape[0]
-                column_names.append(f'reg_count_{"_".join([str(g) for g in group])}')
-                gathered_features.append(reg_count)
-        features_df = pd.DataFrame(data=[gathered_features], columns=column_names)
+                gathered_features.append([reg_count])
+
+        features_df = pd.DataFrame(data=gathered_features, columns=column_names)
         return features_df if self.return_df else features_df.values
 
 
@@ -691,6 +658,8 @@ class MicroSaccadeLength(BaseTransformer):
 
         self._check_init()
 
+        column_names = [f"microsac_len_{stat}" for stat in self.stats]
+
         if self.pk is None:
             dx = X[self.x].diff()
             dy = X[self.y].diff()
@@ -706,11 +675,9 @@ class MicroSaccadeLength(BaseTransformer):
             sac_len: pd.DataFrame = dr[
                 (dis > self.min_dispersion) & (v < self.max_velocity)
             ]
-            column_names = [f"microsac_len_{stat}" for stat in self.stats]
-            gathered_features = [sac_len.apply(stat) for stat in self.stats]
+            gathered_features = [[sac_len.apply(stat) for stat in self.stats]]
         else:
             groups = X[self.pk].drop_duplicates().values
-            column_names = []
             gathered_features = []
             for group in groups:
                 current_X = X[pd.DataFrame(X[self.pk] == group).all(axis=1)]
@@ -731,13 +698,9 @@ class MicroSaccadeLength(BaseTransformer):
                 sac_len: pd.DataFrame = dr[
                     (dis > self.min_dispersion) & (v < self.max_velocity)
                 ]
-                for stat in self.stats:
-                    column_names.append(
-                        f'microsac_len_{stat}_{"_".join([str(g) for g in group])}'
-                    )
-                    gathered_features.append(sac_len.apply(stat))
+                gathered_features.append([sac_len.apply(stat) for stat in self.stats])
 
-        features_df = pd.DataFrame(data=[gathered_features], columns=column_names)
+        features_df = pd.DataFrame(data=gathered_features, columns=column_names)
 
         return features_df if self.return_df else features_df.values
 
@@ -794,6 +757,8 @@ class MicroSaccadeVelocity(BaseTransformer):
 
         self._check_init()
 
+        column_names = [f"microsac_vel_{stat}" for stat in self.stats]
+
         if self.pk is None:
             dx = X[self.x].diff()
             dy = X[self.y].diff()
@@ -806,14 +771,12 @@ class MicroSaccadeVelocity(BaseTransformer):
                 dt = X[self.t] - (X[self.t] + X[self.duration] / 1000).shift(1)
             v = dr / (dt + self.eps)
 
-            sac_len: pd.DataFrame = v[
+            sac_vel: pd.DataFrame = v[
                 (dis > self.min_dispersion) & (v < self.max_velocity)
             ]
-            column_names = [f"microsac_vel_{stat}" for stat in self.stats]
-            gathered_features = [sac_len.apply(stat) for stat in self.stats]
+            gathered_features = [[sac_vel.apply(stat) for stat in self.stats]]
         else:
             groups = X[self.pk].drop_duplicates().values
-            column_names = []
             gathered_features = []
             for group in groups:
                 current_X = X[pd.DataFrame(X[self.pk] == group).all(axis=1)]
@@ -834,13 +797,9 @@ class MicroSaccadeVelocity(BaseTransformer):
                 sac_vel: pd.DataFrame = v[
                     (dis > self.min_dispersion) & (v < self.max_velocity)
                 ]
-                for stat in self.stats:
-                    column_names.append(
-                        f'microsac_vel_{stat}_{"_".join([str(g) for g in group])}'
-                    )
-                    gathered_features.append(sac_vel.apply(stat))
+                gathered_features.append([sac_vel.apply(stat) for stat in self.stats])
 
-        features_df = pd.DataFrame(data=[gathered_features], columns=column_names)
+        features_df = pd.DataFrame(data=gathered_features, columns=column_names)
 
         return features_df if self.return_df else features_df.values
 
@@ -897,6 +856,8 @@ class MicroSaccadeAcceleration(BaseTransformer):
 
         self._check_init()
 
+        column_names = [f"microsac_acc_{stat}" for stat in self.stats]
+
         if self.pk is None:
             dx = X[self.x].diff()
             dy = X[self.y].diff()
@@ -913,11 +874,9 @@ class MicroSaccadeAcceleration(BaseTransformer):
             sac_acc: pd.DataFrame = acc[
                 (dis > self.min_dispersion) & (v < self.max_velocity)
             ]
-            column_names = [f"microsac_acc_{stat}" for stat in self.stats]
-            gathered_features = [sac_acc.apply(stat) for stat in self.stats]
+            gathered_features = [[sac_acc.apply(stat) for stat in self.stats]]
         else:
             groups = X[self.pk].drop_duplicates().values
-            column_names = []
             gathered_features = []
             for group in groups:
                 current_X = X[pd.DataFrame(X[self.pk] == group).all(axis=1)]
@@ -939,12 +898,8 @@ class MicroSaccadeAcceleration(BaseTransformer):
                 sac_acc: pd.DataFrame = acc[
                     (dis > self.min_dispersion) & (v < self.max_velocity)
                 ]
-                for stat in self.stats:
-                    column_names.append(
-                        f'microsac_acc_{stat}_{"_".join([str(g) for g in group])}'
-                    )
-                    gathered_features.append(sac_acc.apply(stat))
+                gathered_features.append([sac_acc.apply(stat) for stat in self.stats])
 
-        features_df = pd.DataFrame(data=[gathered_features], columns=column_names)
+        features_df = pd.DataFrame(data=gathered_features, columns=column_names)
 
         return features_df if self.return_df else features_df.values

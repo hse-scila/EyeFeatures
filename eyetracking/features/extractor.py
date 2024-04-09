@@ -91,6 +91,17 @@ class Extractor(BaseEstimator, TransformerMixin):
     def fit(self, X: pd.DataFrame, y=None):
         if self.features is not None:
             for feature in self.features:
+                feature.set_data(
+                    x=self.x,
+                    y=self.y,
+                    t=self.t,
+                    duration=self.duration,
+                    dispersion=self.dispersion,
+                    aoi=self.aoi,
+                    path_pk=self.path_pk,
+                    pk=self.pk,
+                    return_df=self.return_df,
+                )
                 feature.fit(X)
 
         return self
