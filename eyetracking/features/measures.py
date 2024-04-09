@@ -128,7 +128,9 @@ class HurstExponent(BaseTransformer):
                 current_X = X[pd.DataFrame(X[self.pk] == group).all(axis=1)]
                 x = current_X[self.var].values / 1000
                 grad = self._compute_hurst(x.copy())
-                features_names.append(f"he_{self.var}_{'_'.join([str(g) for g in group])}")
+                features_names.append(
+                    f"he_{self.var}_{'_'.join([str(g) for g in group])}"
+                )
                 gathered_features.append(grad)
 
         features_df = pd.DataFrame(data=[gathered_features], columns=features_names)

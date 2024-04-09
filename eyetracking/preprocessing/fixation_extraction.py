@@ -1,15 +1,16 @@
 from typing import List, Union
 
-import pandas as pd
 import numpy as np
-from numba import jit
+import pandas as pd
 from base import BasePreprocessor
+from numba import jit
 
 
 class IVT(BasePreprocessor):
     """
     Velocity Threshold Identification.
     """
+
     def __init__(
         self,
         x: str,
@@ -17,14 +18,9 @@ class IVT(BasePreprocessor):
         t: str,
         threshold: float,
         pk: List[str] = None,
-        eps: float = 1e-10
+        eps: float = 1e-10,
     ):
-        super().__init__(
-            x=x,
-            y=y,
-            t=t,
-            pk=pk
-        )
+        super().__init__(x=x, y=y, t=t, pk=pk)
         self.threshold = threshold
         self.eps = eps
 
@@ -32,10 +28,8 @@ class IVT(BasePreprocessor):
     def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
         if self.pk is None:
             fixations = self._ivt(
-                    x=X[self.x].values,
-                    y=X[self.y].values,
-                    t=X[self.t].values
-                )
+                x=X[self.x].values, y=X[self.y].values, t=X[self.t].values
+            )
         else:
             fixations = None
             groups = X[self.pk].drop_duplicates().values
@@ -44,7 +38,7 @@ class IVT(BasePreprocessor):
                 cur_fixations = self._ivt(
                     x=cur_X[self.x].values,
                     y=cur_X[self.y].values,
-                    t=cur_X[self.t].values
+                    t=cur_X[self.t].values,
                 )
                 for i in range(len(self.pk)):
                     cur_fixations.insert(loc=i, column=self.pk[i], value=group[i])
@@ -52,7 +46,9 @@ class IVT(BasePreprocessor):
                 if fixations is None:
                     fixations = cur_fixations
                 else:
-                    fixations = pd.concat([fixations, cur_fixations], ignore_index=True, axis=0)
+                    fixations = pd.concat(
+                        [fixations, cur_fixations], ignore_index=True, axis=0
+                    )
 
         return fixations
 
@@ -61,7 +57,7 @@ class IVT(BasePreprocessor):
         dy = np.diff(y)
         dt = np.diff(t)
 
-        dist = np.sqrt(dx ** 2 + dy ** 2)
+        dist = np.sqrt(dx**2 + dy**2)
         vel = dist / (dt + self.eps)
 
         fixations = np.zeros(len(vel))
@@ -78,25 +74,29 @@ class IVT(BasePreprocessor):
 
             fixations[i] = fixation_id
 
-        fixations_df = pd.DataFrame(data={
-            'fixation_id': fixations,
-            self.x: x[:-1],
-            self.y: y[:-1],
-            'start_time': t[:-1],
-            'end_time': t[:-1],
-            'distance_min': dist,
-            'distance_max': dist
-        })
+        fixations_df = pd.DataFrame(
+            data={
+                "fixation_id": fixations,
+                self.x: x[:-1],
+                self.y: y[:-1],
+                "start_time": t[:-1],
+                "end_time": t[:-1],
+                "distance_min": dist,
+                "distance_max": dist,
+            }
+        )
 
-        fixations_df = fixations_df[fixations_df['fixation_id'] != 0]
+        fixations_df = fixations_df[fixations_df["fixation_id"] != 0]
 
-        fixations_df = fixations_df.groupby(by=['fixation_id']).agg({
-            self.x: 'mean',
-            self.y: 'mean',
-            'start_time': 'min',
-            'end_time': 'max',
-            'distance_min': 'min',
-            'distance_max': 'max'
-        })
+        fixations_df = fixations_df.groupby(by=["fixation_id"]).agg(
+            {
+                self.x: "mean",
+                self.y: "mean",
+                "start_time": "min",
+                "end_time": "max",
+                "distance_min": "min",
+                "distance_max": "max",
+            }
+        )
 
         return fixations_df

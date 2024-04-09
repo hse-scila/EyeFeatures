@@ -1,8 +1,10 @@
-from typing import Dict, List, Union
+from typing import Callable, Dict, List, Union
 
 import numpy as np
 import pandas as pd
 from numba import jit
+from numpy.typing import NDArray
+from scipy.linalg import sqrtm
 from scipy.optimize import minimize
 
 
@@ -100,3 +102,52 @@ def get_fill_path(
             duration=duration,
         ).values()
     )[0]
+
+
+# ======================== SIMILARITY MATRIX ========================
+def restore_matrix(matrix: NDArray, tol=1e-9):
+    """
+    Estimates A assuming 'matrix' equals
+    .. math: $A^T A$.
+    """
+    # Получаем собственные вектора и диагональную матрицу с.ч.
+    evals, evecs = np.linalg.eigh(matrix)
+
+    # Сортируем вектора и числа по убыванию модуля
+    sorted_evals_indexes = np.argsort(evals)[::-1]
+    # sorted_evals_indexes = np.argsort(np.abs(evals))[::-1]
+    evecs = evecs[:, sorted_evals_indexes]
+    evals = evals[sorted_evals_indexes]
+
+    # Удалим вырожденные части из матриц
+    A_rank = (evals > tol).sum()
+    # A_rank = (np.abs(evals) > tol).sum()
+    evals = np.diag(evals[:A_rank])
+    evecs = evecs[:, :A_rank]
+
+    # Посчитам матрицу A
+    S = sqrtm(evals)
+    U = np.identity(A_rank)
+
+    US = U.dot(S)
+    return US.dot(evecs.T).T, A_rank
+
+
+def get_sim_matrix(scanpaths: List[NDArray], sim_metric: Callable):
+    """
+    Computes similarity matrix given non-trivial metric.
+    :param scanpaths: list of scanpaths, each being 2D-array of shape (2, n).
+    :param sim_metric: similarity metric.
+    :return: scaled similarity matrix.
+    """
+    n = len(scanpaths)
+    sim_matrix = np.zeros(shape=(n, n))
+    for i in range(len(scanpaths)):
+        for j in range(i + 1, len(scanpaths)):
+            p, q = scanpaths[i], scanpaths[j]
+            sim_matrix[i, j] = sim_metric(p, q)
+
+    sim_matrix += sim_matrix.T
+    m = np.max(sim_matrix)
+    m = m if m != 0 else 1
+    return sim_matrix / m

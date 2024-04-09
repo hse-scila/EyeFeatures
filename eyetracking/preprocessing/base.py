@@ -6,14 +6,7 @@ from sklearn.base import BaseEstimator, TransformerMixin
 
 
 class BasePreprocessor(BaseEstimator, TransformerMixin):
-    def __init__(
-        self,
-        x: str,
-        y: str,
-        t: str,
-        aoi: str = None,
-        pk: List[str] = None
-    ):
+    def __init__(self, x: str, y: str, t: str, aoi: str = None, pk: List[str] = None):
         self.x = x
         self.y = y
         self.t = t

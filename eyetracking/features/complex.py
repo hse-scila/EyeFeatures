@@ -1,6 +1,6 @@
 import numpy as np
-from scipy.stats import gaussian_kde
 from numpy.typing import NDArray
+from scipy.stats import gaussian_kde
 
 
 def get_heatmap(x: NDArray, y: NDArray, k: int):
@@ -37,8 +37,12 @@ def pca(matrix: NDArray, p: int, cum_sum: float = None):
     """
     assert len(matrix.shape) == 2, "'matrix' should be a matrix"
     assert 0 <= p <= matrix.shape[0], "given 'matrix' is n x m, 0 <= p <= n must hold"
-    assert (p is not None) or (cum_sum is not None), "either 'p' or 'cum_sum' must be provided"
-    assert (cum_sum is None) or (0.0 <= cum_sum <= 1.0), "'cum_sum' must be between 0.0 and 1.0"
+    assert (p is not None) or (
+        cum_sum is not None
+    ), "either 'p' or 'cum_sum' must be provided"
+    assert (cum_sum is None) or (
+        0.0 <= cum_sum <= 1.0
+    ), "'cum_sum' must be between 0.0 and 1.0"
 
     matrix = matrix.astype(np.float64)
 
