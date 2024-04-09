@@ -30,6 +30,43 @@ class SaccadeLength(BaseTransformer):
             return_df=return_df,
         )
         self.stats = stats
+        self.shift_mem = None
+        self.shift_fill = None
+
+    @jit(forceobj=True, looplift=True)
+    def fit(self, X: pd.DataFrame, y=None):
+
+        assert (
+            self.x is not None
+        ), "Error: provide x column before calling fit in SaccadeLength"
+        assert (
+            self.y is not None
+        ), "Error: provide y column before calling fit in SaccadeLength"
+        assert (
+            self.t is not None
+        ), "Error: provide t column before calling fit in SaccadeLength"
+
+        if self.pk is not None:
+            self.shift_mem = dict()
+            self.shift_fill = [0] * len(self.stats)
+            groups = X[self.pk].drop_duplicates().values
+            for group in groups:
+                current_X = X[pd.DataFrame(X[self.pk] == group).all(axis=1)]
+                dx = current_X[self.x].diff()
+                dy = current_X[self.y].diff()
+                sac_len: pd.DataFrame = np.sqrt(dx**2 + dy**2)
+                group_id = "_".join([str(g) for g in X[self.pk].values[0]])
+                cur_feature = []
+                for i in range(len(self.stats)):
+                    stat_v = sac_len.apply(self.stats[i])
+                    cur_feature.append(stat_v)
+                    self.shift_fill[i] += stat_v
+                self.shift_mem[group_id] = cur_feature
+
+            for i in range(len(self.stats)):
+                self.shift_fill[i] /= max(1, len(groups))
+
+        return self
 
     @jit(forceobj=True, looplift=True)
     def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
@@ -48,6 +85,8 @@ class SaccadeLength(BaseTransformer):
             sac_len: pd.DataFrame = np.sqrt(dx**2 + dy**2)
             gathered_features = [[sac_len.apply(stat) for stat in self.stats]]
         else:
+            for stat in self.stats:
+                column_names.append(f"sac_len_{stat}_shift")
             groups = X[self.pk].drop_duplicates().values
             gathered_features = []
             for group in groups:
@@ -55,7 +94,17 @@ class SaccadeLength(BaseTransformer):
                 dx = current_X[self.x].diff()
                 dy = current_X[self.y].diff()
                 sac_len: pd.DataFrame = np.sqrt(dx**2 + dy**2)
-                gathered_features.append([sac_len.apply(stat) for stat in self.stats])
+                cur_features = [sac_len.apply(stat) for stat in self.stats]
+                group_id = "_".join([str(g) for g in X[self.pk].values[0]])
+                for i in range(len(self.stats)):
+                    shift_v = (
+                        self.shift_mem[group_id][i]
+                        if group_id in self.shift_mem.keys()
+                        else self.shift_fill[i]
+                    )
+                    cur_features.append(cur_features[i] - shift_v)
+                gathered_features.append(cur_features)
+
         features_df = pd.DataFrame(data=gathered_features, columns=column_names)
 
         return features_df if self.return_df else features_df.values
@@ -93,6 +142,8 @@ class SaccadeAcceleration(BaseTransformer):
         )
         self.stats = stats
         self.eps = eps
+        self.shift_mem = None
+        self.shift_fill = None
 
     def _check_init(self) -> None:
         assert self.x is not None, "Error: provide x column before calling transform"
