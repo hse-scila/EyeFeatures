@@ -103,7 +103,7 @@ class HurstExponent(BaseTransformer):
         bs = np.vstack([np.ones(cnt), bs]).T
         grad = (np.linalg.inv(bs.T @ bs) @ bs.T) @ np.log(rs)
 
-        # COMPARISON
+        # COMPARISON  # TODO remove
         # lr = LinearRegression(fit_intercept=True)
         # lr.fit(bs, np.log(rs).reshape(-1, 1))
         # print(grad, lr.coef_)
