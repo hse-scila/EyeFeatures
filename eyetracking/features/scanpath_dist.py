@@ -1055,3 +1055,42 @@ class MultiMatchDist(BaseTransformer):
         features_df = pd.DataFrame(data=gathered_features, columns=column_names)
 
         return features_df if self.return_df else features_df.values
+
+
+# ===================== FUNCTIONS =====================
+def hau_dist(a_p, a_q):
+    """
+    Computes Hausdorff distance between two scanpaths.
+    """
+    assert len(a_p.shape) == len(a_q.shape)
+    assert a_p.shape[0] == a_q.shape[0] == 2, f"'a_p': {a_p.shape} and 'a_q': {a_q.shape}"
+    p = a_p.copy()
+    q = a_q.copy()
+    if len(p) * len(q) == 0:
+        return np.nan
+
+    cmax = 0
+    np.random.shuffle(p), np.random.shuffle(q)
+    for i in range(len(p)):
+        p_x, p_y = p[0, i], p[1, i]
+        cmin = np.inf
+        for j in range(len(q)):
+            q_x, q_y = q[0, j], q[1, j]
+            cdist = np.square(p_x - q_x) + np.square(p_y - q_y)
+            cmin = np.minimum(cmin, cdist)
+            if cmin < cmax:
+                break
+        cmax = np.maximum(cmax, cmin)
+
+    for j in range(len(q)):
+        q_x, q_y = q[0, j], q[1, j]
+        cmin = np.inf
+        for i in range(len(p)):
+            p_x, p_y = p[0, i], p[1, i]
+            cdist = np.square(p_x - q_x) + np.square(p_y - q_y)
+            cmin = np.minimum(cmin, cdist)
+            if cmin < cmax:
+                break
+        cmax = np.maximum(cmax, cmin)
+
+    return np.sqrt(cmax)

@@ -682,7 +682,7 @@ extractor.fit_transform(df_fix)
 
 
 
-### 3.3 Integrating into sklearn pipeline
+### 3.3 Integrating into `sklearn` pipeline
 
 
 ```python
@@ -709,3 +709,31 @@ pipe.fit(X_train, y_train).score(X_test, y_test)
 
     0.8351351351351351
 
+### 3.4. Heatmaps
+
+Example usage of similarity matrix.
+
+```python
+from seaborn import heatmap
+from features.scanpath_dist import hau_dist
+from features.scanpath_complex import get_sim_matrix
+
+def similarity_metric(path1, path2, c=5):
+    return 1 / (1 + c * hau_dist(path1, path2))
+
+x = 'norm_pos_x'
+y = 'norm_pos_y'
+t = 'start_timestamp'
+
+scanpaths = []
+texts = data.tekst.unique()
+for t in texts:
+    df_p = data[data.tekst == t]
+    x_path, y_path = df_p[x], df_p[y]
+    scanpaths.append(np.vstack([x_path, y_path]))
+
+sim_matrix = get_sim_matrix(scanpaths, similarity_metric)
+heatmap(sim_matrix);
+```
+
+![png](similarity_matrix.png)

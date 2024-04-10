@@ -141,7 +141,7 @@ def get_sim_matrix(scanpaths: List[NDArray], sim_metric: Callable):
     :return: scaled similarity matrix.
     """
     n = len(scanpaths)
-    sim_matrix = np.zeros(shape=(n, n))
+    sim_matrix = np.ones(shape=(n, n))
     for i in range(len(scanpaths)):
         for j in range(i + 1, len(scanpaths)):
             p, q = scanpaths[i], scanpaths[j]
