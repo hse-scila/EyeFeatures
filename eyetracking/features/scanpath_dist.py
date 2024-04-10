@@ -3,9 +3,9 @@ from typing import Dict, List, Union
 import multimatch_gaze as mm
 import numpy as np
 import pandas as pd
-from extractor import BaseTransformer
+from .extractor import BaseTransformer
 from numba import jit
-from scanpath_complex import get_expected_path, get_fill_path
+from .scanpath_complex import get_expected_path, get_fill_path
 
 
 class EucDist(BaseTransformer):

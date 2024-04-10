@@ -7,3 +7,4 @@ black>=24.3
 isort>=5.13
 flake8>=7.0
 multimatch-gaze
+matplotlib

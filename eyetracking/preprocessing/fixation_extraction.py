@@ -2,7 +2,7 @@ from typing import List, Union
 
 import numpy as np
 import pandas as pd
-from base import BasePreprocessor
+from .base import BasePreprocessor
 from numba import jit
 
 
@@ -98,5 +98,7 @@ class IVT(BasePreprocessor):
                 "distance_max": "max",
             }
         )
+
+        fixations_df['duration'] = fixations_df.end_time - fixations_df.start_time
 
         return fixations_df
