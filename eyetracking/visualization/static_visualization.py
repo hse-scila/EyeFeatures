@@ -30,8 +30,10 @@ def scanpath_visualization(
     X, Y = data[x], data[y]
     dX, dY = data[x].diff(), data[y].diff()
     XY = pd.concat([dX, dY], axis=1)
+    print(XY)
     fixation_size = np.arange(points_width, X.shape[0])
     reg_only = XY[(XY.iloc[:, 0] < -1) | (XY.iloc[:, 1] < -1)]
+
     if duration is not None:
         dur = data[duration]
         dur /= dur.max()
@@ -47,7 +49,7 @@ def scanpath_visualization(
     if points_enumeration:
         enumeration = range(dX.shape[0])
         for i in enumeration:
-            plt.annotate(i, xy=(X[i], Y[i] + (max(fixation_size) / 2)))
+            plt.annotate(i, xy=(X[i], Y[i] - (fixation_size[i] / 2)))
 
     if not is_vectors:
         plt.plot(
