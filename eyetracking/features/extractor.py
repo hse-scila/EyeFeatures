@@ -125,8 +125,12 @@ class Extractor(BaseEstimator, TransformerMixin):
         data_df: pd.DataFrame = X[
             [self.x, self.y, self.t, self.duration, self.dispersion]
         ]
+
         if self.pk is not None:
             data_df = pd.concat([data_df, X[self.pk]], axis=1)
+
+        if self.aoi is not None:
+            data_df = pd.concat([data_df, X[self.aoi]], axis=1)
 
         for feature in self.features:
             feature.set_data(

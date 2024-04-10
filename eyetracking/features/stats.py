@@ -2,7 +2,7 @@ from typing import List, Union
 
 import numpy as np
 import pandas as pd
-from extractor import BaseTransformer
+from .extractor import BaseTransformer
 from numba import jit
 
 

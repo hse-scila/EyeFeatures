@@ -924,9 +924,199 @@ extractor.fit_transform(df_fix)
 <p>348 rows × 26 columns</p>
 </div>
 
+### 3.3 Extracting features for each area of interest
+
+```python
+reg_vel = RegressionVelocity(stats=['kurtosis', 'skew'], x=x, y=y, t=t, duration=dur, 
+                      dispersion=dis, aoi=aoi, pk=['tekst', 'Participant'], return_df=True)
+res = reg_vel.transform(df_fix)
+res.fillna(0, inplace=True)
+res
+```
 
 
-### 3.3 Integrating into `sklearn` pipeline
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>reg_vel_C_kurtosis</th>
+      <th>reg_vel_C_skew</th>
+      <th>reg_vel_N_kurtosis</th>
+      <th>reg_vel_N_skew</th>
+      <th>reg_vel_D_kurtosis</th>
+      <th>reg_vel_D_skew</th>
+      <th>reg_vel_notext_kurtosis</th>
+      <th>reg_vel_notext_skew</th>
+      <th>reg_vel_nan_kurtosis</th>
+      <th>reg_vel_nan_skew</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>6.772461</td>
+      <td>2.313625</td>
+      <td>1.295909</td>
+      <td>0.987085</td>
+      <td>0.820745</td>
+      <td>0.950178</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.013302</td>
+      <td>0.763258</td>
+      <td>-0.718680</td>
+      <td>-0.206030</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>-1.272015</td>
+      <td>0.208680</td>
+      <td>-0.020635</td>
+      <td>0.893706</td>
+      <td>2.013581</td>
+      <td>-1.522644</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>0.807392</td>
+      <td>0.167292</td>
+      <td>0.614425</td>
+      <td>0.448141</td>
+      <td>-1.872466</td>
+      <td>0.432761</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>4.087055</td>
+      <td>1.621437</td>
+      <td>1.526085</td>
+      <td>1.099990</td>
+      <td>-0.978084</td>
+      <td>-0.285111</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>...</th>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+    </tr>
+    <tr>
+      <th>269</th>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>270</th>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>271</th>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>272</th>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>273</th>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.000000</td>
+      <td>0.0</td>
+      <td>0.0</td>
+      <td>0</td>
+      <td>0</td>
+    </tr>
+  </tbody>
+</table>
+<p>274 rows × 10 columns</p>
+</div>
+
+### 3.4 Integrating into `sklearn` pipeline
 
 
 ```python
@@ -953,7 +1143,7 @@ pipe.fit(X_train, y_train).score(X_test, y_test)
 
     Accuracy on test: 0.8351351351351351
 
-### 3.4. Heatmaps
+### 3.5 Heatmaps
 
 Example usage of similarity matrix.
 

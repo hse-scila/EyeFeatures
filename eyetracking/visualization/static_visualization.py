@@ -49,7 +49,7 @@ def scanpath_visualization(
     if points_enumeration:
         enumeration = range(dX.shape[0])
         for i in enumeration:
-            plt.annotate(i, xy=(X[i], Y[i] - (fixation_size[i] / 2)))
+            plt.annotate(i, xy=(X[i], Y[i] - (fixation_size[i] / 10)))
 
     if not is_vectors:
         plt.plot(
