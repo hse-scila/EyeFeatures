@@ -220,6 +220,8 @@ scanpath_visualization(
 
 ### 3.1 Independent usage
 
+#### Extracting scanpaths features using MultiMatch algorithm.
+
 
 ```python
 from features.scanpath_dist import MultiMatchDist
@@ -228,8 +230,6 @@ dist = MultiMatchDist(x=x, y=y, duration=dur, path_pk=['tekst'], pk=['Participan
 data = df_fix[df_fix.Participant < 6]
 dist.fit_transform(data)
 ```
-
-
 
 
 <table border="1" class="dataframe">
@@ -336,6 +336,250 @@ dist.fit_transform(data)
 </table>
 <p>177 rows × 5 columns</p>
 </div>
+
+
+
+#### Feature classes support <i>shift features</i> calculated using provided list of stats on fit which are used on transform.
+
+
+```python
+from features.stats import SaccadeLength
+
+transf = SaccadeLength(stats=['min', 'kurtosis', 'max'], x=x, y=y, t=t, duration=dur, pk=['tekst', 'Participant'])
+transf.fit_transform(df_fix)
+```
+
+
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>sac_len_min</th>
+      <th>sac_len_kurtosis</th>
+      <th>sac_len_max</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>0.002657</td>
+      <td>3.460042</td>
+      <td>0.433486</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>0.003757</td>
+      <td>2.434788</td>
+      <td>0.321837</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>0.003663</td>
+      <td>4.659126</td>
+      <td>0.365776</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>0.000212</td>
+      <td>5.574937</td>
+      <td>0.342315</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>0.002705</td>
+      <td>7.137036</td>
+      <td>0.375434</td>
+    </tr>
+    <tr>
+      <th>...</th>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+    </tr>
+    <tr>
+      <th>343</th>
+      <td>0.002947</td>
+      <td>4.965125</td>
+      <td>0.294657</td>
+    </tr>
+    <tr>
+      <th>344</th>
+      <td>0.002400</td>
+      <td>3.489713</td>
+      <td>0.285337</td>
+    </tr>
+    <tr>
+      <th>345</th>
+      <td>0.001577</td>
+      <td>3.860485</td>
+      <td>0.302061</td>
+    </tr>
+    <tr>
+      <th>346</th>
+      <td>0.005622</td>
+      <td>3.400580</td>
+      <td>0.264520</td>
+    </tr>
+    <tr>
+      <th>347</th>
+      <td>0.003055</td>
+      <td>3.638501</td>
+      <td>0.271675</td>
+    </tr>
+  </tbody>
+</table>
+<p>348 rows × 3 columns</p>
+</div>
+
+
+
+
+```python
+transf = SaccadeLength(stats=['min', 'kurtosis', 'max'], x=x, y=y, t=t, duration=dur, 
+                       pk=['tekst', 'Participant'], shift_pk=['tekst'], shift_features=True)
+transf.fit_transform(df_fix)
+```
+
+
+
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>sac_len_min</th>
+      <th>sac_len_kurtosis</th>
+      <th>sac_len_max</th>
+      <th>sac_len_min_shift</th>
+      <th>sac_len_kurtosis_shift</th>
+      <th>sac_len_max_shift</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>0.002657</td>
+      <td>3.460042</td>
+      <td>0.433486</td>
+      <td>-2.463992</td>
+      <td>0.993393</td>
+      <td>-2.033163</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>0.003757</td>
+      <td>2.434788</td>
+      <td>0.321837</td>
+      <td>-1.205358</td>
+      <td>1.225673</td>
+      <td>-0.887279</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>0.003663</td>
+      <td>4.659126</td>
+      <td>0.365776</td>
+      <td>-8.031410</td>
+      <td>-3.375947</td>
+      <td>-7.669297</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>0.000212</td>
+      <td>5.574937</td>
+      <td>0.342315</td>
+      <td>-4.004793</td>
+      <td>1.569932</td>
+      <td>-3.662690</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>0.002705</td>
+      <td>7.137036</td>
+      <td>0.375434</td>
+      <td>-5.951135</td>
+      <td>1.183196</td>
+      <td>-5.578406</td>
+    </tr>
+    <tr>
+      <th>...</th>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+      <td>...</td>
+    </tr>
+    <tr>
+      <th>343</th>
+      <td>0.002947</td>
+      <td>4.965125</td>
+      <td>0.294657</td>
+      <td>-1.867989</td>
+      <td>3.094189</td>
+      <td>-1.576280</td>
+    </tr>
+    <tr>
+      <th>344</th>
+      <td>0.002400</td>
+      <td>3.489713</td>
+      <td>0.285337</td>
+      <td>-1.685052</td>
+      <td>1.802262</td>
+      <td>-1.402115</td>
+    </tr>
+    <tr>
+      <th>345</th>
+      <td>0.001577</td>
+      <td>3.860485</td>
+      <td>0.302061</td>
+      <td>-1.704004</td>
+      <td>2.154904</td>
+      <td>-1.403521</td>
+    </tr>
+    <tr>
+      <th>346</th>
+      <td>0.005622</td>
+      <td>3.400580</td>
+      <td>0.264520</td>
+      <td>-5.504738</td>
+      <td>-2.109780</td>
+      <td>-5.245840</td>
+    </tr>
+    <tr>
+      <th>347</th>
+      <td>0.003055</td>
+      <td>3.638501</td>
+      <td>0.271675</td>
+      <td>-2.478121</td>
+      <td>1.157324</td>
+      <td>-2.209502</td>
+    </tr>
+  </tbody>
+</table>
+<p>348 rows × 6 columns</p>
+</div>
+
+
+
+
+```python
+print(transf.shift_mem)
+```
+
+    tekst ['min', 'kurtosis', 'max']
+    1.0 [2.4666487854748462, 2.4666487854748462, 2.4666487854748462]
+    94.0 [1.2091154206764536, 1.2091154206764536, 1.2091154206764536]
+    57.0 [8.035072768690364, 8.035072768690364, 8.035072768690364]
+    17.0 [4.0050054062399925, 4.0050054062399925, 4.0050054062399925]
+    66.0 [5.953840518950972, 5.953840518950972, 5.953840518950972]
+    21.0 [1.7917335944607586, 1.7917335944607586, 1.7917335944607586]
+    14.0 [2.2983542969384283, 2.2983542969384283, 2.2983542969384283]
+    60.0 [2.5619581935203017, 2.5619581935203017, 2.5619581935203017]
+    5.0 [1.7516830672813763, 1.7516830672813763, 1.7516830672813763]
+    76.0 [1.885048066033195, 1.885048066033195, 1.885048066033195]
+    ................................................................
+
+
 
 
 
@@ -698,8 +942,8 @@ pipe = Pipeline([('extractor', extractor), ('scaler', StandardScaler()), ('lr', 
 X_train = df_fix[df_fix.Participant < 9].drop(columns="ACC")
 X_test = df_fix[df_fix.Participant >= 9].drop(columns="ACC")
 
-y_train = df_fix[df_fix.Participant < 9].groupby(['Participant', 'tekst']).ACC.mean().reset_index()[['ACC']]
-y_test = df_fix[df_fix.Participant >= 9].groupby(['Participant', 'tekst']).ACC.mean().reset_index()[['ACC']]
+y_train = df_target[df_fix.Participant < 9].ACC
+y_test = df_target[df_fix.Participant >= 9].ACC
 
 pipe.fit(X_train, y_train).score(X_test, y_test)
 ```
@@ -707,7 +951,7 @@ pipe.fit(X_train, y_train).score(X_test, y_test)
 
 
 
-    0.8351351351351351
+    Accuracy on test: 0.8351351351351351
 
 ### 3.4. Heatmaps
 
