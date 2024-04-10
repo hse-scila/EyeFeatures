@@ -1,0 +1,7 @@
+*.env;venv
+*.xlsx
+.idea/
+__pycache__/
+__pypackages__/
+.ipynb_checkpoints/
+.DS_Store
