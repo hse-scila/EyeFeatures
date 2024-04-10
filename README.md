@@ -942,8 +942,8 @@ pipe = Pipeline([('extractor', extractor), ('scaler', StandardScaler()), ('lr', 
 X_train = df_fix[df_fix.Participant < 9].drop(columns="ACC")
 X_test = df_fix[df_fix.Participant >= 9].drop(columns="ACC")
 
-y_train = df_target[df_fix.Participant < 9].ACC
-y_test = df_target[df_fix.Participant >= 9].ACC
+y_train = df_target[df_target.Participant < 9].ACC # binary class
+y_test = df_target[df_target.Participant >= 9].ACC
 
 pipe.fit(X_train, y_train).score(X_test, y_test)
 ```
