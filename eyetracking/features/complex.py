@@ -1,4 +1,7 @@
 import numpy as np
+import pandas as pd
+
+from typing import List
 from numpy.typing import NDArray
 from scipy.stats import gaussian_kde
 
@@ -24,6 +27,18 @@ def get_heatmap(x: NDArray, y: NDArray, k: int):
 
     positions = np.vstack([y.ravel(), x.ravel()])
     return np.reshape(kernel(positions), x.shape)
+
+
+def get_heatmaps(df: pd.DataFrame, x: str, y: str, pk: List[str], k: int):
+    groups = df[pk].drop_duplicates().values
+    heatmaps = np.zeros((len(groups), k, k))
+
+    for i, group in enumerate(groups):
+        cur_X = df[pd.DataFrame(df[pk] == group).all(axis=1)]
+        x_path, y_path = cur_X[x], cur_X[y]
+        heatmaps[i, :, :] = get_heatmap(x_path, y_path, k)
+
+    return heatmaps
 
 
 def pca(matrix: NDArray, p: int, cum_sum: float = None):
