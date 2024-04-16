@@ -1313,7 +1313,7 @@ heatmap(sim_matrix);
 ![png](similarity_matrix.png)
 
 
-## 3. Deep learning
+## 4. Deep learning
 
 ```python
 from deep.models import SimpleCNNclassifier
