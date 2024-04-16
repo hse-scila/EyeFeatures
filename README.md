@@ -344,7 +344,8 @@ dist.fit_transform(data)
 ```python
 from features.stats import SaccadeLength
 
-transf = SaccadeLength(stats=['min', 'kurtosis', 'max'], x=x, y=y, t=t, duration=dur, pk=['tekst', 'Participant'])
+transf = SaccadeLength(stats=['min', 'kurtosis', 'max'], x=x, y=y,
+                       t=t, duration=dur, pk=['tekst', 'Participant'])
 transf.fit_transform(df_fix)
 ```
 
