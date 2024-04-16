@@ -1319,9 +1319,11 @@ heatmap(sim_matrix);
 from deep.models import SimpleCNNclassifier
 from deep.datasets import HeatMapDatasetLightning
 
-#Having fixations dataframe with columns [x,y,Participant, tekst] and dataframe with class labels [label, Participant, tekst] we can train simle NN for classification
+# Having fixations dataframe with columns [x,y,Participant, tekst]
+# and dataframe with class labels [label, Participant, tekst] we can train CNN for classification
 #k - width and height of heatmap
-data = HeatMapDatasetLightning(X, y, label_name='ACC', pk=['Participant','tekst'], k=50, test_size=0.5, batch_size=2)
+data = HeatMapDatasetLightning(X, y, label_name='ACC', pk=['Participant','tekst'],
+                             k=50, test_size=0.5, batch_size=2)
 model = SimpleCNNclassifier(n_classes=2, shape = (50,50))
 trainer = pl.Trainer(max_epochs=6)
 trainer.fit(model=model, datamodule=data)
