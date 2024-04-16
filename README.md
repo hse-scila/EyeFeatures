@@ -1,5 +1,4 @@
 # EyeFeatures Overview
-### Python package for exploring, visualizing, and analyzing eyetracking data
 
 ## 1. Preprocessing
 
