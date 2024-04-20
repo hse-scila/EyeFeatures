@@ -1004,7 +1004,7 @@ class RegressionVelocity(BaseTransformer):
                                 reg_only.iloc[:, 0] ** 2 + reg_only.iloc[:, 1] ** 2
                             )
                             dt = dt - (dt + dur / 1000).shift(1)
-                            dt = dt.loc[~dt.index.isin(reg_only)]
+                            dt = dt.loc[dt.index.isin(reg_only)]
                             reg_vel_aoi[prev_area] = pd.concat(
                                 [reg_vel_aoi[prev_area], dr / (dt + self.eps)], axis=0
                             )
@@ -1044,7 +1044,7 @@ class RegressionVelocity(BaseTransformer):
                 ]
                 dr = np.sqrt(reg_only.iloc[:, 0] ** 2 + reg_only.iloc[:, 1] ** 2)
                 dt = X[self.t] - (X[self.t] + dur / 1000).shift(1)
-                dt = dt.loc[~dt.index.isin(reg_only)]
+                dt = dt.loc[dt.index.isin(reg_only)]
                 reg_vel: pd.DataFrame = dr / (dt + self.eps)
                 gathered_features = [[reg_vel.apply(stat) for stat in self.stats]]
         else:
@@ -1089,7 +1089,7 @@ class RegressionVelocity(BaseTransformer):
                                     reg_only.iloc[:, 0] ** 2 + reg_only.iloc[:, 1] ** 2
                                 )
                                 dt = dt - (dt + dur / 1000).shift(1)
-                                dt = dt.loc[~dt.index.isin(reg_only)]
+                                dt = dt.loc[dt.index.isin(reg_only)]
                                 reg_vel_aoi[prev_area] = pd.concat(
                                     [reg_vel_aoi[prev_area], dr / (dt + self.eps)],
                                     axis=0,
@@ -1129,7 +1129,7 @@ class RegressionVelocity(BaseTransformer):
                     ]
                     dr = np.sqrt(reg_only.iloc[:, 0] ** 2 + reg_only.iloc[:, 1] ** 2)
                     dt = current_X[self.t] - (current_X[self.t] + dur / 1000).shift(1)
-                    dt = dt.loc[~dt.index.isin(reg_only)]
+                    dt = dt.loc[dt.index.isin(reg_only)]
                     reg_vel: pd.DataFrame = dr / (dt + self.eps)
                     gathered_features.append(
                         [reg_vel.apply(stat) for stat in self.stats]
@@ -1222,7 +1222,7 @@ class RegressionAcceleration(BaseTransformer):
                                 reg_only.iloc[:, 0] ** 2 + reg_only.iloc[:, 1] ** 2
                             )
                             dt = dt - (dt + dur / 1000).shift(1)
-                            dt = dt.loc[~dt.index.isin(reg_only)]
+                            dt = dt.loc[dt.index.isin(reg_only)]
                             reg_acc_aoi[prev_area] = pd.concat(
                                 [
                                     reg_acc_aoi[prev_area],
@@ -1265,7 +1265,7 @@ class RegressionAcceleration(BaseTransformer):
                 ]
                 dr = np.sqrt(reg_only.iloc[:, 0] ** 2 + reg_only.iloc[:, 1] ** 2)
                 dt = X[self.t] - (X[self.t] + dur / 1000).shift(1)
-                dt = dt.loc[~dt.index.isin(reg_only)]
+                dt = dt.loc[dt.index.isin(reg_only)]
                 reg_acc: pd.DataFrame = dr / (dt**2 + self.eps) * 1 / 2
                 gathered_features = [[reg_acc.apply(stat) for stat in self.stats]]
         else:
@@ -1310,7 +1310,7 @@ class RegressionAcceleration(BaseTransformer):
                                     reg_only.iloc[:, 0] ** 2 + reg_only.iloc[:, 1] ** 2
                                 )
                                 dt = dt - (dt + dur / 1000).shift(1)
-                                dt = dt.loc[~dt.index.isin(reg_only)]
+                                dt = dt.loc[dt.index.isin(reg_only)]
                                 reg_acc_aoi[prev_area] = pd.concat(
                                     [
                                         reg_acc_aoi[prev_area],
@@ -1353,7 +1353,7 @@ class RegressionAcceleration(BaseTransformer):
                     ]
                     dr = np.sqrt(reg_only.iloc[:, 0] ** 2 + reg_only.iloc[:, 1] ** 2)
                     dt = current_X[self.t] - (current_X[self.t] + dur / 1000).shift(1)
-                    dt = dt.loc[~dt.index.isin(reg_only)]
+                    dt = dt.loc[dt.index.isin(reg_only)]
                     reg_acc: pd.DataFrame = dr / (dt**2 + self.eps) * 1 / 2
                     gathered_features.append(
                         [reg_acc.apply(stat) for stat in self.stats]
