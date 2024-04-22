@@ -1,11 +1,63 @@
-from typing import Dict, List, Union
+from typing import Dict, List, Union, Tuple, Any
 
 import multimatch_gaze as mm
 import numpy as np
 import pandas as pd
-from .extractor import BaseTransformer
 from numba import jit
-from .scanpath_complex import get_expected_path, get_fill_path
+
+from eyetracking.features.extractor import BaseTransformer
+from eyetracking.features.scanpath_complex import get_expected_path, get_fill_path
+
+
+class Distances(BaseTransformer):
+    def __init__(
+        self,
+        dist_methods: List[str],
+        x: str = None,
+        y: str = None,
+        pk: List[str] = None,
+        path_pk: List[str] = None,
+        expected_path: Dict[str, pd.DataFrame] = None,
+        fill_path: pd.DataFrame = None,
+        return_df: bool = True,
+    ):
+        super().__init__(x=x, y=y, pk=pk, return_df=return_df)
+        self.dist_methods = dist_methods
+        self.path_pk = path_pk
+        self.expected_path = expected_path
+        self.fill_path = fill_path
+        self._mapping = {}  # TODO
+
+    def _get_required(self) -> List[Tuple[Any, str]]:
+        return [
+            (self.x, "x"),
+            (self.y, "y"),
+            (self.pk, "pk"),
+            (self.path_pk, "path_pk"),
+        ]
+
+    @jit(forceobj=True, looplift=True)
+    def fit(self, X: pd.DataFrame, y=None):
+        # check must-have attributes
+        self._check_init(self._get_required())
+
+        # calculate expected path if not given
+        if self.expected_path is None:
+            self.expected_path = get_expected_path(
+                data=X, x=self.x, y=self.y, path_pk=self.path_pk, pk=self.pk
+            )
+
+        # calculate filling path if not given
+        if self.fill_path is None:
+            self.fill_path = get_fill_path(
+                paths=list(self.expected_path.values()), x="x_est", y="y_est"
+            )
+
+        return self
+
+    @jit(forceobj=True, looplift=True)
+    def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
+        pass
 
 
 class EucDist(BaseTransformer):
@@ -1063,7 +1115,9 @@ def hau_dist(a_p, a_q):
     Computes Hausdorff distance between two scanpaths.
     """
     assert len(a_p.shape) == len(a_q.shape)
-    assert a_p.shape[0] == a_q.shape[0] == 2, f"'a_p': {a_p.shape} and 'a_q': {a_q.shape}"
+    assert (
+        a_p.shape[0] == a_q.shape[0] == 2
+    ), f"'a_p': {a_p.shape} and 'a_q': {a_q.shape}"
     p = a_p.copy()
     q = a_q.copy()
     if len(p) * len(q) == 0:

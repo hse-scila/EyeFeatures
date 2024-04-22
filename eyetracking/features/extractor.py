@@ -1,4 +1,4 @@
-from typing import List, Union
+from typing import List, Union, Tuple, Any
 
 import numpy as np
 import pandas as pd
@@ -28,6 +28,10 @@ class BaseTransformer(BaseEstimator, TransformerMixin):
         self.pk = pk
         self.aoi = aoi
         self.return_df = return_df
+
+    def _check_init(self, items: List[Tuple[Any, str]]):
+        for value, nm in items:
+            assert value is not None, f"{nm} is not initialized"
 
     def set_data(
         self,

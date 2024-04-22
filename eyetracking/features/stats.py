@@ -2,8 +2,8 @@ from typing import List, Union
 
 import numpy as np
 import pandas as pd
-from .extractor import BaseTransformer
 from numba import jit
+from eyetracking.features.extractor import BaseTransformer
 
 
 class SaccadeLength(BaseTransformer):
@@ -39,7 +39,6 @@ class SaccadeLength(BaseTransformer):
 
     @jit(forceobj=True, looplift=True)
     def fit(self, X: pd.DataFrame, y=None):
-
         assert (
             self.x is not None
         ), "Error: provide x column before calling fit in SaccadeLength"
@@ -1004,7 +1003,7 @@ class RegressionVelocity(BaseTransformer):
                                 reg_only.iloc[:, 0] ** 2 + reg_only.iloc[:, 1] ** 2
                             )
                             dt = dt - (dt + dur / 1000).shift(1)
-                            dt = dt.loc[dt.index.isin(reg_only)]
+                            dt = dt.loc[~dt.index.isin(reg_only)]
                             reg_vel_aoi[prev_area] = pd.concat(
                                 [reg_vel_aoi[prev_area], dr / (dt + self.eps)], axis=0
                             )
@@ -1044,7 +1043,7 @@ class RegressionVelocity(BaseTransformer):
                 ]
                 dr = np.sqrt(reg_only.iloc[:, 0] ** 2 + reg_only.iloc[:, 1] ** 2)
                 dt = X[self.t] - (X[self.t] + dur / 1000).shift(1)
-                dt = dt.loc[dt.index.isin(reg_only)]
+                dt = dt.loc[~dt.index.isin(reg_only)]
                 reg_vel: pd.DataFrame = dr / (dt + self.eps)
                 gathered_features = [[reg_vel.apply(stat) for stat in self.stats]]
         else:
@@ -1089,7 +1088,7 @@ class RegressionVelocity(BaseTransformer):
                                     reg_only.iloc[:, 0] ** 2 + reg_only.iloc[:, 1] ** 2
                                 )
                                 dt = dt - (dt + dur / 1000).shift(1)
-                                dt = dt.loc[dt.index.isin(reg_only)]
+                                dt = dt.loc[~dt.index.isin(reg_only)]
                                 reg_vel_aoi[prev_area] = pd.concat(
                                     [reg_vel_aoi[prev_area], dr / (dt + self.eps)],
                                     axis=0,
@@ -1129,7 +1128,7 @@ class RegressionVelocity(BaseTransformer):
                     ]
                     dr = np.sqrt(reg_only.iloc[:, 0] ** 2 + reg_only.iloc[:, 1] ** 2)
                     dt = current_X[self.t] - (current_X[self.t] + dur / 1000).shift(1)
-                    dt = dt.loc[dt.index.isin(reg_only)]
+                    dt = dt.loc[~dt.index.isin(reg_only)]
                     reg_vel: pd.DataFrame = dr / (dt + self.eps)
                     gathered_features.append(
                         [reg_vel.apply(stat) for stat in self.stats]
@@ -1222,7 +1221,7 @@ class RegressionAcceleration(BaseTransformer):
                                 reg_only.iloc[:, 0] ** 2 + reg_only.iloc[:, 1] ** 2
                             )
                             dt = dt - (dt + dur / 1000).shift(1)
-                            dt = dt.loc[dt.index.isin(reg_only)]
+                            dt = dt.loc[~dt.index.isin(reg_only)]
                             reg_acc_aoi[prev_area] = pd.concat(
                                 [
                                     reg_acc_aoi[prev_area],
@@ -1265,7 +1264,7 @@ class RegressionAcceleration(BaseTransformer):
                 ]
                 dr = np.sqrt(reg_only.iloc[:, 0] ** 2 + reg_only.iloc[:, 1] ** 2)
                 dt = X[self.t] - (X[self.t] + dur / 1000).shift(1)
-                dt = dt.loc[dt.index.isin(reg_only)]
+                dt = dt.loc[~dt.index.isin(reg_only)]
                 reg_acc: pd.DataFrame = dr / (dt**2 + self.eps) * 1 / 2
                 gathered_features = [[reg_acc.apply(stat) for stat in self.stats]]
         else:
@@ -1310,7 +1309,7 @@ class RegressionAcceleration(BaseTransformer):
                                     reg_only.iloc[:, 0] ** 2 + reg_only.iloc[:, 1] ** 2
                                 )
                                 dt = dt - (dt + dur / 1000).shift(1)
-                                dt = dt.loc[dt.index.isin(reg_only)]
+                                dt = dt.loc[~dt.index.isin(reg_only)]
                                 reg_acc_aoi[prev_area] = pd.concat(
                                     [
                                         reg_acc_aoi[prev_area],
@@ -1353,7 +1352,7 @@ class RegressionAcceleration(BaseTransformer):
                     ]
                     dr = np.sqrt(reg_only.iloc[:, 0] ** 2 + reg_only.iloc[:, 1] ** 2)
                     dt = current_X[self.t] - (current_X[self.t] + dur / 1000).shift(1)
-                    dt = dt.loc[dt.index.isin(reg_only)]
+                    dt = dt.loc[~dt.index.isin(reg_only)]
                     reg_acc: pd.DataFrame = dr / (dt**2 + self.eps) * 1 / 2
                     gathered_features.append(
                         [reg_acc.apply(stat) for stat in self.stats]
@@ -1389,7 +1388,6 @@ class RegressionCount(BaseTransformer):
 
     # @jit(forceobj=True, looplift=True)
     def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
-
         assert self.x is not None, "Error: provide x column before calling transform"
         assert self.y is not None, "Error: provide y column before calling transform"
 
