@@ -127,7 +127,7 @@ class StatsTransformer(BaseTransformer):
             else self.shift_fill[feat_nm][str(stat)]
         )
 
-    # @jit(forceobj=True, looplift=True)
+    @jit(forceobj=True, looplift=True)
     def fit(self, X: pd.DataFrame, y=None):
         self._check_feature_stats()
 
@@ -171,7 +171,7 @@ class StatsTransformer(BaseTransformer):
 
         return self
 
-    # @jit(forceobj=True, looplift=True)
+    @jit(forceobj=True, looplift=True)
     def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, NDArray]:
         if self.feature_stats is None:
             return X if self.return_df else X.values
@@ -260,7 +260,7 @@ class SaccadeFeatures(StatsTransformer):
             dt = X[self.t] - (X[self.t] + X[self.duration] / 1000).shift(1)
         return dt
 
-    # @jit(forceobj=True, looplift=True)
+    @jit(forceobj=True, looplift=True)
     def _calc_feats(
         self, X: pd.DataFrame, features: List[str]
     ) -> List[Tuple[str, pd.Series]]:

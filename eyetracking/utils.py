@@ -1,6 +1,5 @@
-import typing
 from dataclasses import dataclass
-from typing import Any, List, Tuple, Union
+from typing import Any, List, Tuple, Union, Iterable
 
 import pandas as pd
 
@@ -20,13 +19,13 @@ def _split_dataframe(df: pd.DataFrame, pk: List[str]) -> Types.Partition:
     assert set(pk).issubset(set(df.columns)), "Some key columns in df are missing"
     grouped: List[Tuple[Tuple, pd.DataFrame]] = list(df.groupby(by=pk))
     return [
-        ("_".join(str(v) for v in grouped[i][0]), grouped[i][1])
+        (_get_id(grouped[i][0]), grouped[i][1])
         for i in range(len(grouped))
     ]
 
 
-def _get_id(elements: List[Any]) -> str:
+def _get_id(elements: Iterable[Any]) -> str:
     """
     Mapping between list of objects to string.
     """
-    return "_".join([str(e) for e in elements])
+    return "_".join(str(e) for e in elements)
