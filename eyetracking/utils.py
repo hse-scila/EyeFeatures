@@ -4,7 +4,7 @@ import pandas as pd
 
 from dataclasses import dataclass
 
-from typing import Union, List, Tuple
+from typing import Union, List, Tuple, Any
 
 
 @dataclass
@@ -25,3 +25,10 @@ def _split_dataframe(df: pd.DataFrame, pk: List[str]) -> Types.Partition:
         ("_".join(str(v) for v in grouped[i][0]), grouped[i][1])
         for i in range(len(grouped))
     ]
+
+
+def _get_id(elements: List[Any]) -> str:
+    """
+    Mapping between list of objects to string.
+    """
+    return "_".join([str(e) for e in elements])
