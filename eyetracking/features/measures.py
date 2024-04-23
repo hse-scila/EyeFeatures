@@ -130,6 +130,7 @@ class HurstExponent(BaseTransformer):
         features_df = pd.DataFrame(data=gathered_features, columns=features_names)
         return features_df if self.return_df else features_df.values
 
+
 class Entropy(BaseTransformer):
     def __init__(
         self,
@@ -141,8 +142,8 @@ class Entropy(BaseTransformer):
         self.aoi = aoi
 
     def _check_init(self, X_len: int):
-        assert (self.aoi is not None), "Error: Provide aoi column"
-        assert (X_len != 0), "Error: there are no fixations"
+        assert self.aoi is not None, "Error: Provide aoi column"
+        assert X_len != 0, "Error: there are no fixations"
 
     @jit(forceobj=True, looplift=True)
     def fit(self, X: pd.DataFrame, y=None):

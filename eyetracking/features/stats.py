@@ -1,32 +1,30 @@
-from typing import List, Union, Dict, Tuple
-from pandas._typing import AggFuncType  # TODO discuss
-from numpy.typing import NDArray
 from abc import abstractmethod
+from typing import Dict, List, Tuple, Union
 
 import numpy as np
 import pandas as pd
 from numba import jit
+from numpy.typing import NDArray
+from pandas._typing import AggFuncType  # TODO discuss
+
 from eyetracking.features.extractor import BaseTransformer
-from eyetracking.utils import (
-    _split_dataframe,
-    _get_id
-)
+from eyetracking.utils import _get_id, _split_dataframe
 
 
 class StatsTransformer(BaseTransformer):
     def __init__(
-            self,
-            features_stats: Dict[str, List[AggFuncType]],
-            x: str = None,
-            y: str = None,
-            t: str = None,
-            duration: str = None,  # TODO consider units, i.e. ps, ns, ms.
-            dispersion: str = None,
-            aoi: str = None,
-            pk: List[str] = None,
-            shift_pk: List[str] = None,
-            shift_features: Dict[str, List[AggFuncType]] = None,
-            return_df: bool = True
+        self,
+        features_stats: Dict[str, List[AggFuncType]],
+        x: str = None,
+        y: str = None,
+        t: str = None,
+        duration: str = None,  # TODO consider units, i.e. ps, ns, ms.
+        dispersion: str = None,
+        aoi: str = None,
+        pk: List[str] = None,
+        shift_pk: List[str] = None,
+        shift_features: Dict[str, List[AggFuncType]] = None,
+        return_df: bool = True,
     ):
         """
         Base class for statistical features.
@@ -50,20 +48,22 @@ class StatsTransformer(BaseTransformer):
         self.available_feats = ...
         self.eps = 1e-20
 
-    def _check_feature_names(self, X, *, reset):  # TODO discuss this BaseEstimator's method
+    def _check_feature_names(
+        self, X, *, reset
+    ):  # TODO discuss this BaseEstimator's method
         # Since feature names must always be provided with statistics to
         # calculate and are restricted to certain set of available features,
         # this method is irrelevant
         raise AttributeError("Use '_check_feature_stats' instead.")
 
     def _validate_data(
-            self,
-            X="no_validation",
-            y="no_validation",
-            reset=True,
-            validate_separately=False,
-            cast_to_ndarray=True,
-            **check_params,
+        self,
+        X="no_validation",
+        y="no_validation",
+        reset=True,
+        validate_separately=False,
+        cast_to_ndarray=True,
+        **check_params,
     ):
         # Same reason as for _check_feature_names
         raise AttributeError("This method must not be used.")
@@ -72,8 +72,10 @@ class StatsTransformer(BaseTransformer):
         """
         Method checks `self.feature_stats` for correct feature names (i.e. keys).
         """
-        err_msg = lambda f: f"Feature '{f}' is not supported. Must be one of: " \
-                            f"{', '.join(self.available_feats)}."
+        err_msg = (
+            lambda f: f"Feature '{f}' is not supported. Must be one of: "
+            f"{', '.join(self.available_feats)}."
+        )
         for feat in self.feature_names_in_:
             assert feat in self.available_feats, err_msg(feat)
 
@@ -81,8 +83,12 @@ class StatsTransformer(BaseTransformer):
         """
         Method check that provided shift features are correct.
         """
-        err_msg_feat = lambda f: f"Passed shift feature '{f}' not found in `feature_stats`."
-        err_msg_stat = lambda s: f"Passed shift feature stat '{s}' not found in `feature_stats`."
+        err_msg_feat = (
+            lambda f: f"Passed shift feature '{f}' not found in `feature_stats`."
+        )
+        err_msg_stat = (
+            lambda s: f"Passed shift feature stat '{s}' not found in `feature_stats`."
+        )
         for feat_nm in self.shift_features.keys():
             assert feat_nm in self.feature_names_in_, err_msg_feat(feat_nm)
             for stat in self.shift_features[feat_nm]:
@@ -90,7 +96,9 @@ class StatsTransformer(BaseTransformer):
         assert self.shift_pk is not None, "Provide `shift_pk` for shift features."
 
     @abstractmethod
-    def _calc_feats(self, X: pd.DataFrame, features: List[str]) -> List[Tuple[str, pd.Series]]:
+    def _calc_feats(
+        self, X: pd.DataFrame, features: List[str]
+    ) -> List[Tuple[str, pd.Series]]:
         """
         Method calculates features passed to constructor, i.e. keys of `self.feature_stats`.
         In case of `SaccadeFeatures`, it returns dictionary `{'length': np.array, 'velocity': np.array, ...}`.
@@ -128,13 +136,17 @@ class StatsTransformer(BaseTransformer):
         self._check_shift_features()
 
         feat_nms = list(self.shift_features.keys())  # names of features
-        groups: List[str, pd.DataFrame] = _split_dataframe(X, self.shift_pk)  # split by shift_pk
+        groups: List[str, pd.DataFrame] = _split_dataframe(
+            X, self.shift_pk
+        )  # split by shift_pk
 
         # calc stats for each group
         self.shift_mem = dict()
         for group_id, group_X in groups:
             self.shift_mem[group_id] = dict()
-            group_feats: List[Tuple[str, pd.Series]] = self._calc_feats(group_X, feat_nms)
+            group_feats: List[Tuple[str, pd.Series]] = self._calc_feats(
+                group_X, feat_nms
+            )
 
             for feat_nm, feat_arr in group_feats:  # memoize feats for each group_id
                 self.shift_mem[group_id][feat_nm] = dict()
@@ -174,47 +186,63 @@ class StatsTransformer(BaseTransformer):
             for feat_nm, feat_arr in feats:
                 feat_stats: List[AggFuncType] = self.feature_stats[feat_nm]
                 gathered_stats.extend([feat_arr.apply(stat) for stat in feat_stats])
-                column_nms.extend([f'sac_{feat_nm}_{str(stat)}' for stat in feat_stats])
+                column_nms.extend([f"sac_{feat_nm}_{str(stat)}" for stat in feat_stats])
 
             stats_df = pd.DataFrame(data=[gathered_stats], columns=column_nms)
             # No shift features if pk is None
 
         else:
-            groups: List[str, pd.DataFrame] = _split_dataframe(X, self.pk)  # split by unique groups
+            groups: List[str, pd.DataFrame] = _split_dataframe(
+                X, self.pk
+            )  # split by unique groups
 
             group_ids = []
             for group_id, group_X in groups:
                 group_ids.append(group_id)
                 gath_stats_group = []
 
-                group_feats: List[Tuple[str, pd.Series]] = self._calc_feats(group_X, feat_nms)
+                group_feats: List[Tuple[str, pd.Series]] = self._calc_feats(
+                    group_X, feat_nms
+                )
 
-                add_cols_nms = (len(group_ids) == 1)
+                add_cols_nms = len(group_ids) == 1
                 for feat_nm, feat_arr in group_feats:
                     feat_stats: List[AggFuncType] = self.feature_stats[feat_nm]
                     stats_group = [feat_arr.apply(stat) for stat in feat_stats]
 
                     if self._is_shift_feat(feat_nm):  # calc shifts
                         shift_group_id = _get_id(group_X[self.shift_pk].values[0])
-                        stats_group.extend([
-                            stats_group[i] - self._get_shift_val(shift_group_id, feat_nm, feat_stats[i])
-                            for i in range(len(stats_group))
-                            if self._is_shift_stat(feat_nm, feat_stats[i])
-                        ])
+                        stats_group.extend(
+                            [
+                                stats_group[i]
+                                - self._get_shift_val(
+                                    shift_group_id, feat_nm, feat_stats[i]
+                                )
+                                for i in range(len(stats_group))
+                                if self._is_shift_stat(feat_nm, feat_stats[i])
+                            ]
+                        )
 
                     gath_stats_group.extend(stats_group)
 
                     if add_cols_nms:
-                        column_nms.extend([f'sac_{feat_nm}_{str(stat)}' for stat in feat_stats])
+                        column_nms.extend(
+                            [f"sac_{feat_nm}_{str(stat)}" for stat in feat_stats]
+                        )
                         if self._is_shift_feat(feat_nm):
-                            column_nms.extend([
-                                f'sac_{feat_nm}_{str(stat)}_shift' for stat in feat_stats
-                                if self._is_shift_stat(feat_nm, stat)
-                            ])
+                            column_nms.extend(
+                                [
+                                    f"sac_{feat_nm}_{str(stat)}_shift"
+                                    for stat in feat_stats
+                                    if self._is_shift_stat(feat_nm, stat)
+                                ]
+                            )
 
                 gathered_stats.append(gath_stats_group)
 
-            stats_df = pd.DataFrame(data=gathered_stats, columns=column_nms, index=group_ids)
+            stats_df = pd.DataFrame(
+                data=gathered_stats, columns=column_nms, index=group_ids
+            )
 
         return stats_df if self.return_df else stats_df.values
 
@@ -222,11 +250,7 @@ class StatsTransformer(BaseTransformer):
 class SaccadeFeatures(StatsTransformer):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.available_feats = (
-            'length',
-            'acceleration',
-            'speed'
-        )
+        self.available_feats = ("length", "acceleration", "speed")
 
     def _calc_dt(self, X: pd.DataFrame) -> pd.Series:
         if self.duration is None:
@@ -237,44 +261,46 @@ class SaccadeFeatures(StatsTransformer):
         return dt
 
     # @jit(forceobj=True, looplift=True)
-    def _calc_feats(self, X: pd.DataFrame, features: List[str]) -> List[Tuple[str, pd.Series]]:
+    def _calc_feats(
+        self, X: pd.DataFrame, features: List[str]
+    ) -> List[Tuple[str, pd.Series]]:
         feats = []
 
         dx: pd.Series = X[self.x].diff()
         dy: pd.Series = X[self.y].diff()
-        dr = np.sqrt(dx ** 2 + dy ** 2)
+        dr = np.sqrt(dx**2 + dy**2)
         dt = None
-        if 'length' in features:
+        if "length" in features:
             sac_len = dr
-            feats.append(('length', sac_len))
-        if 'acceleration' in features:
+            feats.append(("length", sac_len))
+        if "acceleration" in features:
             # Acceleration: dx = v0 * t + 1/2 * a * t^2.
             # Above formula is law of uniformly accelerated motion TODO consider direction
             dt = self._calc_dt(X)
-            sac_acc: pd.DataFrame = dr / (dt ** 2 + self.eps) * 1 / 2
-            feats.append(('acceleration', sac_acc))
-        if 'speed' in features:
+            sac_acc: pd.DataFrame = dr / (dt**2 + self.eps) * 1 / 2
+            feats.append(("acceleration", sac_acc))
+        if "speed" in features:
             dt = dt if dt is not None else self._calc_dt(X)
             sac_spd = dr / (dt + self.eps)
-            feats.append(('speed', sac_spd))
+            feats.append(("speed", sac_spd))
 
         return feats
 
 
 class SaccadeLength(BaseTransformer):
     def __init__(
-            self,
-            stats: List[str],
-            x: str = None,
-            y: str = None,
-            t: str = None,
-            duration: str = None,
-            dispersion: str = None,
-            aoi: str = None,
-            pk: List[str] = None,
-            shift_pk: List[str] = None,
-            shift_features: bool = False,
-            return_df: bool = True,
+        self,
+        stats: List[str],
+        x: str = None,
+        y: str = None,
+        t: str = None,
+        duration: str = None,
+        dispersion: str = None,
+        aoi: str = None,
+        pk: List[str] = None,
+        shift_pk: List[str] = None,
+        shift_features: bool = False,
+        return_df: bool = True,
     ):
         super().__init__(
             x=x,
@@ -295,18 +321,18 @@ class SaccadeLength(BaseTransformer):
     @jit(forceobj=True, looplift=True)
     def fit(self, X: pd.DataFrame, y=None):
         assert (
-                self.x is not None
+            self.x is not None
         ), "Error: provide x column before calling fit in SaccadeLength"
         assert (
-                self.y is not None
+            self.y is not None
         ), "Error: provide y column before calling fit in SaccadeLength"
         assert (
-                self.t is not None
+            self.t is not None
         ), "Error: provide t column before calling fit in SaccadeLength"
 
         if self.pk is not None and self.shift_features:
             assert (
-                    self.shift_features is not None
+                self.shift_features is not None
             ), "Shift features primary key required"
             self.shift_mem = dict()
             groups = X[self.pk].drop_duplicates().values
@@ -314,7 +340,7 @@ class SaccadeLength(BaseTransformer):
                 current_X = X[pd.DataFrame(X[self.pk] == group).all(axis=1)]
                 dx = current_X[self.x].diff()
                 dy = current_X[self.y].diff()
-                sac_len: pd.DataFrame = np.sqrt(dx ** 2 + dy ** 2)
+                sac_len: pd.DataFrame = np.sqrt(dx**2 + dy**2)
                 group_id = "_".join(
                     [str(g) for g in current_X[self.shift_pk].values[0]]
                 )
@@ -358,7 +384,7 @@ class SaccadeLength(BaseTransformer):
         if self.pk is None:
             dx = X[self.x].diff()
             dy = X[self.y].diff()
-            sac_len: pd.DataFrame = np.sqrt(dx ** 2 + dy ** 2)
+            sac_len: pd.DataFrame = np.sqrt(dx**2 + dy**2)
             gathered_features = [[sac_len.apply(stat) for stat in self.stats]]
         else:
             if self.shift_features:
@@ -370,7 +396,7 @@ class SaccadeLength(BaseTransformer):
                 current_X = X[pd.DataFrame(X[self.pk] == group).all(axis=1)]
                 dx = current_X[self.x].diff()
                 dy = current_X[self.y].diff()
-                sac_len: pd.DataFrame = np.sqrt(dx ** 2 + dy ** 2)
+                sac_len: pd.DataFrame = np.sqrt(dx**2 + dy**2)
                 cur_features = [sac_len.apply(stat) for stat in self.stats]
                 if self.shift_features:
                     group_id = "_".join(
@@ -398,17 +424,17 @@ class SaccadeAcceleration(BaseTransformer):
     """
 
     def __init__(
-            self,
-            stats: List[str],
-            x: str = None,
-            y: str = None,
-            t: str = None,
-            duration: str = None,
-            dispersion: str = None,
-            aoi: str = None,
-            pk: List[str] = None,
-            return_df: bool = True,
-            eps: float = 1e-8,
+        self,
+        stats: List[str],
+        x: str = None,
+        y: str = None,
+        t: str = None,
+        duration: str = None,
+        dispersion: str = None,
+        aoi: str = None,
+        pk: List[str] = None,
+        return_df: bool = True,
+        eps: float = 1e-8,
     ):
         super().__init__(
             x=x,
@@ -457,7 +483,7 @@ class SaccadeAcceleration(BaseTransformer):
                 count = len(X) - 1
                 for index, row in X.iterrows():
                     if prev_row is not None and (
-                            row[self.aoi] != prev_row[self.aoi] or count == 0
+                        row[self.aoi] != prev_row[self.aoi] or count == 0
                     ):
                         if row[self.aoi] == prev_row[self.aoi]:
                             dx.append(row[self.x])
@@ -469,7 +495,7 @@ class SaccadeAcceleration(BaseTransformer):
                             prev_area = prev_row[self.aoi]
                             dx = pd.Series(dx).diff()
                             dy = pd.Series(dy).diff()
-                            dr = np.sqrt(dx ** 2 + dy ** 2)
+                            dr = np.sqrt(dx**2 + dy**2)
                             dt = pd.Series(dt)
                             if self.duration is None:
                                 dur = pd.Series(dt).diff().shift(-1).fillna(0)
@@ -479,7 +505,7 @@ class SaccadeAcceleration(BaseTransformer):
                             sac_acc_aoi[prev_area] = pd.concat(
                                 [
                                     sac_acc_aoi[prev_area],
-                                    dr / (dt ** 2 + self.eps) * 1 / 2,
+                                    dr / (dt**2 + self.eps) * 1 / 2,
                                 ],
                                 axis=0,
                             )
@@ -509,13 +535,13 @@ class SaccadeAcceleration(BaseTransformer):
             else:
                 dx = X[self.x].diff()
                 dy = X[self.y].diff()
-                dr = np.sqrt(dx ** 2 + dy ** 2)
+                dr = np.sqrt(dx**2 + dy**2)
                 if self.duration is None:
                     dur = X[self.t].diff().shift(-1).fillna(0)
                     dt = X[self.t] - (X[self.t] + dur / 1000).shift(1)
                 else:
                     dt = X[self.t] - (X[self.t] + X[self.duration] / 1000).shift(1)
-                sac_acc: pd.DataFrame = dr / (dt ** 2 + self.eps) * 1 / 2
+                sac_acc: pd.DataFrame = dr / (dt**2 + self.eps) * 1 / 2
                 gathered_features = [[sac_acc.apply(stat) for stat in self.stats]]
         else:
             groups = X[self.pk].drop_duplicates().values
@@ -533,7 +559,7 @@ class SaccadeAcceleration(BaseTransformer):
                     count = current_X.shape[0] - 1
                     for index, row in current_X.iterrows():
                         if prev_row is not None and (
-                                row[self.aoi] != prev_row[self.aoi] or count == 0
+                            row[self.aoi] != prev_row[self.aoi] or count == 0
                         ):
                             if row[self.aoi] == prev_row[self.aoi]:
                                 dx.append(row[self.x])
@@ -545,7 +571,7 @@ class SaccadeAcceleration(BaseTransformer):
                                 prev_area = prev_row[self.aoi]
                                 dx = pd.Series(dx).diff()
                                 dy = pd.Series(dy).diff()
-                                dr = np.sqrt(dx ** 2 + dy ** 2)
+                                dr = np.sqrt(dx**2 + dy**2)
                                 dt = pd.Series(dt)
                                 if self.duration is None:
                                     dur = pd.Series(dt).diff().shift(-1).fillna(0)
@@ -555,7 +581,7 @@ class SaccadeAcceleration(BaseTransformer):
                                 sac_acc_aoi[prev_area] = pd.concat(
                                     [
                                         sac_acc_aoi[prev_area],
-                                        dr / (dt ** 2 + self.eps) * 1 / 2,
+                                        dr / (dt**2 + self.eps) * 1 / 2,
                                     ],
                                     axis=0,
                                 )
@@ -584,7 +610,7 @@ class SaccadeAcceleration(BaseTransformer):
                 else:
                     dx = current_X[self.x].diff()
                     dy = current_X[self.y].diff()
-                    dr = np.sqrt(dx ** 2 + dy ** 2)
+                    dr = np.sqrt(dx**2 + dy**2)
                     if self.duration is None:
                         dur = current_X[self.t].diff().shift(-1).fillna(0)
                         dt = current_X[self.t] - (current_X[self.t] + dur / 1000).shift(
@@ -592,9 +618,9 @@ class SaccadeAcceleration(BaseTransformer):
                         )
                     else:
                         dt = current_X[self.t] - (
-                                current_X[self.t] + current_X[self.duration] / 1000
+                            current_X[self.t] + current_X[self.duration] / 1000
                         ).shift(1)
-                    sac_acc: pd.DataFrame = dr / (dt ** 2 + self.eps) * 1 / 2
+                    sac_acc: pd.DataFrame = dr / (dt**2 + self.eps) * 1 / 2
                     gathered_features.append(
                         [sac_acc.apply(stat) for stat in self.stats]
                     )
@@ -608,17 +634,17 @@ class SaccadeVelocity(
     BaseTransformer
 ):  # TODO 1. Negative velocity? 2. We have speed, not velocity
     def __init__(
-            self,
-            stats: List[str],
-            x: str = None,
-            y: str = None,
-            t: str = None,
-            duration: str = None,
-            dispersion: str = None,
-            aoi: str = None,
-            pk: List[str] = None,
-            return_df: bool = True,
-            eps: float = 1e-8,
+        self,
+        stats: List[str],
+        x: str = None,
+        y: str = None,
+        t: str = None,
+        duration: str = None,
+        dispersion: str = None,
+        aoi: str = None,
+        pk: List[str] = None,
+        return_df: bool = True,
+        eps: float = 1e-8,
     ):
         super().__init__(
             x=x,
@@ -662,7 +688,7 @@ class SaccadeVelocity(
                 count = X.shape[0] - 1
                 for index, row in X.iterrows():
                     if prev_row is not None and (
-                            row[self.aoi] != prev_row[self.aoi] or count == 0
+                        row[self.aoi] != prev_row[self.aoi] or count == 0
                     ):
                         if row[self.aoi] == prev_row[self.aoi]:
                             dx.append(row[self.x])
@@ -674,7 +700,7 @@ class SaccadeVelocity(
                             prev_area = prev_row[self.aoi]
                             dx = pd.Series(dx).diff()
                             dy = pd.Series(dy).diff()
-                            dr = np.sqrt(dx ** 2 + dy ** 2)
+                            dr = np.sqrt(dx**2 + dy**2)
                             dt = pd.Series(dt)
                             if self.duration is None:
                                 dur = pd.Series(dt).diff().shift(-1).fillna(0)
@@ -713,7 +739,7 @@ class SaccadeVelocity(
             else:
                 dx = X[self.x].diff()
                 dy = X[self.y].diff()
-                dr = np.sqrt(dx ** 2 + dy ** 2)
+                dr = np.sqrt(dx**2 + dy**2)
                 if self.duration is None:
                     dur = X[self.t].diff().shift(-1).fillna(0)
                     dt = X[self.t] - (X[self.t] + dur / 1000).shift(
@@ -739,7 +765,7 @@ class SaccadeVelocity(
                     count = current_X.shape[0] - 1
                     for index, row in current_X.iterrows():
                         if prev_row is not None and (
-                                row[self.aoi] != prev_row[self.aoi] or count == 0
+                            row[self.aoi] != prev_row[self.aoi] or count == 0
                         ):
                             if row[self.aoi] == prev_row[self.aoi]:
                                 dx.append(row[self.x])
@@ -751,7 +777,7 @@ class SaccadeVelocity(
                                 prev_area = prev_row[self.aoi]
                                 dx = pd.Series(dx).diff()
                                 dy = pd.Series(dy).diff()
-                                dr = np.sqrt(dx ** 2 + dy ** 2)
+                                dr = np.sqrt(dx**2 + dy**2)
                                 dt = pd.Series(dt)
                                 if self.duration is None:
                                     dur = pd.Series(dt).diff().shift(-1).fillna(0)
@@ -790,7 +816,7 @@ class SaccadeVelocity(
                 else:
                     dx = current_X[self.x].diff()
                     dy = current_X[self.y].diff()
-                    dr = np.sqrt(dx ** 2 + dy ** 2)
+                    dr = np.sqrt(dx**2 + dy**2)
                     if self.duration is None:
                         dur = current_X[self.t].diff().shift(-1).fillna(0)
                         dt = current_X[self.t] - (current_X[self.t] + dur / 1000).shift(
@@ -798,7 +824,7 @@ class SaccadeVelocity(
                         )
                     else:
                         dt = current_X[self.t] - (
-                                current_X[self.t] + current_X[self.duration] / 1000
+                            current_X[self.t] + current_X[self.duration] / 1000
                         ).shift(1)
                     sac_vel: pd.DataFrame = dr / (dt + self.eps)
                     gathered_features.append(
@@ -812,16 +838,16 @@ class SaccadeVelocity(
 
 class FixationDuration(BaseTransformer):
     def __init__(
-            self,
-            stats: List[str],
-            x: str = None,
-            y: str = None,
-            t: str = None,
-            duration: str = None,
-            dispersion: str = None,
-            aoi: str = None,
-            pk: List[str] = None,
-            return_df: bool = True,
+        self,
+        stats: List[str],
+        x: str = None,
+        y: str = None,
+        t: str = None,
+        duration: str = None,
+        dispersion: str = None,
+        aoi: str = None,
+        pk: List[str] = None,
+        return_df: bool = True,
     ):
         super().__init__(
             x=x,
@@ -842,7 +868,7 @@ class FixationDuration(BaseTransformer):
 
         assert self.t is not None, "Error: provide t column before calling transform"
         assert (
-                self.duration is not None
+            self.duration is not None
         ), "Error: provide duration column before calling transform"
 
         column_names = [f"fix_dur_{stat}" for stat in self.stats]
@@ -907,16 +933,16 @@ class FixationDuration(BaseTransformer):
 
 class FixationVAD(BaseTransformer):
     def __init__(
-            self,
-            stats: List[str],
-            x: str = None,
-            y: str = None,
-            t: str = None,
-            duration: str = None,
-            dispersion: str = None,
-            aoi: str = None,
-            pk: List[str] = None,
-            return_df: bool = True,
+        self,
+        stats: List[str],
+        x: str = None,
+        y: str = None,
+        t: str = None,
+        duration: str = None,
+        dispersion: str = None,
+        aoi: str = None,
+        pk: List[str] = None,
+        return_df: bool = True,
     ):
         super().__init__(
             x=x,
@@ -936,7 +962,7 @@ class FixationVAD(BaseTransformer):
             return X if self.return_df else X.values
 
         assert (
-                self.dispersion is not None
+            self.dispersion is not None
         ), "Error: provide dispersion column before calling transform"
 
         column_names = [f"fix_disp_{stat}" for stat in self.stats]
@@ -975,8 +1001,8 @@ class FixationVAD(BaseTransformer):
                 if self.aoi is not None:
                     areas = X[self.aoi].drop_duplicates().values
                     fix_vad: pd.DataFrame = current_X.loc[
-                                            :, [self.dispersion, self.aoi]
-                                            ]
+                        :, [self.dispersion, self.aoi]
+                    ]
                     gathered_features.append(
                         [
                             (
@@ -1003,16 +1029,16 @@ class FixationVAD(BaseTransformer):
 
 class RegressionLength(BaseTransformer):
     def __init__(
-            self,
-            stats: List[str],
-            x: str = None,
-            y: str = None,
-            t: str = None,
-            duration: str = None,
-            dispersion: str = None,
-            aoi: str = None,
-            pk: List[str] = None,
-            return_df: bool = True,
+        self,
+        stats: List[str],
+        x: str = None,
+        y: str = None,
+        t: str = None,
+        duration: str = None,
+        dispersion: str = None,
+        aoi: str = None,
+        pk: List[str] = None,
+        return_df: bool = True,
     ):
         super().__init__(
             x=x,
@@ -1052,7 +1078,7 @@ class RegressionLength(BaseTransformer):
                 count = X.shape[0] - 1
                 for index, row in X.iterrows():
                     if prev_row is not None and (
-                            row[self.aoi] != prev_row[self.aoi] or count == 0
+                        row[self.aoi] != prev_row[self.aoi] or count == 0
                     ):
                         if row[self.aoi] == prev_row[self.aoi]:
                             dx.append(row[self.x])
@@ -1064,7 +1090,7 @@ class RegressionLength(BaseTransformer):
                             gaze_vec = pd.concat([dx, dy], axis=1)
                             reg_only = gaze_vec[
                                 (gaze_vec.iloc[:, 0] < 0) | (gaze_vec.iloc[:, 1] < 0)
-                                ]
+                            ]
                             reg_len_aoi[prev_area] = pd.concat(
                                 [
                                     reg_len_aoi[prev_area],
@@ -1099,7 +1125,7 @@ class RegressionLength(BaseTransformer):
                 gaze_vec = pd.concat([dx, dy], axis=1)
                 reg_only = gaze_vec[
                     (gaze_vec.iloc[:, 0] < 0) | (gaze_vec.iloc[:, 1] < 0)
-                    ]
+                ]
                 reg_len: pd.DataFrame = np.sqrt(
                     reg_only.iloc[:, 0] ** 2 + reg_only.iloc[:, 1] ** 2
                 )
@@ -1118,7 +1144,7 @@ class RegressionLength(BaseTransformer):
                     count = current_X.shape[0] - 1
                     for index, row in current_X.iterrows():
                         if prev_row is not None and (
-                                row[self.aoi] != prev_row[self.aoi] or count == 0
+                            row[self.aoi] != prev_row[self.aoi] or count == 0
                         ):
                             if row[self.aoi] == prev_row[self.aoi]:
                                 dx.append(row[self.x])
@@ -1131,7 +1157,7 @@ class RegressionLength(BaseTransformer):
                                 reg_only = gaze_vec[
                                     (gaze_vec.iloc[:, 0] < 0)
                                     | (gaze_vec.iloc[:, 1] < 0)
-                                    ]
+                                ]
                                 reg_len_aoi[prev_area] = pd.concat(
                                     [
                                         reg_len_aoi[prev_area],
@@ -1167,7 +1193,7 @@ class RegressionLength(BaseTransformer):
                     # TODO make regression recognition less sensitive and add square selection
                     reg_only = gaze_vec[
                         (gaze_vec.iloc[:, 0] < 0) | (gaze_vec.iloc[:, 1] < 0)
-                        ]
+                    ]
                     reg_len: pd.DataFrame = np.sqrt(
                         reg_only.iloc[:, 0] ** 2 + reg_only.iloc[:, 1] ** 2
                     )
@@ -1181,17 +1207,17 @@ class RegressionLength(BaseTransformer):
 
 class RegressionVelocity(BaseTransformer):
     def __init__(
-            self,
-            stats: List[str],
-            x: str = None,
-            y: str = None,
-            t: str = None,
-            duration: str = None,
-            dispersion: str = None,
-            aoi: str = None,
-            pk: List[str] = None,
-            return_df: bool = True,
-            eps: float = 1e-8,
+        self,
+        stats: List[str],
+        x: str = None,
+        y: str = None,
+        t: str = None,
+        duration: str = None,
+        dispersion: str = None,
+        aoi: str = None,
+        pk: List[str] = None,
+        return_df: bool = True,
+        eps: float = 1e-8,
     ):
         super().__init__(
             x=x,
@@ -1235,7 +1261,7 @@ class RegressionVelocity(BaseTransformer):
                 count = X.shape[0] - 1
                 for index, row in X.iterrows():
                     if prev_row is not None and (
-                            row[self.aoi] != prev_row[self.aoi] or count == 0
+                        row[self.aoi] != prev_row[self.aoi] or count == 0
                     ):
                         if row[self.aoi] == prev_row[self.aoi]:
                             dx.append(row[self.x])
@@ -1253,7 +1279,7 @@ class RegressionVelocity(BaseTransformer):
                             gaze_vec = pd.concat([dx, dy], axis=1)
                             reg_only = gaze_vec[
                                 (gaze_vec.iloc[:, 0] < 0) | (gaze_vec.iloc[:, 1] < 0)
-                                ]
+                            ]
                             dr = np.sqrt(
                                 reg_only.iloc[:, 0] ** 2 + reg_only.iloc[:, 1] ** 2
                             )
@@ -1295,7 +1321,7 @@ class RegressionVelocity(BaseTransformer):
                 gaze_vec = pd.concat([dx, dy], axis=1)
                 reg_only = gaze_vec[
                     (gaze_vec.iloc[:, 0] < 0) | (gaze_vec.iloc[:, 1] < 0)
-                    ]
+                ]
                 dr = np.sqrt(reg_only.iloc[:, 0] ** 2 + reg_only.iloc[:, 1] ** 2)
                 dt = X[self.t] - (X[self.t] + dur / 1000).shift(1)
                 dt = dt.loc[~dt.index.isin(reg_only)]
@@ -1317,7 +1343,7 @@ class RegressionVelocity(BaseTransformer):
                     count = current_X.shape[0] - 1
                     for index, row in current_X.iterrows():
                         if prev_row is not None and (
-                                row[self.aoi] != prev_row[self.aoi] or count == 0
+                            row[self.aoi] != prev_row[self.aoi] or count == 0
                         ):
                             if row[self.aoi] == prev_row[self.aoi]:
                                 dx.append(row[self.x])
@@ -1338,7 +1364,7 @@ class RegressionVelocity(BaseTransformer):
                                 reg_only = gaze_vec[
                                     (gaze_vec.iloc[:, 0] < 0)
                                     | (gaze_vec.iloc[:, 1] < 0)
-                                    ]
+                                ]
                                 dr = np.sqrt(
                                     reg_only.iloc[:, 0] ** 2 + reg_only.iloc[:, 1] ** 2
                                 )
@@ -1380,7 +1406,7 @@ class RegressionVelocity(BaseTransformer):
                     gaze_vec = pd.concat([dx, dy], axis=1)
                     reg_only = gaze_vec[
                         (gaze_vec.iloc[:, 0] < 0) | (gaze_vec.iloc[:, 1] < 0)
-                        ]
+                    ]
                     dr = np.sqrt(reg_only.iloc[:, 0] ** 2 + reg_only.iloc[:, 1] ** 2)
                     dt = current_X[self.t] - (current_X[self.t] + dur / 1000).shift(1)
                     dt = dt.loc[~dt.index.isin(reg_only)]
@@ -1396,17 +1422,17 @@ class RegressionVelocity(BaseTransformer):
 
 class RegressionAcceleration(BaseTransformer):
     def __init__(
-            self,
-            stats: List[str],
-            x: str = None,
-            y: str = None,
-            t: str = None,
-            duration: str = None,
-            dispersion: str = None,
-            aoi: str = None,
-            pk: List[str] = None,
-            return_df: bool = True,
-            eps: float = 1e-8,
+        self,
+        stats: List[str],
+        x: str = None,
+        y: str = None,
+        t: str = None,
+        duration: str = None,
+        dispersion: str = None,
+        aoi: str = None,
+        pk: List[str] = None,
+        return_df: bool = True,
+        eps: float = 1e-8,
     ):
         super().__init__(
             x=x,
@@ -1453,7 +1479,7 @@ class RegressionAcceleration(BaseTransformer):
                 count = X.shape[0] - 1
                 for index, row in X.iterrows():
                     if prev_row is not None and (
-                            row[self.aoi] != prev_row[self.aoi] or count == 0
+                        row[self.aoi] != prev_row[self.aoi] or count == 0
                     ):
                         if row[self.aoi] == prev_row[self.aoi]:
                             dx.append(row[self.x])
@@ -1471,7 +1497,7 @@ class RegressionAcceleration(BaseTransformer):
                             gaze_vec = pd.concat([dx, dy], axis=1)
                             reg_only = gaze_vec[
                                 (gaze_vec.iloc[:, 0] < 0) | (gaze_vec.iloc[:, 1] < 0)
-                                ]
+                            ]
                             dr = np.sqrt(
                                 reg_only.iloc[:, 0] ** 2 + reg_only.iloc[:, 1] ** 2
                             )
@@ -1480,7 +1506,7 @@ class RegressionAcceleration(BaseTransformer):
                             reg_acc_aoi[prev_area] = pd.concat(
                                 [
                                     reg_acc_aoi[prev_area],
-                                    dr / (dt ** 2 + self.eps) * 1 / 2,
+                                    dr / (dt**2 + self.eps) * 1 / 2,
                                 ],
                                 axis=0,
                             )
@@ -1516,11 +1542,11 @@ class RegressionAcceleration(BaseTransformer):
                 gaze_vec = pd.concat([dx, dy], axis=1)
                 reg_only = gaze_vec[
                     (gaze_vec.iloc[:, 0] < 0) | (gaze_vec.iloc[:, 1] < 0)
-                    ]
+                ]
                 dr = np.sqrt(reg_only.iloc[:, 0] ** 2 + reg_only.iloc[:, 1] ** 2)
                 dt = X[self.t] - (X[self.t] + dur / 1000).shift(1)
                 dt = dt.loc[~dt.index.isin(reg_only)]
-                reg_acc: pd.DataFrame = dr / (dt ** 2 + self.eps) * 1 / 2
+                reg_acc: pd.DataFrame = dr / (dt**2 + self.eps) * 1 / 2
                 gathered_features = [[reg_acc.apply(stat) for stat in self.stats]]
         else:
             groups = X[self.pk].drop_duplicates().values
@@ -1538,7 +1564,7 @@ class RegressionAcceleration(BaseTransformer):
                     count = current_X.shape[0] - 1
                     for index, row in current_X.iterrows():
                         if prev_row is not None and (
-                                row[self.aoi] != prev_row[self.aoi] or count == 0
+                            row[self.aoi] != prev_row[self.aoi] or count == 0
                         ):
                             if row[self.aoi] == prev_row[self.aoi]:
                                 dx.append(row[self.x])
@@ -1559,7 +1585,7 @@ class RegressionAcceleration(BaseTransformer):
                                 reg_only = gaze_vec[
                                     (gaze_vec.iloc[:, 0] < 0)
                                     | (gaze_vec.iloc[:, 1] < 0)
-                                    ]
+                                ]
                                 dr = np.sqrt(
                                     reg_only.iloc[:, 0] ** 2 + reg_only.iloc[:, 1] ** 2
                                 )
@@ -1568,7 +1594,7 @@ class RegressionAcceleration(BaseTransformer):
                                 reg_acc_aoi[prev_area] = pd.concat(
                                     [
                                         reg_acc_aoi[prev_area],
-                                        dr / (dt ** 2 + self.eps) * 1 / 2,
+                                        dr / (dt**2 + self.eps) * 1 / 2,
                                     ],
                                     axis=0,
                                 )
@@ -1604,11 +1630,11 @@ class RegressionAcceleration(BaseTransformer):
                     gaze_vec = pd.concat([dx, dy], axis=1)
                     reg_only = gaze_vec[
                         (gaze_vec.iloc[:, 0] < 0) | (gaze_vec.iloc[:, 1] < 0)
-                        ]
+                    ]
                     dr = np.sqrt(reg_only.iloc[:, 0] ** 2 + reg_only.iloc[:, 1] ** 2)
                     dt = current_X[self.t] - (current_X[self.t] + dur / 1000).shift(1)
                     dt = dt.loc[~dt.index.isin(reg_only)]
-                    reg_acc: pd.DataFrame = dr / (dt ** 2 + self.eps) * 1 / 2
+                    reg_acc: pd.DataFrame = dr / (dt**2 + self.eps) * 1 / 2
                     gathered_features.append(
                         [reg_acc.apply(stat) for stat in self.stats]
                     )
@@ -1620,15 +1646,15 @@ class RegressionAcceleration(BaseTransformer):
 
 class RegressionCount(BaseTransformer):
     def __init__(
-            self,
-            x: str = None,
-            y: str = None,
-            t: str = None,
-            duration: str = None,
-            dispersion: str = None,
-            aoi: str = None,
-            pk: List[str] = None,
-            return_df: bool = True,
+        self,
+        x: str = None,
+        y: str = None,
+        t: str = None,
+        duration: str = None,
+        dispersion: str = None,
+        aoi: str = None,
+        pk: List[str] = None,
+        return_df: bool = True,
     ):
         super().__init__(
             x=x,
@@ -1663,7 +1689,7 @@ class RegressionCount(BaseTransformer):
                 count = X.shape[0] - 1
                 for index, row in X.iterrows():
                     if prev_row is not None and (
-                            row[self.aoi] != prev_row[self.aoi] or count == 0
+                        row[self.aoi] != prev_row[self.aoi] or count == 0
                     ):
                         if row[self.aoi] == prev_row[self.aoi]:
                             dx.append(row[self.x])
@@ -1675,7 +1701,7 @@ class RegressionCount(BaseTransformer):
                             gaze_vec = pd.concat([dx, dy], axis=1)
                             reg_only = gaze_vec[
                                 (gaze_vec.iloc[:, 0] < 0) | (gaze_vec.iloc[:, 1] < 0)
-                                ]
+                            ]
                             reg_count_aoi[prev_area] = pd.concat(
                                 [reg_count_aoi[prev_area], reg_only.shape[0]], axis=0
                             )
@@ -1701,7 +1727,7 @@ class RegressionCount(BaseTransformer):
                 gaze_vec = pd.concat([dx, dy], axis=1)
                 reg_count: pd.DataFrame = gaze_vec[
                     (gaze_vec.iloc[:, 0] < 0) | (gaze_vec.iloc[:, 1] < 0)
-                    ].shape[0]
+                ].shape[0]
                 gathered_features = [reg_count]
         else:
             groups = X[self.pk].drop_duplicates().values
@@ -1717,7 +1743,7 @@ class RegressionCount(BaseTransformer):
                     count = current_X.shape[0] - 1
                     for index, row in current_X.iterrows():
                         if prev_row is not None and (
-                                row[self.aoi] != prev_row[self.aoi] or count == 0
+                            row[self.aoi] != prev_row[self.aoi] or count == 0
                         ):
                             if row[self.aoi] == prev_row[self.aoi]:
                                 dx.append(row[self.x])
@@ -1730,7 +1756,7 @@ class RegressionCount(BaseTransformer):
                                 reg_only = gaze_vec[
                                     (gaze_vec.iloc[:, 0] < 0)
                                     | (gaze_vec.iloc[:, 1] < 0)
-                                    ]
+                                ]
                                 reg_count_aoi[prev_area] += reg_only.shape[0]
                             dx = list()
                             dy = list()
@@ -1745,7 +1771,7 @@ class RegressionCount(BaseTransformer):
                     gaze_vec = pd.concat([dx, dy], axis=1)
                     reg_count: pd.DataFrame = gaze_vec[
                         (gaze_vec.iloc[:, 0] < 0) | (gaze_vec.iloc[:, 1] < 0)
-                        ].shape[0]
+                    ].shape[0]
                     gathered_features.append([reg_count])
 
         features_df = pd.DataFrame(data=gathered_features, columns=column_names)
@@ -1754,19 +1780,19 @@ class RegressionCount(BaseTransformer):
 
 class MicroSaccadeLength(BaseTransformer):
     def __init__(
-            self,
-            stats: List[str],
-            x: str = None,
-            y: str = None,
-            t: str = None,
-            duration: str = None,
-            dispersion: str = None,
-            aoi: str = None,
-            pk: List[str] = None,
-            min_dispersion: float = None,
-            max_velocity: float = None,
-            return_df: bool = True,
-            eps: float = 1e-8,
+        self,
+        stats: List[str],
+        x: str = None,
+        y: str = None,
+        t: str = None,
+        duration: str = None,
+        dispersion: str = None,
+        aoi: str = None,
+        pk: List[str] = None,
+        min_dispersion: float = None,
+        max_velocity: float = None,
+        return_df: bool = True,
+        eps: float = 1e-8,
     ):
         super().__init__(
             x=x,
@@ -1788,13 +1814,13 @@ class MicroSaccadeLength(BaseTransformer):
         assert self.y is not None, "Error: provide 'y' column before calling transform"
         assert self.t is not None, "Error: provide 't' column before calling transform"
         assert (
-                self.min_dispersion is not None
+            self.min_dispersion is not None
         ), "Error: provide 'min_dispersion' for microsaccades detection"
         assert (
-                self.max_velocity is not None
+            self.max_velocity is not None
         ), "Error: provide 'max_velocity' for microsaccades detection"
         assert (
-                self.dispersion is not None
+            self.dispersion is not None
         ), "Error: provide 'dispersion' column before calling transform"
 
     @jit(forceobj=True, looplift=True)
@@ -1825,7 +1851,7 @@ class MicroSaccadeLength(BaseTransformer):
                 count = X.shape[0] - 1
                 for index, row in X.iterrows():
                     if prev_row is not None and (
-                            row[self.aoi] != prev_row[self.aoi] or count == 0
+                        row[self.aoi] != prev_row[self.aoi] or count == 0
                     ):
                         if row[self.aoi] == prev_row[self.aoi]:
                             dx.append(row[self.x])
@@ -1838,7 +1864,7 @@ class MicroSaccadeLength(BaseTransformer):
                             prev_area = prev_row[self.aoi]
                             dx = pd.Series(dx).diff()
                             dy = pd.Series(dy).diff()
-                            dr = np.sqrt(dx ** 2 + dy ** 2)
+                            dr = np.sqrt(dx**2 + dy**2)
                             dt = pd.Series(dt)
                             if self.duration is None:
                                 dur = dt.diff().shift(-1).fillna(0)
@@ -1847,7 +1873,7 @@ class MicroSaccadeLength(BaseTransformer):
                             microsac_only: pd.DataFrame = dr[
                                 (pd.Series(dis) > self.min_dispersion)
                                 & (v < self.max_velocity)
-                                ]
+                            ]
                             microsac_len_aoi[prev_area] = pd.concat(
                                 [microsac_len_aoi[prev_area], microsac_only], axis=0
                             )
@@ -1879,7 +1905,7 @@ class MicroSaccadeLength(BaseTransformer):
                 dx = X[self.x].diff()
                 dy = X[self.y].diff()
                 dis = X[self.dispersion]
-                dr = np.sqrt(dx ** 2 + dy ** 2)
+                dr = np.sqrt(dx**2 + dy**2)
                 if self.duration is None:
                     dur = X[self.t].diff().shift(-1).fillna(0)
                     dt = X[self.t] - (X[self.t] + dur / 1000).shift(1)
@@ -1889,7 +1915,7 @@ class MicroSaccadeLength(BaseTransformer):
 
                 sac_len: pd.DataFrame = dr[
                     (dis > self.min_dispersion) & (v < self.max_velocity)
-                    ]
+                ]
                 gathered_features = [[sac_len.apply(stat) for stat in self.stats]]
         else:
             groups = X[self.pk].drop_duplicates().values
@@ -1908,7 +1934,7 @@ class MicroSaccadeLength(BaseTransformer):
                     count = current_X.shape[0] - 1
                     for index, row in current_X.iterrows():
                         if prev_row is not None and (
-                                row[self.aoi] != prev_row[self.aoi] or count == 0
+                            row[self.aoi] != prev_row[self.aoi] or count == 0
                         ):
                             if row[self.aoi] == prev_row[self.aoi]:
                                 dx.append(row[self.x])
@@ -1921,7 +1947,7 @@ class MicroSaccadeLength(BaseTransformer):
                                 prev_area = prev_row[self.aoi]
                                 dx = pd.Series(dx).diff()
                                 dy = pd.Series(dy).diff()
-                                dr = np.sqrt(dx ** 2 + dy ** 2)
+                                dr = np.sqrt(dx**2 + dy**2)
                                 dt = pd.Series(dt)
                                 if self.duration is None:
                                     dur = dt.diff().shift(-1).fillna(0)
@@ -1930,7 +1956,7 @@ class MicroSaccadeLength(BaseTransformer):
                                 microsac_only: pd.DataFrame = dr[
                                     (pd.Series(dis) > self.min_dispersion)
                                     & (v < self.max_velocity)
-                                    ]
+                                ]
                                 microsac_len_aoi[prev_area] = pd.concat(
                                     [microsac_len_aoi[prev_area], microsac_only], axis=0
                                 )
@@ -1962,7 +1988,7 @@ class MicroSaccadeLength(BaseTransformer):
                     dx = current_X[self.x].diff()
                     dy = current_X[self.y].diff()
                     dis = current_X[self.dispersion]
-                    dr = np.sqrt(dx ** 2 + dy ** 2)
+                    dr = np.sqrt(dx**2 + dy**2)
                     if self.duration is None:
                         dur = current_X[self.t].diff().shift(-1).fillna(0)
                         dt = current_X[self.t] - (current_X[self.t] + dur / 1000).shift(
@@ -1970,14 +1996,14 @@ class MicroSaccadeLength(BaseTransformer):
                         )
                     else:
                         dt = current_X[self.t] - (
-                                current_X[self.t] + current_X[self.duration] / 1000
+                            current_X[self.t] + current_X[self.duration] / 1000
                         ).shift(1)
                     v = dr / (dt + self.eps)
 
                     # TODO is empty after filtering
                     sac_len: pd.DataFrame = dr[
                         (dis > self.min_dispersion) & (v < self.max_velocity)
-                        ]
+                    ]
                     gathered_features.append(
                         [sac_len.apply(stat) for stat in self.stats]
                     )
@@ -1989,19 +2015,19 @@ class MicroSaccadeLength(BaseTransformer):
 
 class MicroSaccadeVelocity(BaseTransformer):
     def __init__(
-            self,
-            stats: List[str],
-            x: str = None,
-            y: str = None,
-            t: str = None,
-            duration: str = None,
-            dispersion: str = None,
-            aoi: str = None,
-            pk: List[str] = None,
-            min_dispersion: float = None,
-            max_velocity: float = None,
-            return_df: bool = True,
-            eps: float = 1e-8,
+        self,
+        stats: List[str],
+        x: str = None,
+        y: str = None,
+        t: str = None,
+        duration: str = None,
+        dispersion: str = None,
+        aoi: str = None,
+        pk: List[str] = None,
+        min_dispersion: float = None,
+        max_velocity: float = None,
+        return_df: bool = True,
+        eps: float = 1e-8,
     ):
         super().__init__(
             x=x,
@@ -2023,13 +2049,13 @@ class MicroSaccadeVelocity(BaseTransformer):
         assert self.y is not None, "Error: provide 'y' column before calling transform"
         assert self.t is not None, "Error: provide 't' column before calling transform"
         assert (
-                self.min_dispersion is not None
+            self.min_dispersion is not None
         ), "Error: provide 'min_dispersion' for microsaccades detection"
         assert (
-                self.max_velocity is not None
+            self.max_velocity is not None
         ), "Error: provide 'max_velocity' for microsaccades detection"
         assert (
-                self.dispersion is not None
+            self.dispersion is not None
         ), "Error: provide 'dispersion' column before calling transform"
 
     @jit(forceobj=True, looplift=True)
@@ -2060,7 +2086,7 @@ class MicroSaccadeVelocity(BaseTransformer):
                 count = X.shape[0] - 1
                 for index, row in X.iterrows():
                     if prev_row is not None and (
-                            row[self.aoi] != prev_row[self.aoi] or count == 0
+                        row[self.aoi] != prev_row[self.aoi] or count == 0
                     ):
                         if row[self.aoi] == prev_row[self.aoi]:
                             dx.append(row[self.x])
@@ -2073,7 +2099,7 @@ class MicroSaccadeVelocity(BaseTransformer):
                             prev_area = prev_row[self.aoi]
                             dx = pd.Series(dx).diff()
                             dy = pd.Series(dy).diff()
-                            dr = np.sqrt(dx ** 2 + dy ** 2)
+                            dr = np.sqrt(dx**2 + dy**2)
                             dt = pd.Series(dt)
                             if self.duration is None:
                                 dur = dt.diff().shift(-1).fillna(0)
@@ -2082,7 +2108,7 @@ class MicroSaccadeVelocity(BaseTransformer):
                             microsac_only: pd.DataFrame = v[
                                 (pd.Series(dis) > self.min_dispersion)
                                 & (v < self.max_velocity)
-                                ]
+                            ]
                             microsac_vel_aoi[prev_area] = pd.concat(
                                 [microsac_vel_aoi[prev_area], microsac_only], axis=0
                             )
@@ -2115,7 +2141,7 @@ class MicroSaccadeVelocity(BaseTransformer):
                 dx = X[self.x].diff()
                 dy = X[self.y].diff()
                 dis = X[self.dispersion]
-                dr = np.sqrt(dx ** 2 + dy ** 2)
+                dr = np.sqrt(dx**2 + dy**2)
                 if self.duration is None:
                     dur = X[self.t].diff().shift(-1).fillna(0)
                     dt = X[self.t] - (X[self.t] + dur / 1000).shift(1)
@@ -2125,7 +2151,7 @@ class MicroSaccadeVelocity(BaseTransformer):
 
                 sac_vel: pd.DataFrame = v[
                     (dis > self.min_dispersion) & (v < self.max_velocity)
-                    ]
+                ]
                 gathered_features = [[sac_vel.apply(stat) for stat in self.stats]]
         else:
             groups = X[self.pk].drop_duplicates().values
@@ -2144,7 +2170,7 @@ class MicroSaccadeVelocity(BaseTransformer):
                     count = current_X.shape[0] - 1
                     for index, row in current_X.iterrows():
                         if prev_row is not None and (
-                                row[self.aoi] != prev_row[self.aoi] or count == 0
+                            row[self.aoi] != prev_row[self.aoi] or count == 0
                         ):
                             if row[self.aoi] == prev_row[self.aoi]:
                                 dx.append(row[self.x])
@@ -2157,7 +2183,7 @@ class MicroSaccadeVelocity(BaseTransformer):
                                 prev_area = prev_row[self.aoi]
                                 dx = pd.Series(dx).diff()
                                 dy = pd.Series(dy).diff()
-                                dr = np.sqrt(dx ** 2 + dy ** 2)
+                                dr = np.sqrt(dx**2 + dy**2)
                                 dt = pd.Series(dt)
                                 if self.duration is None:
                                     dur = dt.diff().shift(-1).fillna(0)
@@ -2166,7 +2192,7 @@ class MicroSaccadeVelocity(BaseTransformer):
                                 microsac_only: pd.DataFrame = v[
                                     (pd.Series(dis) > self.min_dispersion)
                                     & (v < self.max_velocity)
-                                    ]
+                                ]
                                 microsac_vel_aoi[prev_area] = pd.concat(
                                     [microsac_vel_aoi[prev_area], microsac_only], axis=0
                                 )
@@ -2198,7 +2224,7 @@ class MicroSaccadeVelocity(BaseTransformer):
                     dx = current_X[self.x].diff()
                     dy = current_X[self.y].diff()
                     dis = current_X[self.dispersion]
-                    dr = np.sqrt(dx ** 2 + dy ** 2)
+                    dr = np.sqrt(dx**2 + dy**2)
                     if self.duration is None:
                         dur = current_X[self.t].diff().shift(-1).fillna(0)
                         dt = current_X[self.t] - (current_X[self.t] + dur / 1000).shift(
@@ -2206,14 +2232,14 @@ class MicroSaccadeVelocity(BaseTransformer):
                         )
                     else:
                         dt = current_X[self.t] - (
-                                current_X[self.t] + current_X[self.duration] / 1000
+                            current_X[self.t] + current_X[self.duration] / 1000
                         ).shift(1)
                     v = dr / (dt + self.eps)
 
                     # TODO is empty after filtering
                     sac_vel: pd.DataFrame = v[
                         (dis > self.min_dispersion) & (v < self.max_velocity)
-                        ]
+                    ]
                     gathered_features.append(
                         [sac_vel.apply(stat) for stat in self.stats]
                     )
@@ -2225,19 +2251,19 @@ class MicroSaccadeVelocity(BaseTransformer):
 
 class MicroSaccadeAcceleration(BaseTransformer):
     def __init__(
-            self,
-            stats: List[str],
-            x: str = None,
-            y: str = None,
-            t: str = None,
-            duration: str = None,
-            dispersion: str = None,
-            aoi: str = None,
-            pk: List[str] = None,
-            min_dispersion: float = None,
-            max_velocity: float = None,
-            return_df: bool = True,
-            eps: float = 1e-8,
+        self,
+        stats: List[str],
+        x: str = None,
+        y: str = None,
+        t: str = None,
+        duration: str = None,
+        dispersion: str = None,
+        aoi: str = None,
+        pk: List[str] = None,
+        min_dispersion: float = None,
+        max_velocity: float = None,
+        return_df: bool = True,
+        eps: float = 1e-8,
     ):
         super().__init__(
             x=x,
@@ -2259,13 +2285,13 @@ class MicroSaccadeAcceleration(BaseTransformer):
         assert self.y is not None, "Error: provide 'y' column before calling transform"
         assert self.t is not None, "Error: provide 't' column before calling transform"
         assert (
-                self.min_dispersion is not None
+            self.min_dispersion is not None
         ), "Error: provide 'min_dispersion' for microsaccades detection"
         assert (
-                self.max_velocity is not None
+            self.max_velocity is not None
         ), "Error: provide 'max_velocity' for microsaccades detection"
         assert (
-                self.dispersion is not None
+            self.dispersion is not None
         ), "Error: provide 'dispersion' column before calling transform"
 
     @jit(forceobj=True, looplift=True)
@@ -2296,7 +2322,7 @@ class MicroSaccadeAcceleration(BaseTransformer):
                 count = X.shape[0] - 1
                 for index, row in X.iterrows():
                     if prev_row is not None and (
-                            row[self.aoi] != prev_row[self.aoi] or count == 0
+                        row[self.aoi] != prev_row[self.aoi] or count == 0
                     ):
                         if row[self.aoi] == prev_row[self.aoi]:
                             dx.append(row[self.x])
@@ -2309,17 +2335,17 @@ class MicroSaccadeAcceleration(BaseTransformer):
                             prev_area = prev_row[self.aoi]
                             dx = pd.Series(dx).diff()
                             dy = pd.Series(dy).diff()
-                            dr = np.sqrt(dx ** 2 + dy ** 2)
+                            dr = np.sqrt(dx**2 + dy**2)
                             dt = pd.Series(dt)
                             if self.duration is None:
                                 dur = dt.diff().shift(-1).fillna(0)
                                 dt = dt - (dt + dur / 1000).shift(1)
                             v = dr / (dt + self.eps)
-                            acc = dr / (dt ** 2 + self.eps) * 1 / 2
+                            acc = dr / (dt**2 + self.eps) * 1 / 2
                             microsac_only: pd.DataFrame = acc[
                                 (pd.Series(dis) > self.min_dispersion)
                                 & (v < self.max_velocity)
-                                ]
+                            ]
                             microsac_acc_aoi[prev_area] = pd.concat(
                                 [microsac_acc_aoi[prev_area], microsac_only], axis=0
                             )
@@ -2351,18 +2377,18 @@ class MicroSaccadeAcceleration(BaseTransformer):
                 dx = X[self.x].diff()
                 dy = X[self.y].diff()
                 dis = X[self.dispersion]
-                dr = np.sqrt(dx ** 2 + dy ** 2)
+                dr = np.sqrt(dx**2 + dy**2)
                 if self.duration is None:
                     dur = X[self.t].diff().shift(-1).fillna(0)
                     dt = X[self.t] - (X[self.t] + dur / 1000).shift(1)
                 else:
                     dt = X[self.t] - (X[self.t] + X[self.duration] / 1000).shift(1)
                 v = dr / (dt + self.eps)
-                acc = dr / (dt ** 2 + self.eps) * 1 / 2
+                acc = dr / (dt**2 + self.eps) * 1 / 2
 
                 sac_acc: pd.DataFrame = acc[
                     (dis > self.min_dispersion) & (v < self.max_velocity)
-                    ]
+                ]
                 gathered_features = [[sac_acc.apply(stat) for stat in self.stats]]
         else:
             groups = X[self.pk].drop_duplicates().values
@@ -2381,7 +2407,7 @@ class MicroSaccadeAcceleration(BaseTransformer):
                     count = current_X.shape[0] - 1
                     for index, row in current_X.iterrows():
                         if prev_row is not None and (
-                                row[self.aoi] != prev_row[self.aoi] or count == 0
+                            row[self.aoi] != prev_row[self.aoi] or count == 0
                         ):
                             if row[self.aoi] == prev_row[self.aoi]:
                                 dx.append(row[self.x])
@@ -2394,17 +2420,17 @@ class MicroSaccadeAcceleration(BaseTransformer):
                                 prev_area = prev_row[self.aoi]
                                 dx = pd.Series(dx).diff()
                                 dy = pd.Series(dy).diff()
-                                dr = np.sqrt(dx ** 2 + dy ** 2)
+                                dr = np.sqrt(dx**2 + dy**2)
                                 dt = pd.Series(dt)
                                 if self.duration is None:
                                     dur = dt.diff().shift(-1).fillna(0)
                                     dt = dt - (dt + dur / 1000).shift(1)
                                 v = dr / (dt + self.eps)
-                                acc = dr / (dt ** 2 + self.eps) * 1 / 2
+                                acc = dr / (dt**2 + self.eps) * 1 / 2
                                 microsac_only: pd.DataFrame = acc[
                                     (pd.Series(dis) > self.min_dispersion)
                                     & (v < self.max_velocity)
-                                    ]
+                                ]
                                 microsac_acc_aoi[prev_area] = pd.concat(
                                     [microsac_acc_aoi[prev_area], microsac_only], axis=0
                                 )
@@ -2436,7 +2462,7 @@ class MicroSaccadeAcceleration(BaseTransformer):
                     dx = current_X[self.x].diff()
                     dy = current_X[self.y].diff()
                     dis = current_X[self.dispersion]
-                    dr = np.sqrt(dx ** 2 + dy ** 2)
+                    dr = np.sqrt(dx**2 + dy**2)
                     if self.duration is None:
                         dur = current_X[self.t].diff().shift(-1).fillna(0)
                         dt = current_X[self.t] - (current_X[self.t] + dur / 1000).shift(
@@ -2444,15 +2470,15 @@ class MicroSaccadeAcceleration(BaseTransformer):
                         )
                     else:
                         dt = current_X[self.t] - (
-                                current_X[self.t] + current_X[self.duration] / 1000
+                            current_X[self.t] + current_X[self.duration] / 1000
                         ).shift(1)
                     v = dr / (dt + self.eps)
-                    acc = dr / (dt ** 2 + self.eps) * 1 / 2
+                    acc = dr / (dt**2 + self.eps) * 1 / 2
 
                     # TODO is empty after filtering
                     sac_acc: pd.DataFrame = acc[
                         (dis > self.min_dispersion) & (v < self.max_velocity)
-                        ]
+                    ]
                     gathered_features.append(
                         [sac_acc.apply(stat) for stat in self.stats]
                     )
@@ -2463,17 +2489,16 @@ class MicroSaccadeAcceleration(BaseTransformer):
 
 
 if __name__ == "__main__":
-    data = pd.concat([pd.read_excel('itog_fix_1.xlsx'), pd.read_excel('itog_fix_2.xlsx')], axis=0)
-    x = 'norm_pos_x'
-    y = 'norm_pos_y'
-    t = 'start_timestamp'
-    dur = 'duration'
-    dis = 'dispersion'
+    data = pd.concat(
+        [pd.read_excel("itog_fix_1.xlsx"), pd.read_excel("itog_fix_2.xlsx")], axis=0
+    )
+    x = "norm_pos_x"
+    y = "norm_pos_y"
+    t = "start_timestamp"
+    dur = "duration"
+    dis = "dispersion"
 
-    sac_feats_stats = {
-        'length': ['min', 'max'],
-        'speed': ['mean', 'kurtosis']
-    }
+    sac_feats_stats = {"length": ["min", "max"], "speed": ["mean", "kurtosis"]}
     sf = SaccadeFeatures(x=x, y=y, t=t, duration=dur, features_stats=sac_feats_stats)
     sf.fit(data)
     sf.transform(data)

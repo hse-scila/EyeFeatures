@@ -1,10 +1,8 @@
 import typing
+from dataclasses import dataclass
+from typing import Any, List, Tuple, Union
 
 import pandas as pd
-
-from dataclasses import dataclass
-
-from typing import Union, List, Tuple, Any
 
 
 @dataclass

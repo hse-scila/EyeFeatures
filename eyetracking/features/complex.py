@@ -1,7 +1,7 @@
+from typing import List
+
 import numpy as np
 import pandas as pd
-
-from typing import List
 from numpy.typing import NDArray
 from scipy.stats import gaussian_kde
 

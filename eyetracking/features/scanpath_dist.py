@@ -1,4 +1,4 @@
-from typing import Dict, List, Union, Tuple, Any
+from typing import Any, Dict, List, Tuple, Union
 
 import multimatch_gaze as mm
 import numpy as np
@@ -6,7 +6,8 @@ import pandas as pd
 from numba import jit
 
 from eyetracking.features.extractor import BaseTransformer
-from eyetracking.features.scanpath_complex import get_expected_path, get_fill_path
+from eyetracking.features.scanpath_complex import (get_expected_path,
+                                                   get_fill_path)
 
 
 class Distances(BaseTransformer):

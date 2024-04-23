@@ -2,8 +2,9 @@ from typing import List, Union
 
 import numpy as np
 import pandas as pd
-from eyetracking.preprocessing.base import BasePreprocessor
 from numba import jit
+
+from eyetracking.preprocessing.base import BasePreprocessor
 
 
 class IVT(BasePreprocessor):
@@ -99,6 +100,6 @@ class IVT(BasePreprocessor):
             }
         )
 
-        fixations_df['duration'] = fixations_df.end_time - fixations_df.start_time
+        fixations_df["duration"] = fixations_df.end_time - fixations_df.start_time
 
         return fixations_df

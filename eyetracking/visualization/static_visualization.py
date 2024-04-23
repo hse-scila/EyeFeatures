@@ -1,10 +1,13 @@
 from typing import List
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+
 def _cmap_generation(n: int):
-    return plt.cm.get_cmap('tab20')(n)
+    return plt.cm.get_cmap("tab20")(n)
+
 
 def scanpath_visualization(
     data_: pd.DataFrame,
@@ -27,7 +30,7 @@ def scanpath_visualization(
     min_dispersion: float = 1.2,
     max_velocity: float = 4.7,
     aoi_c: List[str] = None,
-    only_points: bool = False
+    only_points: bool = False,
 ):
     plt.figure(figsize=fig_size)
     eps = 1e-8
@@ -48,7 +51,7 @@ def scanpath_visualization(
         disp /= disp.max()
         fixation_size = np.array(disp * points_width)
 
-    #result = plt.subplot()
+    # result = plt.subplot()
     if img_path is not None:
         plt.imshow(plt.imread(img_path))
 
@@ -58,7 +61,7 @@ def scanpath_visualization(
         ind = 0
         if aoi_c is None:
             aoi_c = plt.cm.get_cmap(lut=len(data[aoi].drop_duplicates().values))
-            #for area in data[aoi].drop_duplicates().values:
+            # for area in data[aoi].drop_duplicates().values:
             #    aoi_c.append()
         for area in data[aoi].drop_duplicates().values:
             points = data[data[aoi] == area]
@@ -66,7 +69,6 @@ def scanpath_visualization(
             ind += 1
             # result.plot(points[x], points[y], marker='o', linestyle='', ms=12, label=area, )
         plt.legend()
-
 
     if points_enumeration:
         enumeration = range(dX.shape[0])
