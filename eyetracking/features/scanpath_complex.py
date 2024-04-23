@@ -12,7 +12,6 @@ def _target_norm(fwp: np.ndarray, fixations: np.ndarray) -> float:
     return np.linalg.norm(fixations - fwp, axis=1).sum()
 
 
-@jit(forceobj=True, looplift=True)
 def get_expected_path(
     data: pd.DataFrame,
     x: str,

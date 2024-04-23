@@ -1,4 +1,4 @@
-from typing import Any, List, Tuple, Union
+from typing import List, Union, Tuple, Any, Dict
 
 import numpy as np
 import pandas as pd
@@ -17,6 +17,8 @@ class BaseTransformer(BaseEstimator, TransformerMixin):
         aoi: str = None,
         path_pk: List[str] = None,
         pk: List[str] = None,
+        expected_paths: Dict[str, pd.DataFrame] = None,
+        fill_path: pd.DataFrame = None,
         return_df: bool = True,
     ):
         self.x = x
@@ -28,6 +30,8 @@ class BaseTransformer(BaseEstimator, TransformerMixin):
         self.pk = pk
         self.aoi = aoi
         self.return_df = return_df
+        self.expected_paths = expected_paths
+        self.fill_path = fill_path
 
     def _check_init(self, items: List[Tuple[Any, str]]):
         for value, nm in items:
@@ -43,6 +47,8 @@ class BaseTransformer(BaseEstimator, TransformerMixin):
         aoi: str = None,
         path_pk: List[str] = None,
         pk: List[str] = None,
+        expected_paths: Dict[str, pd.DataFrame] = None,
+        fill_path: pd.DataFrame = None,
         return_df: bool = True,
     ):
         self.x = x
@@ -54,6 +60,8 @@ class BaseTransformer(BaseEstimator, TransformerMixin):
         self.pk = pk
         self.aoi = aoi
         self.return_df = return_df
+        self.expected_paths = expected_paths
+        self.fill_path = fill_path
 
     def fit(self, X: pd.DataFrame, y=None):
         return self
@@ -114,16 +122,6 @@ class Extractor(BaseEstimator, TransformerMixin):
     def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
         if self.features is None:
             return X if self.return_df else X.values
-
-        assert self.x is not None, "Error: provide x column before calling transform"
-        assert self.y is not None, "Error: provide y column before calling transform"
-        assert self.t is not None, "Error: provide t column before calling transform"
-        assert (
-            self.duration is not None
-        ), "Error: provide duration column before calling transform"
-        assert (
-            self.dispersion is not None
-        ), "Error: provide dispersion column before calling transform"
 
         gathered_features = []
         data_df: pd.DataFrame = X[
