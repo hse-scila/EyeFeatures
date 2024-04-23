@@ -1,10 +1,19 @@
-import numpy as np
+import typing
+
 import pandas as pd
 
-from typing import List, Tuple
+from dataclasses import dataclass
+
+from typing import Any, List, Tuple
 
 
-def _split_dataframe(df: pd.DataFrame, pk):
+@dataclass
+class Types:
+    Partition = List[Tuple[str, pd.DataFrame]]
+    Data = Any[pd.DataFrame, Partition]
+
+
+def _split_dataframe(df: pd.DataFrame, pk: List[str]) -> Types.Partition:
     """
     :param df: DataFrame to split
     :param pk: primary key to split by
