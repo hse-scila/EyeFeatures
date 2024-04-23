@@ -5,6 +5,7 @@ import pandas as pd
 from numba import jit
 
 from eyetracking.features.extractor import BaseTransformer
+from eyetracking.utils import _split_dataframe
 
 
 class HurstExponent(BaseTransformer):
@@ -125,6 +126,61 @@ class HurstExponent(BaseTransformer):
                 x = current_X[self.var].values / 1000
                 grad = self._compute_hurst(x.copy())
                 gathered_features.append([grad])
+
+        features_df = pd.DataFrame(data=gathered_features, columns=features_names)
+        return features_df if self.return_df else features_df.values
+
+class Entropy(BaseTransformer):
+    def __init__(
+        self,
+        aoi: str = None,
+        pk: List[str] = None,
+        return_df: bool = True,
+    ):
+        super().__init__(pk=pk, return_df=return_df)
+        self.aoi = aoi
+
+    def _check_init(self, X_len: int):
+        assert (self.aoi is not None), "Error: Provide aoi column"
+        assert (X_len != 0), "Error: there are no fixations"
+
+    @jit(forceobj=True, looplift=True)
+    def fit(self, X: pd.DataFrame, y=None):
+        return self
+
+    @jit(forceobj=True, looplift=True)
+    def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
+        self._check_init(X_len=X.shape[0])
+
+        features_names = ["entropy"]
+
+        if self.pk is None:
+            X_splited = _split_dataframe(X, [self.aoi])
+            all_fix = X.shape[0]
+            aoi_probability = []
+            for group, current_X in X_splited:
+                aoi_probability.append(current_X.shape[0] / all_fix)
+
+            entropy = 0
+            for p in aoi_probability:
+                entropy -= p * np.log2(p)
+
+            gathered_features = [[entropy]]
+        else:
+            X_splited = _split_dataframe(X, self.pk)
+            gathered_features = []
+            for group, current_X in X_splited:
+                all_fix = current_X.shape[0]
+                aoi_probability = []
+                X_aoi = _split_dataframe(current_X, [self.aoi])
+                for aoi_group, current_aoi_X in X_aoi:
+                    aoi_probability.append(current_aoi_X.shape[0] / all_fix)
+
+                entropy = 0
+                for p in aoi_probability:
+                    entropy -= p * np.log2(p)
+
+                gathered_features.append([[entropy]])
 
         features_df = pd.DataFrame(data=gathered_features, columns=features_names)
         return features_df if self.return_df else features_df.values

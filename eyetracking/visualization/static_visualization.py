@@ -1,7 +1,10 @@
+from typing import List
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+def _cmap_generation(n: int):
+    return plt.cm.get_cmap('tab20')(n)
 
 def scanpath_visualization(
     data_: pd.DataFrame,
@@ -10,6 +13,7 @@ def scanpath_visualization(
     duration: str = None,
     dispersion: str = None,
     time_stamps: str = None,
+    aoi: str = None,
     img_path: str = None,
     fig_size: tuple = (10, 10),
     points_width: float = 75,
@@ -22,6 +26,8 @@ def scanpath_visualization(
     is_vectors: bool = False,
     min_dispersion: float = 1.2,
     max_velocity: float = 4.7,
+    aoi_c: List[str] = None,
+    only_points: bool = False
 ):
     plt.figure(figsize=fig_size)
     eps = 1e-8
@@ -30,9 +36,8 @@ def scanpath_visualization(
     X, Y = data[x], data[y]
     dX, dY = data[x].diff(), data[y].diff()
     XY = pd.concat([dX, dY], axis=1)
-    print(XY)
     fixation_size = np.arange(points_width, X.shape[0])
-    reg_only = XY[(XY.iloc[:, 0] < -1) | (XY.iloc[:, 1] < -1)]
+    reg_only = XY[(XY.iloc[:, 0] < 0) | (XY.iloc[:, 1] > 0)]
 
     if duration is not None:
         dur = data[duration]
@@ -43,13 +48,34 @@ def scanpath_visualization(
         disp /= disp.max()
         fixation_size = np.array(disp * points_width)
 
-    result = plt.subplot()
-    result.imshow(plt.imread(img_path))
-    plt.scatter(X, Y, s=fixation_size, color=points_color)
+    #result = plt.subplot()
+    if img_path is not None:
+        plt.imshow(plt.imread(img_path))
+
+    if aoi is None:
+        plt.scatter(X, Y, s=fixation_size, color=points_color)
+    else:
+        ind = 0
+        if aoi_c is None:
+            aoi_c = plt.cm.get_cmap(lut=len(data[aoi].drop_duplicates().values))
+            #for area in data[aoi].drop_duplicates().values:
+            #    aoi_c.append()
+        for area in data[aoi].drop_duplicates().values:
+            points = data[data[aoi] == area]
+            plt.scatter(x=points[x], y=points[y], color=aoi_c(ind), label=area)
+            ind += 1
+            # result.plot(points[x], points[y], marker='o', linestyle='', ms=12, label=area, )
+        plt.legend()
+
+
     if points_enumeration:
         enumeration = range(dX.shape[0])
         for i in enumeration:
-            plt.annotate(i, xy=(X[i], Y[i] - (fixation_size[i] / 10)))
+            plt.annotate(i, xy=(X[i], Y[i]))
+
+    if only_points:
+        plt.show()
+        return
 
     if not is_vectors:
         plt.plot(
@@ -115,5 +141,5 @@ def scanpath_visualization(
             plt.plot(
                 mic_sacX[i], mic_sacY[i], color=micro_sac_color, linewidth=path_width
             )
-
+    plt.show()
     return

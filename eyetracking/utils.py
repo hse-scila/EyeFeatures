@@ -4,13 +4,13 @@ import pandas as pd
 
 from dataclasses import dataclass
 
-from typing import Any, List, Tuple
+from typing import Union, List, Tuple
 
 
 @dataclass
 class Types:
     Partition = List[Tuple[str, pd.DataFrame]]
-    Data = Any[pd.DataFrame, Partition]
+    Data = Union[pd.DataFrame, Partition]
 
 
 def _split_dataframe(df: pd.DataFrame, pk: List[str]) -> Types.Partition:

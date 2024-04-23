@@ -2,7 +2,7 @@ from typing import List, Union
 
 import numpy as np
 import pandas as pd
-from .base import BasePreprocessor
+from eyetracking.preprocessing.base import BasePreprocessor
 from numba import jit
 
 
