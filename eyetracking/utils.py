@@ -10,7 +10,9 @@ class Types:
     Data = Union[pd.DataFrame, Partition]
 
 
-def _split_dataframe(df: pd.DataFrame, pk: List[str]) -> Types.Partition:
+def _split_dataframe(
+    df: pd.DataFrame, pk: List[str], encode=False
+) -> Union[Types.Partition, List[Tuple[Tuple, pd.DataFrame]]]:
     """
     :param df: DataFrame to split
     :param pk: primary key to split by
@@ -18,10 +20,9 @@ def _split_dataframe(df: pd.DataFrame, pk: List[str]) -> Types.Partition:
 
     assert set(pk).issubset(set(df.columns)), "Some key columns in df are missing"
     grouped: List[Tuple[Tuple, pd.DataFrame]] = list(df.groupby(by=pk))
-    return [
-        (_get_id(grouped[i][0]), grouped[i][1])
-        for i in range(len(grouped))
-    ]
+    if encode:
+        return grouped
+    return [(_get_id(grouped[i][0]), grouped[i][1]) for i in range(len(grouped))]
 
 
 def _get_id(elements: Iterable[Any]) -> str:
