@@ -1,11 +1,15 @@
 from math import sqrt
+from typing import List, Union, Any, Dict
+import numpy as np
 from typing import Any, List, Union
 
 import numpy as np
 import pandas as pd
 from numba import jit
-from scipy.ndimage import maximum_filter
+from bisect import bisect_left
+
 from scipy.stats import gaussian_kde
+from scipy.ndimage import maximum_filter, sobel
 
 from eyetracking.utils import _split_dataframe
 
@@ -37,6 +41,8 @@ def threshold_based(
     y: str,
     W: int,
     threshold: float,
+    threshold_dist: float = None,
+    type: str = "kmeans",
     pk: List[str] = None,
     aoi_name: str = "AOI",
     inplace: bool = False,
@@ -54,8 +60,11 @@ def threshold_based(
     :return: DataFrame with AOI column or None if inplace=True
     """
     assert data.shape[0] != 0, "Error: there are no points"
+    assert type in ["kmeans", "basic"], "Error: only 'kmeans' or 'basic' are supported"
+    if type == "basic":
+        assert threshold_dist is not None, "Error: threshold dist must be provided"
 
-    data_splited = _split_dataframe(data, pk, encode=True)
+    data_splited = _split_dataframe(data, pk, encode=False)
     min_entropy_centers = dict()
     min_entropy = np.inf
     result = None
@@ -63,7 +72,9 @@ def threshold_based(
 
     for group, current_data in data_splited:
         density, X, Y = _get_fixation_density(current_data, x, y)
-        mx = maximum_filter(density, size=(W, W))
+        mx = maximum_filter(
+            density, size=(W, W)
+        )  # for all elements finds maximum in (W x W) window
         loc_max_matrix = np.where((mx == density) & (mx >= threshold), density, 0)
         for i in range(loc_max_matrix.shape[0]):
             for j in range(loc_max_matrix.shape[1]):
@@ -88,9 +99,12 @@ def threshold_based(
         ), "Error: Can't find the maximum with such parameters"
 
         aoi_counts = dict()
+        aoi_points = dict()
         if not inplace:
             aoi_list.clear()
 
+        axis_x = X.T[0]
+        axis_y = Y.T[0]
         centers = dict()
         entropy = 0
         for i in range(loc_max_coord.shape[0]):
@@ -98,44 +112,78 @@ def threshold_based(
                 X[loc_max_coord[i][0]][0],
                 Y[loc_max_coord[i][1]][0],
             ]  # initial centers of each AOI
+            aoi_points[f"aoi_{i}"] = [centers[f"aoi_{i}"]]
 
         for index, row in current_data.iterrows():
             min_dist = np.inf
             min_dist_aoi = None
+            x_coord = min(np.searchsorted(axis_x, row[x]), 99)
+            y_coord = min(np.searchsorted(axis_y, row[y]), 99)
             for key in centers.keys():  # start of Kmeans algorithm
-                if (
-                    sqrt(
-                        (row[x] - centers[key][0]) ** 2
-                        + (row[y] - centers[key][1]) ** 2
+                if type == "kmeans":
+                    dist = sqrt(
+                        np.sum(
+                            (np.array([row[x], row[y]]) - np.array(centers[key])) ** 2
+                        )
                     )
-                    < min_dist
-                ):
-                    min_dist = sqrt(
-                        (row[x] - centers[key][0]) ** 2
-                        + (row[y] - centers[key][1]) ** 2
-                    )
-                    min_dist_aoi = key
-            if min_dist_aoi in aoi_counts:  # recalculate centers of AOI
-                aoi_counts[min_dist_aoi] += 1
+                    if dist < min_dist:
+                        min_dist = dist
+                        min_dist_aoi = key
+                if type == "basic":
+                    l = np.inf
+                    for point in aoi_points[key]:
+                        dist = sqrt(
+                            np.sum((np.array([row[x], row[y]]) - np.array(point)) ** 2)
+                        )
+                        l = min(l, dist)
+                        if dist >= threshold_dist:
+                            l = np.inf
+                            break
+                    if min_dist > l:
+                        min_dist = l
+                        min_dist_aoi = key
 
-                centers[min_dist_aoi][0] = (
-                    centers[min_dist_aoi][0]
-                    * (aoi_counts[min_dist_aoi] - 1)
-                    / aoi_counts[min_dist_aoi]
-                    + row[x] / aoi_counts[min_dist_aoi]
-                )
-                centers[min_dist_aoi][1] = (
-                    centers[min_dist_aoi][1]
-                    * (aoi_counts[min_dist_aoi] - 1)
-                    / aoi_counts[min_dist_aoi]
-                    + row[y] / aoi_counts[min_dist_aoi]
-                )
-            else:
-                centers[min_dist_aoi][0] += row[x]
-                centers[min_dist_aoi][1] += row[y]
-                centers[min_dist_aoi][0] /= 2
-                centers[min_dist_aoi][1] /= 2
-                aoi_counts[min_dist_aoi] = 1
+            if (
+                type == "basic"
+                and min_dist_aoi is not None
+                and density[x_coord][y_coord] > threshold
+            ):  # ???
+                aoi_points[min_dist_aoi].append([row[x], row[y]])
+                aoi_counts[min_dist_aoi] = len(aoi_points[min_dist_aoi]) - 1
+
+            if type == "kmeans":
+                if (
+                    min_dist_aoi in aoi_counts and density[x_coord][y_coord] > threshold
+                ):  # recalculate centers of AOI
+                    aoi_counts[min_dist_aoi] += 1
+
+                    centers[min_dist_aoi][0] = (
+                        centers[min_dist_aoi][0]
+                        * (aoi_counts[min_dist_aoi] - 1)
+                        / aoi_counts[min_dist_aoi]
+                        + row[x] / aoi_counts[min_dist_aoi]
+                    )
+                    centers[min_dist_aoi][1] = (
+                        centers[min_dist_aoi][1]
+                        * (aoi_counts[min_dist_aoi] - 1)
+                        / aoi_counts[min_dist_aoi]
+                        + row[y] / aoi_counts[min_dist_aoi]
+                    )
+
+                elif (
+                    min_dist_aoi not in aoi_counts
+                    and density[x_coord][y_coord] > threshold
+                ):
+                    aoi_counts[min_dist_aoi] = 1
+
+                    centers[min_dist_aoi][0] += row[x]
+                    centers[min_dist_aoi][1] += row[y]
+                    centers[min_dist_aoi][0] /= 2
+                    centers[min_dist_aoi][1] /= 2
+                elif density[x_coord][y_coord] <= threshold:
+                    min_dist_aoi = None
+
+            aoi_list.append(min_dist_aoi)
 
             for count in aoi_counts.values():  # calculate the entropy
                 entropy -= (
@@ -146,7 +194,6 @@ def threshold_based(
             if entropy < min_entropy:  # TODO: use it to compare aoi defining methods
                 min_entropy = entropy
                 min_entropy_centers = centers
-            aoi_list.append(min_dist_aoi)
 
         if not inplace:
             to_concat = current_data.copy()
@@ -179,6 +226,119 @@ def gradient_based(
     y: str,
     W: int,
     threshold: float,
+    gradient_eps: float,
     pk: List[str] = None,
     aoi_name: str = "AOI",
-) -> pd.DataFrame: ...
+    inplace: bool = False,
+) -> Union[pd.DataFrame, None]:
+
+    assert data.shape[0] != 0, "Error: there are no points"
+
+    data_splited = _split_dataframe(data, pk, encode=False)
+    min_entropy_centers = dict()
+    min_entropy = np.inf
+    result = None
+    aoi_list = []
+
+    for group, current_data in data_splited:
+        density, X, Y = _get_fixation_density(current_data, x, y)
+
+        mx = maximum_filter(
+            density, size=(W, W)
+        )  # for all elements finds maximum in (W x W) window
+        loc_max_matrix = np.where((mx == density) & (mx >= threshold), density, 0)
+        for i in range(loc_max_matrix.shape[0]):
+            for j in range(loc_max_matrix.shape[1]):
+                if i == 0 and j != 0:
+                    if loc_max_matrix[i][j - 1] == loc_max_matrix[i][j]:
+                        loc_max_matrix[i][j - 1] = 0
+                elif j == 0 and i != 0:
+                    if loc_max_matrix[i - 1][j] == loc_max_matrix[i][j]:
+                        loc_max_matrix[i - 1][j] = 0
+                elif i != 0 and j != 0:
+                    if loc_max_matrix[i - 1][j] == loc_max_matrix[i][j]:
+                        loc_max_matrix[i - 1][j] = 0
+                    if loc_max_matrix[i - 1][j - 1] == loc_max_matrix[i][j]:
+                        loc_max_matrix[i - 1][j - 1] = 0
+                    if loc_max_matrix[i][j - 1] == loc_max_matrix[i][j]:
+                        loc_max_matrix[i][j - 1] = 0
+
+        loc_max_coord = np.transpose(np.nonzero(loc_max_matrix))
+
+        assert (
+            loc_max_coord.shape[0] != 0
+        ), "Error: Can't find the maximum with such parameters"
+
+        aoi_counts = dict()
+        aoi_points = dict()
+        if not inplace:
+            aoi_list.clear()
+
+        axis_x = X.T[0]
+        axis_y = Y.T[0]
+        centers = dict()
+        entropy = 0
+        aoi_matrix = np.empty((density.shape[0], density.shape[1]), dtype=str)
+        for i in range(loc_max_coord.shape[0]):
+            centers[f"aoi_{i}"] = [
+                X[loc_max_coord[i][0]][0],
+                Y[loc_max_coord[i][1]][0],
+            ]  # initial centers of each AOI
+            line = [[loc_max_coord[i][0], loc_max_coord[i][1]]]
+            aoi_matrix[line[0][0]][line[0][1]] = f"aoi_{i}"
+            for point in line:
+                if (
+                    point[0] - 1 >= 0
+                    and point[1] - 1 >= 0
+                    and point[0] + 1 < loc_max_matrix.shape[0]
+                    and point[1] + 1 < loc_max_matrix.shape[0]
+                ):
+                    window = density[
+                        point[0] - 1 : point[0] + 2, point[1] - 1 : point[1] + 2
+                    ]
+                    window_x = sobel(window, axis=0)
+                    window_y = sobel(window, axis=1)
+                    grad_orientation = np.arctan2(window_y, window_x)
+                    for j in range(grad_orientation.shape[0]):
+                        for k in range(grad_orientation.shape[1]):
+                            if (
+                                aoi_matrix[point[0] + j - 1][point[1] + k - 1] == ""
+                                and abs(grad_orientation[j][k]) > gradient_eps
+                                and density[point[0] + j - 1][point[1] + k - 1]
+                                > threshold
+                            ):
+                                aoi_matrix[point[0] + j - 1][
+                                    point[1] + k - 1
+                                ] = f"aoi_{i}"
+                                line.append([point[0] + j - 1, point[1] + k - 1])
+                    line.pop(0)
+        aoi_list = []
+        # print(aoi_matrix)
+        for index, row in current_data.iterrows():
+            x_coord = min(np.searchsorted(axis_x, row[x]), 99)
+            y_coord = min(np.searchsorted(axis_y, row[y]), 99)
+            aoi_list.append(aoi_matrix[x_coord][y_coord])
+
+        if not inplace:
+            to_concat = current_data.copy()
+            to_concat.reset_index(drop=True, inplace=True)
+            if result is None:
+                result = pd.concat(
+                    [to_concat, pd.Series(aoi_list, name=aoi_name)], axis=1
+                )
+                pk_values = group
+                for i in range(len(pk)):
+                    result[pk[i]] = pk_values[i]
+            else:
+                to_concat = pd.concat(
+                    [to_concat, pd.Series(aoi_list, name=aoi_name)], axis=1
+                )
+                pk_values = group
+                for i in range(len(pk)):
+                    to_concat[pk[i]] = pk_values[i]
+                result.reset_index(drop=True, inplace=True)
+                result = pd.concat([result, to_concat], axis=0)
+    if inplace:
+        data[aoi_name] = aoi_list
+        return None
+    return result

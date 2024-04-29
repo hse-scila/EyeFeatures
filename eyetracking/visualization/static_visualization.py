@@ -35,6 +35,8 @@ def scanpath_visualization(
     plt.figure(figsize=fig_size)
     eps = 1e-8
     data = data_.copy()
+    if aoi is not None:
+        data.dropna(subset=[aoi], inplace=True)
     data.reset_index(inplace=True, drop=True)
     X, Y = data[x], data[y]
     dX, dY = data[x].diff(), data[y].diff()
@@ -51,7 +53,6 @@ def scanpath_visualization(
         disp /= disp.max()
         fixation_size = np.array(disp * points_width)
 
-    # result = plt.subplot()
     if img_path is not None:
         plt.imshow(plt.imread(img_path))
 
@@ -61,13 +62,10 @@ def scanpath_visualization(
         ind = 0
         if aoi_c is None:
             aoi_c = plt.cm.get_cmap(lut=len(data[aoi].drop_duplicates().values))
-            # for area in data[aoi].drop_duplicates().values:
-            #    aoi_c.append()
         for area in data[aoi].drop_duplicates().values:
             points = data[data[aoi] == area]
             plt.scatter(x=points[x], y=points[y], color=aoi_c(ind), label=area)
             ind += 1
-            # result.plot(points[x], points[y], marker='o', linestyle='', ms=12, label=area, )
         plt.legend()
 
     if points_enumeration:
