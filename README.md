@@ -342,255 +342,94 @@ dist.fit_transform(data)
 
 
 ```python
-from features.stats import SaccadeLength
+from features.stats import SaccadeFeatures
 
-transf = SaccadeLength(stats=['min', 'kurtosis', 'max'], x=x, y=y,
-                       t=t, duration=dur, pk=['tekst', 'Participant'])
-transf.fit_transform(df_fix)
+sac_feats_stats = {
+    'length': ['min', 'max'],
+    'speed': ['mean', 'kurtosis'],
+    'acceleration': ['mean']
+}
+sac_feats_stats_shift = {'length': ['max'],
+                         'acceleration': ['mean']}
+
+sf = SaccadeFeatures(x=x, y=y, t=t,
+                     pk=['Participant', 'tekst'],
+                     features_stats=sac_feats_stats,
+                     shift_features=sac_feats_stats_shift,
+                     shift_pk=['tekst'])
+
+sf.fit_transform(data).head()
 ```
-
-
 <table border="1" class="dataframe">
-  <thead>
-    <tr style="text-align: right;">
-      <th></th>
-      <th>sac_len_min</th>
-      <th>sac_len_kurtosis</th>
-      <th>sac_len_max</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th>0</th>
-      <td>0.002657</td>
-      <td>3.460042</td>
-      <td>0.433486</td>
-    </tr>
-    <tr>
-      <th>1</th>
-      <td>0.003757</td>
-      <td>2.434788</td>
-      <td>0.321837</td>
-    </tr>
-    <tr>
-      <th>2</th>
-      <td>0.003663</td>
-      <td>4.659126</td>
-      <td>0.365776</td>
-    </tr>
-    <tr>
-      <th>3</th>
-      <td>0.000212</td>
-      <td>5.574937</td>
-      <td>0.342315</td>
-    </tr>
-    <tr>
-      <th>4</th>
-      <td>0.002705</td>
-      <td>7.137036</td>
-      <td>0.375434</td>
-    </tr>
-    <tr>
-      <th>...</th>
-      <td>...</td>
-      <td>...</td>
-      <td>...</td>
-    </tr>
-    <tr>
-      <th>343</th>
-      <td>0.002947</td>
-      <td>4.965125</td>
-      <td>0.294657</td>
-    </tr>
-    <tr>
-      <th>344</th>
-      <td>0.002400</td>
-      <td>3.489713</td>
-      <td>0.285337</td>
-    </tr>
-    <tr>
-      <th>345</th>
-      <td>0.001577</td>
-      <td>3.860485</td>
-      <td>0.302061</td>
-    </tr>
-    <tr>
-      <th>346</th>
-      <td>0.005622</td>
-      <td>3.400580</td>
-      <td>0.264520</td>
-    </tr>
-    <tr>
-      <th>347</th>
-      <td>0.003055</td>
-      <td>3.638501</td>
-      <td>0.271675</td>
-    </tr>
-  </tbody>
+<tr>
+  <th></th>
+  <th>sac_length_min</th>
+  <th>sac_length_max</th>
+  <th>sac_length_max_shift</th>
+  <th>sac_acceleration_mean</th>
+  <th>sac_acceleration_mean_shift</th>
+  <th>sac_speed_mean</th>
+  <th>sac_speed_kurtosis</th>
+</tr>
+<tr>
+  <td>1_1</td>
+  <td>0.002657</td>
+  <td>0.433486</td>
+  <td>-0.008934</td>
+  <td>1.522857</td>
+  <td>0.316149</td>
+  <td>0.488956</td>
+  <td>5.498018</td>
+</tr>
+<tr>
+  <td>1_2</td>
+  <td>0.003757</td>
+  <td>0.321837</td>
+  <td>-0.127119</td>
+  <td>1.507806</td>
+  <td>0.322016</td>
+  <td>0.451773</td>
+  <td>8.356764</td>
+</tr>
+<tr>
+  <td>1_3</td>
+  <td>0.003663</td>
+  <td>0.365776</td>
+  <td>-0.207636</td>
+  <td>1.292694</td>
+  <td>0.083609</td>
+  <td>0.390753</td>
+  <td>7.639049</td>
+</tr>
+<tr>
+  <td>1_4</td>
+  <td>0.000212</td>
+  <td>0.342315</td>
+  <td>-0.362239</td>
+  <td>0.999054</td>
+  <td>-0.038003</td>
+  <td>0.333495</td>
+  <td>9.593384</td>
+</tr>
+<tr>
+  <td>1_5</td>
+  <td>0.002705</td>
+  <td>0.375434</td>
+  <td>-0.094030</td>
+  <td>1.187418</td>
+  <td>0.089377</td>
+  <td>0.360223</td>
+  <td>9.717641</td>
+</tr>
 </table>
-<p>348 rows × 3 columns</p>
+<p>5 rows × 7 columns</p>
 </div>
-
-
-
-
-```python
-transf = SaccadeLength(stats=['min', 'kurtosis', 'max'], x=x, y=y, t=t, duration=dur, 
-                       pk=['tekst', 'Participant'], shift_pk=['tekst'], shift_features=True)
-transf.fit_transform(df_fix)
-```
-
-
-
-<table border="1" class="dataframe">
-  <thead>
-    <tr style="text-align: right;">
-      <th></th>
-      <th>sac_len_min</th>
-      <th>sac_len_kurtosis</th>
-      <th>sac_len_max</th>
-      <th>sac_len_min_shift</th>
-      <th>sac_len_kurtosis_shift</th>
-      <th>sac_len_max_shift</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th>0</th>
-      <td>0.002657</td>
-      <td>3.460042</td>
-      <td>0.433486</td>
-      <td>-2.463992</td>
-      <td>0.993393</td>
-      <td>-2.033163</td>
-    </tr>
-    <tr>
-      <th>1</th>
-      <td>0.003757</td>
-      <td>2.434788</td>
-      <td>0.321837</td>
-      <td>-1.205358</td>
-      <td>1.225673</td>
-      <td>-0.887279</td>
-    </tr>
-    <tr>
-      <th>2</th>
-      <td>0.003663</td>
-      <td>4.659126</td>
-      <td>0.365776</td>
-      <td>-8.031410</td>
-      <td>-3.375947</td>
-      <td>-7.669297</td>
-    </tr>
-    <tr>
-      <th>3</th>
-      <td>0.000212</td>
-      <td>5.574937</td>
-      <td>0.342315</td>
-      <td>-4.004793</td>
-      <td>1.569932</td>
-      <td>-3.662690</td>
-    </tr>
-    <tr>
-      <th>4</th>
-      <td>0.002705</td>
-      <td>7.137036</td>
-      <td>0.375434</td>
-      <td>-5.951135</td>
-      <td>1.183196</td>
-      <td>-5.578406</td>
-    </tr>
-    <tr>
-      <th>...</th>
-      <td>...</td>
-      <td>...</td>
-      <td>...</td>
-      <td>...</td>
-      <td>...</td>
-      <td>...</td>
-    </tr>
-    <tr>
-      <th>343</th>
-      <td>0.002947</td>
-      <td>4.965125</td>
-      <td>0.294657</td>
-      <td>-1.867989</td>
-      <td>3.094189</td>
-      <td>-1.576280</td>
-    </tr>
-    <tr>
-      <th>344</th>
-      <td>0.002400</td>
-      <td>3.489713</td>
-      <td>0.285337</td>
-      <td>-1.685052</td>
-      <td>1.802262</td>
-      <td>-1.402115</td>
-    </tr>
-    <tr>
-      <th>345</th>
-      <td>0.001577</td>
-      <td>3.860485</td>
-      <td>0.302061</td>
-      <td>-1.704004</td>
-      <td>2.154904</td>
-      <td>-1.403521</td>
-    </tr>
-    <tr>
-      <th>346</th>
-      <td>0.005622</td>
-      <td>3.400580</td>
-      <td>0.264520</td>
-      <td>-5.504738</td>
-      <td>-2.109780</td>
-      <td>-5.245840</td>
-    </tr>
-    <tr>
-      <th>347</th>
-      <td>0.003055</td>
-      <td>3.638501</td>
-      <td>0.271675</td>
-      <td>-2.478121</td>
-      <td>1.157324</td>
-      <td>-2.209502</td>
-    </tr>
-  </tbody>
-</table>
-<p>348 rows × 6 columns</p>
-</div>
-
-
-
-
-```python
-print(transf.shift_mem)
-```
-
-    tekst ['min', 'kurtosis', 'max']
-    1.0 [2.4666487854748462, 2.4666487854748462, 2.4666487854748462]
-    94.0 [1.2091154206764536, 1.2091154206764536, 1.2091154206764536]
-    57.0 [8.035072768690364, 8.035072768690364, 8.035072768690364]
-    17.0 [4.0050054062399925, 4.0050054062399925, 4.0050054062399925]
-    66.0 [5.953840518950972, 5.953840518950972, 5.953840518950972]
-    21.0 [1.7917335944607586, 1.7917335944607586, 1.7917335944607586]
-    14.0 [2.2983542969384283, 2.2983542969384283, 2.2983542969384283]
-    60.0 [2.5619581935203017, 2.5619581935203017, 2.5619581935203017]
-    5.0 [1.7516830672813763, 1.7516830672813763, 1.7516830672813763]
-    76.0 [1.885048066033195, 1.885048066033195, 1.885048066033195]
-    ................................................................
-
-
-
-
 
 ### 3.2 Extractor usage
 
 
 ```python
-from features.stats import FixationDuration, FixationVAD
-from features.stats import SaccadeLength, SaccadeAcceleration, SaccadeVelocity
-from features.stats import RegressionCount, RegressionAcceleration, RegressionVelocity, RegressionLength
-from features.stats import MicroSaccadeLength, MicroSaccadeVelocity, MicroSaccadeAcceleration
+from features.stats import SaccadeFeatures, FixationFeatures, RegressionFeatures, MicroSaccades
 from features.measures import HurstExponent
 from features.extractor import Extractor
 
@@ -600,19 +439,31 @@ from features.scanpath_dist import EucDist, HauDist, DTWDist, MannanDist, DFDist
 msv = 4.7  # MS_VELOCITY_THRESHOLD
 msa = 1.2  # MS_AMPLITUDE_THRESHOLD
 
+sac_feats_stats = {
+    'length': ['min', 'max'],
+    'speed': ['mean', 'kurtosis'],
+    'acceleration': ['mean']
+}
+sac_feats_stats_shift = {'length': ['max'],
+                         'acceleration': ['mean']}
+
+fix_feats_stats = {'duration': ['sum'], 'vad': ['mean']}
+
 features = [
-    RegressionCount(),
-    RegressionLength(stats=['kurtosis', 'skew']),
-    RegressionVelocity(stats=['kurtosis', 'skew']),
-    RegressionAcceleration(stats=['kurtosis', 'skew']),
-    FixationDuration(stats=['median', 'skew', 'var']),
-    FixationVAD(stats=['mean', 'median']),
-    SaccadeLength(stats=['var', 'std']),
-    SaccadeAcceleration(stats=['var', 'mean']),
-    SaccadeVelocity(stats=['min', 'kurtosis', 'max']),
-    MicroSaccadeVelocity(stats=['min'], min_dispersion=msa, max_velocity=msv),
-    MicroSaccadeAcceleration(stats=['var'], min_dispersion=msa, max_velocity=msv),
-    MicroSaccadeLength(stats=['max'], min_dispersion=msa, max_velocity=msv),
+    SaccadeFeatures(features_stats=sac_feats_stats,
+                    shift_features=sac_feats_stats_shift,
+                    shift_pk=['tekst']),
+    FixationFeatures(features_stats=fix_feats_stats,
+                     shift_pk=['Participant']),
+    RegressionFeatures(features_stats=sac_feats_stats,
+                       shift_features=sac_feats_stats_shift,
+                       shift_pk=['tekst'],
+                       rule=[1, 3]),
+    MicroSaccades(features_stats=sac_feats_stats,
+                  shift_features=sac_feats_stats_shift,
+                  shift_pk=['Participant'],
+                  min_dispersion=msa,
+                  max_speed=msv),
     HurstExponent(var='duration', n_iters=10, fill_strategy='last'),
     ScanMatchDist(sub_mat=np.random.randint(0, 11, size=(20, 20)))
 ]
@@ -621,638 +472,300 @@ extractor = Extractor(features=features, x=x, y=y, t=t, duration=dur,
                       dispersion=dis, pk=['tekst', 'Participant'], 
                       path_pk=['tekst'], return_df=True)
 
-extractor.fit_transform(df_fix)
+extractor.fit_transform(df_fix).head()
 ```
 
-
-
-
-<table border="1" class="dataframe">
-  <thead>
-    <tr style="text-align: right;">
-      <th></th>
-      <th>reg_count</th>
-      <th>reg_len_kurtosis</th>
-      <th>reg_len_skew</th>
-      <th>reg_vel_kurtosis</th>
-      <th>reg_vel_skew</th>
-      <th>reg_acc_kurtosis</th>
-      <th>reg_acc_skew</th>
-      <th>fix_dur_median</th>
-      <th>fix_dur_skew</th>
-      <th>fix_dur_var</th>
-      <th>...</th>
-      <th>sac_acc_var</th>
-      <th>sac_acc_mean</th>
-      <th>sac_vel_min</th>
-      <th>sac_vel_kurtosis</th>
-      <th>sac_vel_max</th>
-      <th>microsac_vel_min</th>
-      <th>microsac_acc_var</th>
-      <th>microsac_len_max</th>
-      <th>he_duration</th>
-      <th>scan_match_dist</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th>0</th>
-      <td>124</td>
-      <td>1.700848</td>
-      <td>1.586755</td>
-      <td>3.901072</td>
-      <td>1.805168</td>
-      <td>5.061057</td>
-      <td>1.905850</td>
-      <td>165.7635</td>
-      <td>0.603230</td>
-      <td>4009.509338</td>
-      <td>...</td>
-      <td>7995.840679</td>
-      <td>100.298862</td>
-      <td>0.093334</td>
-      <td>5.209393</td>
-      <td>13.717103</td>
-      <td>0.121675</td>
-      <td>7083.618247</td>
-      <td>0.280782</td>
-      <td>0.012489</td>
-      <td>144.0</td>
-    </tr>
-    <tr>
-      <th>1</th>
-      <td>87</td>
-      <td>0.272334</td>
-      <td>1.272205</td>
-      <td>-0.121873</td>
-      <td>0.747655</td>
-      <td>4.609038</td>
-      <td>2.000626</td>
-      <td>170.1305</td>
-      <td>1.279994</td>
-      <td>7365.894447</td>
-      <td>...</td>
-      <td>7762.127058</td>
-      <td>82.763301</td>
-      <td>0.023706</td>
-      <td>1.062297</td>
-      <td>8.626671</td>
-      <td>0.023706</td>
-      <td>4777.387755</td>
-      <td>0.264537</td>
-      <td>0.012318</td>
-      <td>89.0</td>
-    </tr>
-    <tr>
-      <th>2</th>
-      <td>79</td>
-      <td>1.859301</td>
-      <td>1.684907</td>
-      <td>2.001064</td>
-      <td>1.373967</td>
-      <td>1.652747</td>
-      <td>1.481707</td>
-      <td>179.7400</td>
-      <td>2.038973</td>
-      <td>14658.009058</td>
-      <td>...</td>
-      <td>5207.052868</td>
-      <td>86.198453</td>
-      <td>0.070638</td>
-      <td>3.861622</td>
-      <td>10.717298</td>
-      <td>0.102426</td>
-      <td>5092.358819</td>
-      <td>0.130794</td>
-      <td>0.017036</td>
-      <td>76.0</td>
-    </tr>
-    <tr>
-      <th>3</th>
-      <td>74</td>
-      <td>4.173494</td>
-      <td>2.137320</td>
-      <td>0.655806</td>
-      <td>0.504103</td>
-      <td>0.322024</td>
-      <td>1.097767</td>
-      <td>180.8325</td>
-      <td>0.846694</td>
-      <td>6486.861172</td>
-      <td>...</td>
-      <td>7674.049803</td>
-      <td>96.470877</td>
-      <td>0.003426</td>
-      <td>0.792346</td>
-      <td>7.038810</td>
-      <td>0.140142</td>
-      <td>9785.286986</td>
-      <td>0.272092</td>
-      <td>0.019069</td>
-      <td>93.0</td>
-    </tr>
-    <tr>
-      <th>4</th>
-      <td>102</td>
-      <td>4.395098</td>
-      <td>2.214670</td>
-      <td>2.363687</td>
-      <td>1.314530</td>
-      <td>15.968599</td>
-      <td>3.302037</td>
-      <td>183.4635</td>
-      <td>2.503064</td>
-      <td>13125.694763</td>
-      <td>...</td>
-      <td>7890.583376</td>
-      <td>83.211408</td>
-      <td>0.018103</td>
-      <td>2.786342</td>
-      <td>8.924919</td>
-      <td>0.018103</td>
-      <td>5353.574600</td>
-      <td>0.256157</td>
-      <td>0.010373</td>
-      <td>64.0</td>
-    </tr>
-    <tr>
-      <th>...</th>
-      <td>...</td>
-      <td>...</td>
-      <td>...</td>
-      <td>...</td>
-      <td>...</td>
-      <td>...</td>
-      <td>...</td>
-      <td>...</td>
-      <td>...</td>
-      <td>...</td>
-      <td>...</td>
-      <td>...</td>
-      <td>...</td>
-      <td>...</td>
-      <td>...</td>
-      <td>...</td>
-      <td>...</td>
-      <td>...</td>
-      <td>...</td>
-      <td>...</td>
-      <td>...</td>
-    </tr>
-    <tr>
-      <th>343</th>
-      <td>63</td>
-      <td>4.000265</td>
-      <td>2.160049</td>
-      <td>1.000036</td>
-      <td>0.728059</td>
-      <td>4.628856</td>
-      <td>1.986858</td>
-      <td>190.5965</td>
-      <td>4.037164</td>
-      <td>30004.303327</td>
-      <td>...</td>
-      <td>4824.296129</td>
-      <td>87.232770</td>
-      <td>0.114508</td>
-      <td>1.235245</td>
-      <td>6.348794</td>
-      <td>0.114508</td>
-      <td>3481.419925</td>
-      <td>0.187302</td>
-      <td>0.025275</td>
-      <td>30.0</td>
-    </tr>
-    <tr>
-      <th>344</th>
-      <td>47</td>
-      <td>1.890739</td>
-      <td>1.579243</td>
-      <td>-0.354225</td>
-      <td>0.763913</td>
-      <td>7.966387</td>
-      <td>2.816351</td>
-      <td>168.3390</td>
-      <td>6.505634</td>
-      <td>24052.831747</td>
-      <td>...</td>
-      <td>14317.002190</td>
-      <td>102.355705</td>
-      <td>0.285069</td>
-      <td>0.077578</td>
-      <td>6.413577</td>
-      <td>0.285069</td>
-      <td>2838.026468</td>
-      <td>0.157819</td>
-      <td>0.028088</td>
-      <td>100.0</td>
-    </tr>
-    <tr>
-      <th>345</th>
-      <td>47</td>
-      <td>2.475845</td>
-      <td>1.872959</td>
-      <td>0.316662</td>
-      <td>0.774567</td>
-      <td>4.903744</td>
-      <td>2.188557</td>
-      <td>192.8350</td>
-      <td>3.377704</td>
-      <td>22395.407932</td>
-      <td>...</td>
-      <td>13725.723304</td>
-      <td>114.838759</td>
-      <td>0.146598</td>
-      <td>0.410978</td>
-      <td>6.594502</td>
-      <td>0.146598</td>
-      <td>5437.648702</td>
-      <td>0.140706</td>
-      <td>0.029379</td>
-      <td>57.0</td>
-    </tr>
-    <tr>
-      <th>346</th>
-      <td>30</td>
-      <td>1.104913</td>
-      <td>1.338630</td>
-      <td>-0.519621</td>
-      <td>0.632269</td>
-      <td>6.927029</td>
-      <td>2.705323</td>
-      <td>192.6005</td>
-      <td>2.101122</td>
-      <td>7848.454812</td>
-      <td>...</td>
-      <td>7723.681592</td>
-      <td>88.639889</td>
-      <td>0.381639</td>
-      <td>0.652740</td>
-      <td>6.086932</td>
-      <td>0.381639</td>
-      <td>4246.297739</td>
-      <td>0.126212</td>
-      <td>0.050134</td>
-      <td>54.0</td>
-    </tr>
-    <tr>
-      <th>347</th>
-      <td>27</td>
-      <td>0.406466</td>
-      <td>1.403387</td>
-      <td>0.092395</td>
-      <td>0.893799</td>
-      <td>10.060059</td>
-      <td>2.784046</td>
-      <td>186.0990</td>
-      <td>1.389099</td>
-      <td>7694.254556</td>
-      <td>...</td>
-      <td>4547.052072</td>
-      <td>89.285024</td>
-      <td>0.201375</td>
-      <td>1.452558</td>
-      <td>6.743899</td>
-      <td>0.201375</td>
-      <td>3580.897585</td>
-      <td>0.147031</td>
-      <td>0.049745</td>
-      <td>32.0</td>
-    </tr>
-  </tbody>
+<!DOCTYPE html>
+<html>
+  <head>
+    <title></title>
+    <meta charset="UTF-8">
+  </head>
+<body>
+<table border="1" style="border-collapse:collapse">
+<tr>
+  <th></th>
+  <th>sac_length_min</th>
+  <th>sac_length_max</th>
+  <th>sac_length_max_shift</th>
+  <th>sac_acceleration_mean</th>
+  <th>sac_acceleration_mean_shift</th>
+  <th>sac_speed_mean</th>
+  <th>sac_speed_kurtosis</th>
+  <th>fix_duration_sum</th>
+  <th>fix_vad_mean</th>
+  <th>reg_length_min</th>
+  <th>reg_length_max</th>
+  <th>reg_length_max_shift</th>
+  <th>reg_acceleration_mean</th>
+  <th>reg_acceleration_mean_shift</th>
+  <th>reg_speed_mean</th>
+  <th>reg_speed_kurtosis</th>
+  <th>microsac_length_min</th>
+  <th>microsac_length_max</th>
+  <th>microsac_length_max_shift</th>
+  <th>microsac_acceleration_mean</th>
+  <th>microsac_acceleration_mean_shift</th>
+  <th>microsac_speed_mean</th>
+  <th>microsac_speed_kurtosis</th>
+  <th>he_duration</th>
+  <th>scan_match_dist</th>
+</tr>
+<tr>
+  <td>1_1</td>
+  <td>0.002657</td>
+  <td>0.433486</td>
+  <td>-0.008934</td>
+  <td>100.310810</td>
+  <td>7.586064</td>
+  <td>3.354343</td>
+  <td>5.209396</td>
+  <td>29010.3960</td>
+  <td>1.110338</td>
+  <td>0.002657</td>
+  <td>0.420153</td>
+  <td>0.000000</td>
+  <td>95.801067</td>
+  <td>6.659842</td>
+  <td>3.091449</td>
+  <td>3.139267</td>
+  <td>0.002657</td>
+  <td>0.433486</td>
+  <td>-0.063943</td>
+  <td>100.310810</td>
+  <td>7.220269</td>
+  <td>3.354343</td>
+  <td>5.209396</td>
+  <td>0.012489</td>
+  <td>144.0</td>
+</tr>
+<tr>
+  <td>1_2</td>
+  <td>0.002650</td>
+  <td>0.442420</td>
+  <td>0.000000</td>
+  <td>85.101139</td>
+  <td>-7.623606</td>
+  <td>2.640718</td>
+  <td>2.718729</td>
+  <td>36462.2155</td>
+  <td>1.214629</td>
+  <td>0.005549</td>
+  <td>0.214754</td>
+  <td>-0.205400</td>
+  <td>66.429542</td>
+  <td>-22.711683</td>
+  <td>2.177004</td>
+  <td>-0.012081</td>
+  <td>0.002650</td>
+  <td>0.442420</td>
+  <td>-0.055584</td>
+  <td>85.101139</td>
+  <td>-19.585891</td>
+  <td>2.640718</td>
+  <td>2.718729</td>
+  <td>0.012318</td>
+  <td>89.0</td>
+</tr>
+<tr>
+  <td>2_1</td>
+  <td>0.003757</td>
+  <td>0.321837</td>
+  <td>-0.127119</td>
+  <td>82.774871</td>
+  <td>0.180885</td>
+  <td>2.790059</td>
+  <td>1.062294</td>
+  <td>23942.4375</td>
+  <td>1.171651</td>
+  <td>0.004125</td>
+  <td>0.321837</td>
+  <td>0.000000</td>
+  <td>74.298355</td>
+  <td>-0.826921</td>
+  <td>2.869121</td>
+  <td>1.625288</td>
+  <td>0.003757</td>
+  <td>0.321837</td>
+  <td>-0.175592</td>
+  <td>82.774871</td>
+  <td>-10.315669</td>
+  <td>2.790059</td>
+  <td>1.062294</td>
+  <td>0.017036</td>
+  <td>76.0</td>
+</tr>
+<tr>
+  <td>2_2</td>
+  <td>0.003741</td>
+  <td>0.448955</td>
+  <td>0.000000</td>
+  <td>83.321212</td>
+  <td>0.727227</td>
+  <td>2.585629</td>
+  <td>4.223900</td>
+  <td>18857.0335</td>
+  <td>1.171989</td>
+  <td>0.004011</td>
+  <td>0.019028</td>
+  <td>-0.302809</td>
+  <td>91.250241</td>
+  <td>16.124965</td>
+  <td>1.478032</td>
+  <td>1.285976</td>
+  <td>0.003741</td>
+  <td>0.448955</td>
+  <td>-0.049048</td>
+  <td>83.321212</td>
+  <td>-21.365817</td>
+  <td>2.585629</td>
+  <td>4.223900</td>
+  <td>0.019069</td>
+  <td>93.0</td>
+</tr>
+<tr>
+  <td>3_1</td>
+  <td>0.003663</td>
+  <td>0.365776</td>
+  <td>-0.207636</td>
+  <td>86.208709</td>
+  <td>2.364303</td>
+  <td>2.859377</td>
+  <td>3.861619</td>
+  <td>24894.4815</td>
+  <td>1.167868</td>
+  <td>0.003804</td>
+  <td>0.314083</td>
+  <td>0.000000</td>
+  <td>74.972402</td>
+  <td>-1.945541</td>
+  <td>2.732318</td>
+  <td>1.471709</td>
+  <td>0.003663</td>
+  <td>0.365776</td>
+  <td>-0.131653</td>
+  <td>86.208709</td>
+  <td>-6.881831</td>
+  <td>2.859377</td>
+  <td>3.861619</td>
+  <td>0.010373</td>
+  <td>64.0</td>
+</tr>
 </table>
-<p>348 rows × 26 columns</p>
-</div>
+<p>5 rows × 26 columns</p>
+</body>
+</html>
 
 ### 3.3 Extracting features for each area of interest
-Note: if the text does not have an area of interest, then returns NaN or 0
+Note: if the text does not have an area of interest, then corresponding value is `NaN`.
+
+Same as previous example, just add `aoi` parameter to `Extractor` or concrete feature instance.
 
 ```python
-data = df_fix[df_fix.Participant < 6]
+extractor = Extractor(features=features, x=x, y=y, t=t, duration=dur, dispersion=dis,
+                      aoi='AOI',
+                      pk=['Participant', 'tekst'],
+                      return_df=True)
 
-aoi = 'AOI'
-
-features = [
-    RegressionCount(),
-    RegressionLength(stats=['kurtosis', 'skew']),
-    RegressionVelocity(stats=['kurtosis', 'skew']),
-    RegressionAcceleration(stats=['kurtosis', 'skew']),
-    FixationDuration(stats=['median', 'skew', 'var']),
-    FixationVAD(stats=['mean', 'median']),
-    SaccadeAcceleration(stats=['var', 'mean']),
-    SaccadeVelocity(stats=['min', 'kurtosis', 'max']),
-    MicroSaccadeVelocity(stats=['min'], min_dispersion=msa, max_velocity=msv),
-    MicroSaccadeAcceleration(stats=['var'], min_dispersion=msa, max_velocity=msv),
-    MicroSaccadeLength(stats=['max'], min_dispersion=msa, max_velocity=msv)
-]
-
-extractor = Extractor(features=features, x=x, y=y, t=t, duration=dur, 
-                      dispersion=dis, aoi=aoi, pk=['tekst', 'Participant'], 
-                      path_pk=['tekst'], return_df=True)
-
-extractor.fit_transform(data)
+extractor.fit_transform(data).head()
 ```
 
-
-
-
-<div>
-<table border="1" class="dataframe">
-  <thead>
-    <tr style="text-align: right;">
-      <th></th>
-      <th>reg_count_C</th>
-      <th>reg_count_N</th>
-      <th>reg_count_D</th>
-      <th>reg_len_C_kurtosis</th>
-      <th>reg_len_C_skew</th>
-      <th>reg_len_N_kurtosis</th>
-      <th>reg_len_N_skew</th>
-      <th>reg_len_D_kurtosis</th>
-      <th>reg_len_D_skew</th>
-      <th>reg_vel_C_kurtosis</th>
-      <th>...</th>
-      <th>sac_vel_D_max</th>
-      <th>microsac_vel_C_min</th>
-      <th>microsac_vel_N_min</th>
-      <th>microsac_vel_D_min</th>
-      <th>microsac_acc_C_var</th>
-      <th>microsac_acc_N_var</th>
-      <th>microsac_acc_D_var</th>
-      <th>microsac_len_C_max</th>
-      <th>microsac_len_N_max</th>
-      <th>microsac_len_D_max</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th>0</th>
-      <td>19</td>
-      <td>68</td>
-      <td>16</td>
-      <td>12.788076</td>
-      <td>3.329581</td>
-      <td>2.548856</td>
-      <td>1.866437</td>
-      <td>1.041261</td>
-      <td>1.454342</td>
-      <td>6.772461</td>
-      <td>...</td>
-      <td>6.171492</td>
-      <td>6.084970e-08</td>
-      <td>3.553181e-08</td>
-      <td>4.684615e-08</td>
-      <td>1.478540e-26</td>
-      <td>5.793237e-26</td>
-      <td>1.080681e-25</td>
-      <td>0.097432</td>
-      <td>0.275376</td>
-      <td>0.227837</td>
-    </tr>
-    <tr>
-      <th>1</th>
-      <td>0</td>
-      <td>68</td>
-      <td>13</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>0.897036</td>
-      <td>1.519910</td>
-      <td>0.502552</td>
-      <td>1.193687</td>
-      <td>NaN</td>
-      <td>...</td>
-      <td>4.117186</td>
-      <td>NaN</td>
-      <td>2.357330e-08</td>
-      <td>4.849223e-08</td>
-      <td>NaN</td>
-      <td>9.730659e-26</td>
-      <td>7.001510e-26</td>
-      <td>NaN</td>
-      <td>0.305563</td>
-      <td>0.188145</td>
-    </tr>
-    <tr>
-      <th>2</th>
-      <td>14</td>
-      <td>46</td>
-      <td>10</td>
-      <td>-0.883222</td>
-      <td>0.631706</td>
-      <td>1.815816</td>
-      <td>1.757034</td>
-      <td>-0.513529</td>
-      <td>0.775770</td>
-      <td>-1.272015</td>
-      <td>...</td>
-      <td>5.205729</td>
-      <td>3.667702e-08</td>
-      <td>5.311665e-08</td>
-      <td>4.470317e-08</td>
-      <td>1.561736e-26</td>
-      <td>7.388534e-26</td>
-      <td>4.923254e-26</td>
-      <td>0.076845</td>
-      <td>0.305281</td>
-      <td>0.118027</td>
-    </tr>
-    <tr>
-      <th>3</th>
-      <td>16</td>
-      <td>48</td>
-      <td>6</td>
-      <td>0.870113</td>
-      <td>0.966015</td>
-      <td>2.090256</td>
-      <td>1.767160</td>
-      <td>-0.297083</td>
-      <td>0.924807</td>
-      <td>0.807392</td>
-      <td>...</td>
-      <td>4.406430</td>
-      <td>4.100519e-08</td>
-      <td>7.697698e-09</td>
-      <td>5.457561e-08</td>
-      <td>3.236188e-26</td>
-      <td>1.147811e-25</td>
-      <td>8.847557e-27</td>
-      <td>0.128779</td>
-      <td>0.272092</td>
-      <td>0.068276</td>
-    </tr>
-    <tr>
-      <th>4</th>
-      <td>15</td>
-      <td>69</td>
-      <td>10</td>
-      <td>11.717556</td>
-      <td>3.290068</td>
-      <td>3.634703</td>
-      <td>2.130271</td>
-      <td>0.463962</td>
-      <td>1.011524</td>
-      <td>4.087055</td>
-      <td>...</td>
-      <td>3.160092</td>
-      <td>4.958012e-08</td>
-      <td>1.814721e-08</td>
-      <td>2.329460e-08</td>
-      <td>1.027750e-26</td>
-      <td>7.263149e-26</td>
-      <td>1.121608e-26</td>
-      <td>0.084751</td>
-      <td>0.289539</td>
-      <td>0.075528</td>
-    </tr>
-    <tr>
-      <th>...</th>
-      <td>...</td>
-      <td>...</td>
-      <td>...</td>
-      <td>...</td>
-      <td>...</td>
-      <td>...</td>
-      <td>...</td>
-      <td>...</td>
-      <td>...</td>
-      <td>...</td>
-      <td>...</td>
-      <td>...</td>
-      <td>...</td>
-      <td>...</td>
-      <td>...</td>
-      <td>...</td>
-      <td>...</td>
-      <td>...</td>
-      <td>...</td>
-      <td>...</td>
-      <td>...</td>
-    </tr>
-    <tr>
-      <th>172</th>
-      <td>5</td>
-      <td>178</td>
-      <td>0</td>
-      <td>3.058515</td>
-      <td>1.659112</td>
-      <td>9.021472</td>
-      <td>2.715512</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>4.693783e-08</td>
-      <td>2.125862e-09</td>
-      <td>NaN</td>
-      <td>4.463658e-25</td>
-      <td>8.399807e-26</td>
-      <td>NaN</td>
-      <td>0.506625</td>
-      <td>0.514192</td>
-      <td>NaN</td>
-    </tr>
-    <tr>
-      <th>173</th>
-      <td>9</td>
-      <td>46</td>
-      <td>5</td>
-      <td>2.870767</td>
-      <td>1.676200</td>
-      <td>3.133046</td>
-      <td>2.066139</td>
-      <td>-2.955102</td>
-      <td>0.595204</td>
-      <td>-0.506068</td>
-      <td>...</td>
-      <td>2.404743</td>
-      <td>4.087037e-08</td>
-      <td>1.225614e-08</td>
-      <td>6.884442e-09</td>
-      <td>3.401214e-27</td>
-      <td>3.526253e-26</td>
-      <td>3.001333e-28</td>
-      <td>0.070097</td>
-      <td>0.234642</td>
-      <td>0.009077</td>
-    </tr>
-    <tr>
-      <th>174</th>
-      <td>0</td>
-      <td>42</td>
-      <td>1</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>4.372997</td>
-      <td>2.232608</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>...</td>
-      <td>2.103756</td>
-      <td>NaN</td>
-      <td>3.346769e-08</td>
-      <td>1.094834e-07</td>
-      <td>NaN</td>
-      <td>3.964301e-26</td>
-      <td>1.229240e-25</td>
-      <td>NaN</td>
-      <td>0.289477</td>
-      <td>0.172791</td>
-    </tr>
-    <tr>
-      <th>175</th>
-      <td>0</td>
-      <td>78</td>
-      <td>0</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>3.195615</td>
-      <td>2.003479</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>...</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>9.406228e-09</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>3.673247e-26</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>0.218855</td>
-      <td>NaN</td>
-    </tr>
-    <tr>
-      <th>176</th>
-      <td>0</td>
-      <td>87</td>
-      <td>9</td>
-      <td>NaN</td>
-      <td>NaN</td>
-      <td>4.752952</td>
-      <td>2.292292</td>
-      <td>7.146949</td>
-      <td>2.581867</td>
-      <td>NaN</td>
-      <td>...</td>
-      <td>3.116095</td>
-      <td>NaN</td>
-      <td>1.634625e-08</td>
-      <td>2.853358e-08</td>
-      <td>NaN</td>
-      <td>3.430417e-26</td>
-      <td>6.683939e-29</td>
-      <td>NaN</td>
-      <td>0.219013</td>
-      <td>0.016479</td>
-    </tr>
-  </tbody>
+<!DOCTYPE html>
+<html>
+  <head>
+    <title></title>
+    <meta charset="UTF-8">
+  </head>
+<body>
+<table border="1" style="border-collapse:collapse">
+<tr>
+  <th></th>
+  <th>sac_length_aoi_2_min</th>
+  <th>sac_length_aoi_2_max</th>
+  <th>sac_acceleration_aoi_2_mean</th>
+  <th>sac_speed_aoi_2_mean</th>
+  <th>sac_speed_aoi_2_kurtosis</th>
+  <th>...</th>
+  <th>microsac_length_aoi_1_min</th>
+  <th>microsac_length_aoi_1_max</th>
+  <th>microsac_acceleration_aoi_1_mean</th>
+  <th>microsac_speed_aoi_1_mean</th>
+  <th>microsac_speed_aoi_1_kurtosis</th>
+</tr>
+<tr>
+  <td>1_1</td>
+  <td>0.011581</td>
+  <td>0.420153</td>
+  <td>88.408114</td>
+  <td>3.316192</td>
+  <td>2.582125</td>
+  <td>...</td>
+  <td>0.016593</td>
+  <td>0.272665</td>
+  <td>68.252408</td>
+  <td>3.213086</td>
+  <td>-0.278472</td>
+</tr>
+<tr>
+  <td>1_2</td>
+  <td>0.006408</td>
+  <td>0.321837</td>
+  <td>85.793710</td>
+  <td>3.007439</td>
+  <td>-0.464949</td>
+  <td>...</td>
+  <td>0.014979</td>
+  <td>0.261686</td>
+  <td>54.794634</td>
+  <td>2.103520</td>
+  <td>-0.316122</td>
+</tr>
+<tr>
+  <td>1_3</td>
+  <td>0.005065</td>
+  <td>0.365776</td>
+  <td>94.441713</td>
+  <td>2.959531</td>
+  <td>6.020307</td>
+  <td>...</td>
+  <td>0.003663</td>
+  <td>0.254050</td>
+  <td>76.291863</td>
+  <td>2.827255</td>
+  <td>0.763153</td>
+</tr>
+<tr>
+  <td>1_4</td>
+  <td>0.001980</td>
+  <td>0.277172</td>
+  <td>121.601653</td>
+  <td>3.005369</td>
+  <td>0.249804</td>
+  <td>...</td>
+  <td>0.041129</td>
+  <td>0.272092</td>
+  <td>53.823491</td>
+  <td>2.801384</td>
+  <td>2.951833</td>
+</tr>
+<tr>
+  <td>1_5</td>
+  <td>0.002705</td>
+  <td>0.300800</td>
+  <td>69.126721</td>
+  <td>2.426858</td>
+  <td>1.677840</td>
+  <td>...</td>
+  <td>0.020778</td>
+  <td>0.104575</td>
+  <td>68.725060</td>
+  <td>2.409873</td>
+  <td>0.137052</td>
+</tr>
 </table>
-<p>177 rows × 60 columns</p>
-</div>
+</body>
+</html>
+
 
 ### 3.4 Integrating into `sklearn` pipeline
 

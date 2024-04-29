@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, List, Tuple, Union, Iterable
+from typing import Any, Iterable, List, Tuple, Union
 
 import pandas as pd
 

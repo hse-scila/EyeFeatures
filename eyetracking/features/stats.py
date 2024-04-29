@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import Dict, List, Tuple, Union, Iterable
+from typing import Dict, Iterable, List, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -7,7 +7,7 @@ from numba import jit
 from numpy.typing import NDArray
 
 from eyetracking.features.extractor import BaseTransformer
-from eyetracking.utils import _get_id, _split_dataframe, _calc_dt
+from eyetracking.utils import _calc_dt, _get_id, _split_dataframe
 
 
 class StatsTransformer(BaseTransformer):
@@ -60,9 +60,7 @@ class StatsTransformer(BaseTransformer):
     def _err_no_col(f, c):
         return f"Requested feature {f} requires {c} for calculation."
 
-    def _check_feature_names(
-        self, X, *, reset
-    ):
+    def _check_feature_names(self, X, *, reset):
         # Since feature names must always be provided with statistics to
         # calculate and are restricted to certain set of available features,
         # this method is irrelevant
@@ -119,7 +117,9 @@ class StatsTransformer(BaseTransformer):
 
     def _check_aoi(self, aoi: Iterable[str]):
         for area in aoi:
-            assert area in self.aoi_nms, f"Unknown AOI {area} was not seen during `fit`."
+            assert (
+                area in self.aoi_nms
+            ), f"Unknown AOI {area} was not seen during `fit`."
 
     @property
     @abstractmethod
@@ -165,12 +165,14 @@ class StatsTransformer(BaseTransformer):
             else self.shift_fill[feat_nm][stat]
         )
 
-    def _calc_with_aoi(self, feat_nms: List[str], X: pd.DataFrame, aoi_nm: str) -> List[Tuple[str, pd.Series]]:
+    def _calc_with_aoi(
+        self, feat_nms: List[str], X: pd.DataFrame, aoi_nm: str
+    ) -> List[Tuple[str, pd.Series]]:
         """
         Helper function to calculate features based on `aoi_nm`.
         """
         if aoi_nm == "":  # internal lib placeholder
-            transition_mask = np.ones(len(X))
+            transition_mask = np.ones(len(X)).astype(bool)
             feats: List[Tuple[str, pd.Series]] = self._calc_feats(
                 X, feat_nms, transition_mask
             )
@@ -178,7 +180,7 @@ class StatsTransformer(BaseTransformer):
         else:
             X_aoi = X[X[self.aoi] == aoi_nm]
             all_aoi = X[self.aoi]
-            all_transition_mask = (all_aoi == all_aoi.shift(1))
+            all_transition_mask = all_aoi == all_aoi.shift(1)
             transition_mask = all_transition_mask[all_aoi == aoi_nm].values
 
             feats: List[Tuple[str, pd.Series]] = self._calc_feats(
@@ -221,7 +223,9 @@ class StatsTransformer(BaseTransformer):
             self.shift_mem[group_id] = dict()
 
             for aoi_nm in self.aoi_nms:
-                group_feats: List[Tuple[str, pd.Series]] = self._calc_with_aoi(feat_nms, group_X, aoi_nm)
+                group_feats: List[Tuple[str, pd.Series]] = self._calc_with_aoi(
+                    feat_nms, group_X, aoi_nm
+                )
                 aoi_str = "" if aoi_nm == "" else f"_{aoi_nm}"
 
                 for feat_nm, feat_arr in group_feats:  # memoize feats for each group_id
@@ -229,7 +233,9 @@ class StatsTransformer(BaseTransformer):
                     feat_stats: List[str] = self.features_stats[feat_nm]
 
                     for stat in feat_stats:  # memoize stats for each feat
-                        self.shift_mem[group_id][feat_nm + aoi_str][stat] = feat_arr.apply(stat)
+                        self.shift_mem[group_id][feat_nm + aoi_str][stat] = (
+                            feat_arr.apply(stat)
+                        )
 
         # calc mean for each stat (by groups) to use for unknown groups on transform
         self.shift_fill = dict()
@@ -246,7 +252,9 @@ class StatsTransformer(BaseTransformer):
                     stat_sum = 0
                     for group_id in group_ids:
                         stat_sum += self.shift_mem[group_id][feat_nm + aoi_str][stat]
-                    self.shift_fill[feat_nm + aoi_str][stat] = stat_sum / max(1, len(group_ids))
+                    self.shift_fill[feat_nm + aoi_str][stat] = stat_sum / max(
+                        1, len(group_ids)
+                    )
 
         return self
 
@@ -265,13 +273,17 @@ class StatsTransformer(BaseTransformer):
         if self.pk is None:
 
             for aoi_nm in self.aoi_nms:
-                feats: List[Tuple[str, pd.Series]] = self._calc_with_aoi(feat_nms, X, aoi_nm)
+                feats: List[Tuple[str, pd.Series]] = self._calc_with_aoi(
+                    feat_nms, X, aoi_nm
+                )
                 aoi_str = "" if aoi_nm == "" else f"_{aoi_nm}"
 
                 for feat_nm, feat_arr in feats:
                     feat_stats: List[str] = self.features_stats[feat_nm]
                     gathered_stats.extend([feat_arr.apply(stat) for stat in feat_stats])
-                    column_nms.extend([f"{self._fp}_{feat_nm}{aoi_str}_{stat}" for stat in feat_stats])
+                    column_nms.extend(
+                        [f"{self._fp}_{feat_nm}{aoi_str}_{stat}" for stat in feat_stats]
+                    )
 
             stats_df = pd.DataFrame(data=[gathered_stats], columns=column_nms)
 
@@ -288,7 +300,9 @@ class StatsTransformer(BaseTransformer):
                 gath_stats_group = []
 
                 for aoi_nm in self.aoi_nms:
-                    group_feats: List[Tuple[str, pd.Series]] = self._calc_with_aoi(feat_nms, group_X, aoi_nm)
+                    group_feats: List[Tuple[str, pd.Series]] = self._calc_with_aoi(
+                        feat_nms, group_X, aoi_nm
+                    )
                     aoi_str = "" if aoi_nm == "" else f"_{aoi_nm}"
 
                     add_cols_nms = len(group_ids) == 1
@@ -300,15 +314,21 @@ class StatsTransformer(BaseTransformer):
 
                             if self._is_shift_feat(feat_nm):  # calc shifts
                                 if not feat_arr.empty:
-                                    shift_group_id = _get_id(group_X[self.shift_pk].values[0])
+                                    shift_group_id = _get_id(
+                                        group_X[self.shift_pk].values[0]
+                                    )
                                     stats_group.extend(
                                         [
                                             stats_group[i]
                                             - self._get_shift_val(
-                                                shift_group_id, feat_nm + aoi_str, feat_stats[i]
+                                                shift_group_id,
+                                                feat_nm + aoi_str,
+                                                feat_stats[i],
                                             )
                                             for i in range(len(stats_group))
-                                            if self._is_shift_stat(feat_nm + aoi_str, feat_stats[i])
+                                            if self._is_shift_stat(
+                                                feat_nm + aoi_str, feat_stats[i]
+                                            )
                                         ]
                                     )
                         else:  # no AOI for given group
@@ -318,7 +338,9 @@ class StatsTransformer(BaseTransformer):
                                     [
                                         None
                                         for i in range(len(stats_group))
-                                        if self._is_shift_stat(feat_nm + aoi_str, feat_stats[i])
+                                        if self._is_shift_stat(
+                                            feat_nm + aoi_str, feat_stats[i]
+                                        )
                                     ]
                                 )
 
@@ -326,7 +348,10 @@ class StatsTransformer(BaseTransformer):
 
                         if add_cols_nms:
                             column_nms.extend(
-                                [f"{self._fp}_{feat_nm}{aoi_str}_{stat}" for stat in feat_stats]
+                                [
+                                    f"{self._fp}_{feat_nm}{aoi_str}_{stat}"
+                                    for stat in feat_stats
+                                ]
                             )
                             if self._is_shift_feat(feat_nm):
                                 column_nms.extend(
@@ -349,21 +374,20 @@ class StatsTransformer(BaseTransformer):
 class SaccadeFeatures(StatsTransformer):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.available_feats = ('length', 'acceleration', 'speed')
+        self.available_feats = ("length", "acceleration", "speed")
 
     @property
     def _fp(self) -> str:
-        return 'sac'
+        return "sac"
 
     def _check_params(self):
         for feat in self.feature_names_in:
-            assert self.x is not None, self._err_no_col(feat, 'x')
-            assert self.y is not None, self._err_no_col(feat, 'y')
-            if feat in ('speed', 'acceleration'):
+            assert self.x is not None, self._err_no_col(feat, "x")
+            assert self.y is not None, self._err_no_col(feat, "y")
+            if feat in ("speed", "acceleration"):
                 assert self.t is not None
-                self._err_no_col(feat, 't')
+                self._err_no_col(feat, "t")
 
-    @jit(forceobj=True, looplift=True)
     def _calc_feats(
         self, X: pd.DataFrame, features: List[str], transition_mask: NDArray
     ) -> List[Tuple[str, pd.Series]]:
@@ -374,52 +398,48 @@ class SaccadeFeatures(StatsTransformer):
         dr = np.sqrt(dx**2 + dy**2)
         dt = None
 
-        if 'length' in features:
+        if "length" in features:
             sac_len = dr
-            feats.append(('length', sac_len[transition_mask]))
-        if 'acceleration' in features:
+            feats.append(("length", sac_len[transition_mask]))
+        if "acceleration" in features:
             # Acceleration: dx = v0 * t + 1/2 * a * t^2.
             # Above formula is law of uniformly accelerated motion TODO consider direction
             dt = _calc_dt(X, self.duration, self.t)
             sac_acc: pd.DataFrame = dr / (dt**2 + self.eps) * 1 / 2
-            feats.append(('acceleration', sac_acc[transition_mask]))
-        if 'speed' in features:
+            feats.append(("acceleration", sac_acc[transition_mask]))
+        if "speed" in features:
             dt = dt if dt is not None else _calc_dt(X, self.duration, self.t)
             sac_spd = dr / (dt + self.eps)
-            feats.append(('speed', sac_spd[transition_mask]))
+            feats.append(("speed", sac_spd[transition_mask]))
 
         return feats
 
 
 class RegressionFeatures(StatsTransformer):
-    def __init__(
-        self,
-        rule: List[int],
-        **kwargs
-    ):
+    def __init__(self, rule: List[int], **kwargs):
         """
         :param rule: specify list of quadrants direction to which classifies
         regressions, 1st quadrant being upper-right square of plane and counting
         anti-clockwise.
         """
         super().__init__(**kwargs)
-        self.available_feats = ('length', 'acceleration', 'speed')
+        self.available_feats = ("length", "acceleration", "speed")
         self.rule = rule
 
     @property
     def _fp(self) -> str:
-        return 'reg'
+        return "reg"
 
     def _check_params(self):
         for r in self.rule:
             assert r in (1, 2, 3, 4), f"Wrong quadrant {r} in `rule`."
 
         for feat in self.feature_names_in:
-            assert self.x is not None, self._err_no_col(feat, 'x')
-            assert self.y is not None, self._err_no_col(feat, 'y')
-            if feat in ('speed', 'acceleration'):
+            assert self.x is not None, self._err_no_col(feat, "x")
+            assert self.y is not None, self._err_no_col(feat, "y")
+            if feat in ("speed", "acceleration"):
                 assert self.t is not None
-                self._err_no_col(feat, 't')
+                self._err_no_col(feat, "t")
 
     def _select_regressions(self, dx, dy) -> NDArray:
         mask = np.zeros(len(dx))
@@ -445,52 +465,47 @@ class RegressionFeatures(StatsTransformer):
         dt = None
 
         tm = transition_mask[sm]
-        if 'length' in features:
+        if "length" in features:
             sac_len = dr
-            feats.append(('length', sac_len[sm][tm]))
-        if 'acceleration' in features:
+            feats.append(("length", sac_len[sm][tm]))
+        if "acceleration" in features:
             # Acceleration: dx = v0 * t + 1/2 * a * t^2.
             # Above formula is law of uniformly accelerated motion TODO consider direction
             dt = _calc_dt(X, self.duration, self.t)
             sac_acc: pd.DataFrame = dr / (dt**2 + self.eps) * 1 / 2
-            feats.append(('acceleration', sac_acc[sm][tm]))
-        if 'speed' in features:
+            feats.append(("acceleration", sac_acc[sm][tm]))
+        if "speed" in features:
             dt = dt if dt is not None else _calc_dt(X, self.duration, self.t)
             sac_spd = dr / (dt + self.eps)
-            feats.append(('speed', sac_spd[sm][tm]))
+            feats.append(("speed", sac_spd[sm][tm]))
 
         return feats
 
 
 class MicroSaccades(StatsTransformer):
-    def __init__(
-        self,
-        min_dispersion: float,
-        max_speed: float,
-        **kwargs
-    ):
+    def __init__(self, min_dispersion: float, max_speed: float, **kwargs):
         """
         :param rule: specify list of quadrants direction to which classifies
         regressions, 1st quadrant being upper-right square of plane and counting
         anti-clockwise.
         """
         super().__init__(**kwargs)
-        self.available_feats = ('length', 'acceleration', 'speed')
+        self.available_feats = ("length", "acceleration", "speed")
         self.min_dispersion = min_dispersion
         self.max_speed = max_speed
 
     @property
     def _fp(self) -> str:
-        return 'microsac'
+        return "microsac"
 
     def _check_params(self):
         for feat in self.feature_names_in:
-            assert self.x is not None, self._err_no_col(feat, 'x')
-            assert self.y is not None, self._err_no_col(feat, 'y')
-            assert self.dispersion is not None, self._err_no_col(feat, 'dispersion')
-            if feat in ('speed', 'acceleration'):
+            assert self.x is not None, self._err_no_col(feat, "x")
+            assert self.y is not None, self._err_no_col(feat, "y")
+            assert self.dispersion is not None, self._err_no_col(feat, "dispersion")
+            if feat in ("speed", "acceleration"):
                 assert self.t is not None
-                self._err_no_col(feat, 't')
+                self._err_no_col(feat, "t")
 
     def _calc_feats(
         self, X: pd.DataFrame, features: List[str], transition_mask: NDArray
@@ -502,24 +517,24 @@ class MicroSaccades(StatsTransformer):
         dr = np.sqrt(dx**2 + dy**2)
 
         # selection_mask
-        sm = ((dr < self.max_speed) & (X[self.dispersion] > self.min_dispersion))
+        sm = (dr < self.max_speed) & (X[self.dispersion] > self.min_dispersion)
 
         dt = None
 
         tm = transition_mask[sm]
-        if 'length' in features:
+        if "length" in features:
             sac_len = dr
-            feats.append(('length', sac_len[sm][tm]))
-        if 'acceleration' in features:
+            feats.append(("length", sac_len[sm][tm]))
+        if "acceleration" in features:
             # Acceleration: dx = v0 * t + 1/2 * a * t^2.
             # Above formula is law of uniformly accelerated motion TODO consider direction
             dt = _calc_dt(X, self.duration, self.t)
             sac_acc: pd.DataFrame = dr / (dt**2 + self.eps) * 1 / 2
-            feats.append(('acceleration', sac_acc[sm][tm]))
-        if 'speed' in features:
+            feats.append(("acceleration", sac_acc[sm][tm]))
+        if "speed" in features:
             dt = dt if dt is not None else _calc_dt(X, self.duration, self.t)
             sac_spd = dr / (dt + self.eps)
-            feats.append(('speed', sac_spd[sm][tm]))
+            feats.append(("speed", sac_spd[sm][tm]))
 
         return feats
 
@@ -527,28 +542,27 @@ class MicroSaccades(StatsTransformer):
 class FixationFeatures(StatsTransformer):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.available_feats = ('duration', 'vad')
+        self.available_feats = ("duration", "vad")
 
     @property
     def _fp(self) -> str:
-        return 'fix'
+        return "fix"
 
     def _check_params(self):
         for feat in self.feature_names_in:
-            if feat == 'duration':
-                assert self.duration is not None, self._err_no_col(feat, 'duration')
-            elif feat == 'vad':
-                assert self.dispersion is not None, self._err_no_col(feat, 'dispersion')
+            if feat == "duration":
+                assert self.duration is not None, self._err_no_col(feat, "duration")
+            elif feat == "vad":
+                assert self.dispersion is not None, self._err_no_col(feat, "dispersion")
 
-    @jit(forceobj=True, looplift=True)
     def _calc_feats(
         self, X: pd.DataFrame, features: List[str], transition_mask: NDArray
     ) -> List[Tuple[str, pd.Series]]:
         feats = []
 
-        if 'duration' in features:
-            feats.append(('duration', X[self.duration][transition_mask]))
-        if 'vad' in features:
-            feats.append(('vad', X[self.dispersion][transition_mask]))
+        if "duration" in features:
+            feats.append(("duration", X[self.duration][transition_mask]))
+        if "vad" in features:
+            feats.append(("vad", X[self.dispersion][transition_mask]))
 
         return feats

@@ -1,11 +1,11 @@
-from typing import List, Union, Any
-import numpy as np
 from math import sqrt
+from typing import Any, List, Union
+
+import numpy as np
 import pandas as pd
 from numba import jit
-
-from scipy.stats import gaussian_kde
 from scipy.ndimage import maximum_filter
+from scipy.stats import gaussian_kde
 
 from eyetracking.utils import _split_dataframe
 
