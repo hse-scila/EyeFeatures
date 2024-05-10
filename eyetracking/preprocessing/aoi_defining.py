@@ -1,8 +1,7 @@
-from math import sqrt
 from typing import List, Union, Any, Dict
-import numpy as np
 from typing import Any, List, Union
 
+import math
 import numpy as np
 import pandas as pd
 from numba import jit
@@ -12,6 +11,8 @@ from scipy.stats import gaussian_kde
 from scipy.ndimage import maximum_filter, sobel
 
 from eyetracking.utils import _split_dataframe
+
+import matplotlib.pyplot as plt
 
 
 def _get_fixation_density(
@@ -121,7 +122,7 @@ def threshold_based(
             y_coord = min(np.searchsorted(axis_y, row[y]), 99)
             for key in centers.keys():  # start of Kmeans algorithm
                 if type == "kmeans":
-                    dist = sqrt(
+                    dist = math.sqrt(
                         np.sum(
                             (np.array([row[x], row[y]]) - np.array(centers[key])) ** 2
                         )
@@ -132,7 +133,7 @@ def threshold_based(
                 if type == "basic":
                     l = np.inf
                     for point in aoi_points[key]:
-                        dist = sqrt(
+                        dist = math.sqrt(
                             np.sum((np.array([row[x], row[y]]) - np.array(point)) ** 2)
                         )
                         l = min(l, dist)
@@ -220,6 +221,7 @@ def threshold_based(
     return result
 
 
+# @jit(forceobj=True, looplift=True)
 def gradient_based(
     data: pd.DataFrame,
     x: str,
@@ -276,48 +278,120 @@ def gradient_based(
 
         axis_x = X.T[0]
         axis_y = Y.T[0]
+        dist = axis_x[1] - axis_x[0]
         centers = dict()
         entropy = 0
-        aoi_matrix = np.empty((density.shape[0], density.shape[1]), dtype=str)
+        aoi_matrix = np.zeros((density.shape[0], density.shape[1]), dtype=int)
+        # window_x = sobel(density, axis=0)
+        # window_y = sobel(density, axis=1)
+        # grad_orientation = np.arctan2(window_y, window_x)
+        # plt.imshow(grad_orientation)
+        # plt.colorbar(label='test')
+        # break
+        grad_x = sobel(density, axis=1)
+        grad_y = sobel(density, axis=0)
         for i in range(loc_max_coord.shape[0]):
             centers[f"aoi_{i}"] = [
                 X[loc_max_coord[i][0]][0],
                 Y[loc_max_coord[i][1]][0],
             ]  # initial centers of each AOI
-            line = [[loc_max_coord[i][0], loc_max_coord[i][1]]]
-            aoi_matrix[line[0][0]][line[0][1]] = f"aoi_{i}"
-            for point in line:
-                if (
-                    point[0] - 1 >= 0
-                    and point[1] - 1 >= 0
-                    and point[0] + 1 < loc_max_matrix.shape[0]
-                    and point[1] + 1 < loc_max_matrix.shape[0]
-                ):
-                    window = density[
-                        point[0] - 1 : point[0] + 2, point[1] - 1 : point[1] + 2
-                    ]
-                    window_x = sobel(window, axis=0)
-                    window_y = sobel(window, axis=1)
-                    grad_orientation = np.arctan2(window_y, window_x)
-                    for j in range(grad_orientation.shape[0]):
-                        for k in range(grad_orientation.shape[1]):
+            x_coord = loc_max_coord[i][0]
+            y_coord = loc_max_coord[i][1]
+            aoi_matrix[x_coord][y_coord] = i + 1
+            while y_coord >= 0:
+                x_coord_left = x_coord
+                x_coord_right = x_coord
+                while x_coord_left >= 0 or x_coord_right < density.shape[0]:
+                    x_coord_left -= 1
+                    x_coord_right += 1
+                    if x_coord_left >= 0:
+                        if aoi_matrix[x_coord_left][y_coord] != 0:
+                            x_coord_left = -1
+                        else:
+                            aoi_matrix[x_coord_left][y_coord] = i + 1
                             if (
-                                aoi_matrix[point[0] + j - 1][point[1] + k - 1] == ""
-                                and abs(grad_orientation[j][k]) > gradient_eps
-                                and density[point[0] + j - 1][point[1] + k - 1]
-                                > threshold
-                            ):
-                                aoi_matrix[point[0] + j - 1][
-                                    point[1] + k - 1
-                                ] = f"aoi_{i}"
-                                line.append([point[0] + j - 1, point[1] + k - 1])
-                    line.pop(0)
+                                x_coord_left < centers[f"aoi_{i}"][0] - 1
+                                and (
+                                    grad_x[x_coord_left][y_coord]
+                                    * grad_x[x_coord_left + 1][y_coord]
+                                    < 0
+                                    or grad_y[x_coord_left][y_coord]
+                                    * grad_y[x_coord_left + 1][y_coord]
+                                    < 0
+                                )
+                            ) or density[x_coord_left][y_coord] < threshold:
+                                x_coord_left = -1
+                    if x_coord_right < density.shape[0]:
+                        if aoi_matrix[x_coord_right][y_coord] != 0:
+                            x_coord_right = density.shape[0] + 1
+                        else:
+                            aoi_matrix[x_coord_right][y_coord] = i + 1
+                            if (
+                                x_coord_right > centers[f"aoi_{i}"][0] + 1
+                                and (
+                                    grad_x[x_coord_right][y_coord]
+                                    * grad_x[x_coord_right - 1][y_coord]
+                                    < 0
+                                    or grad_y[x_coord_right][y_coord]
+                                    * grad_y[x_coord_right - 1][y_coord]
+                                    < 0
+                                )
+                            ) or density[x_coord_right][y_coord] < threshold:
+                                x_coord_right = density.shape[0] + 1
+                y_coord -= 1
+
+            y_coord = loc_max_coord[i][1]
+            while y_coord < density.shape[1]:
+                x_coord_left = x_coord
+                x_coord_right = x_coord
+                while x_coord_left >= 0 or x_coord_right < density.shape[0]:
+                    x_coord_left -= 1
+                    x_coord_right += 1
+                    if x_coord_left >= 0:
+                        if aoi_matrix[x_coord_left][y_coord] != 0:
+                            x_coord_left = -1
+                        else:
+                            aoi_matrix[x_coord_left][y_coord] = i + 1
+                            if (
+                                x_coord_left < centers[f"aoi_{i}"][0] - 1
+                                and (
+                                    grad_x[x_coord_left][y_coord]
+                                    * grad_x[x_coord_left + 1][y_coord]
+                                    < 0
+                                    or grad_y[x_coord_left][y_coord]
+                                    * grad_y[x_coord_left + 1][y_coord]
+                                    < 0
+                                )
+                            ) or density[x_coord_left][y_coord] < threshold:
+                                x_coord_left = -1
+                    if x_coord_right < density.shape[0]:
+                        if aoi_matrix[x_coord_right][y_coord] != 0:
+                            x_coord_right = density.shape[0] + 1
+                        else:
+                            aoi_matrix[x_coord_right][y_coord] = i + 1
+                            if (
+                                x_coord_right > centers[f"aoi_{i}"][0] + 1
+                                and (
+                                    grad_x[x_coord_right][y_coord]
+                                    * grad_x[x_coord_right - 1][y_coord]
+                                    < 0
+                                    or grad_y[x_coord_right][y_coord]
+                                    * grad_y[x_coord_right - 1][y_coord]
+                                    < 0
+                                )
+                            ) or density[x_coord_right][y_coord] < threshold:
+                                x_coord_right = density.shape[0] + 1
+                y_coord += 1
+
         aoi_list = []
         # print(aoi_matrix)
         for index, row in current_data.iterrows():
             x_coord = min(np.searchsorted(axis_x, row[x]), 99)
             y_coord = min(np.searchsorted(axis_y, row[y]), 99)
-            aoi_list.append(aoi_matrix[x_coord][y_coord])
+            if aoi_matrix[x_coord][y_coord] == 0:
+                aoi_list.append(None)
+            else:
+                aoi_list.append(f"aoi_{aoi_matrix[x_coord][y_coord]}")
 
         if not inplace:
             to_concat = current_data.copy()
