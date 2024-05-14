@@ -416,7 +416,12 @@ class SaccadeFeatures(StatsTransformer):
 
 
 class RegressionFeatures(StatsTransformer):
-    def __init__(self, rule: Tuple[int, ...], deviation: Union[int, Tuple[int, ...]] = None, **kwargs):
+    def __init__(
+        self,
+        rule: Tuple[int, ...],
+        deviation: Union[int, Tuple[int, ...]] = None,
+        **kwargs,
+    ):
         """
         :param rule: must be either 1) tuple of quadrants direction to classify
             regressions, 1st quadrant being upper-right square of plane and counting
@@ -444,13 +449,18 @@ class RegressionFeatures(StatsTransformer):
             for a in self.rule:
                 assert 0 <= a <= 360, f"Angles must be 0 <= angle <= 360, got {a}."
             if isinstance(self.deviation, int):
-                assert 0 <= self.deviation <= 180, f"Deviation must be 0 <= deviation <= 180," \
-                                                   f"got {self.deviation}."
+                assert 0 <= self.deviation <= 180, (
+                    f"Deviation must be 0 <= deviation <= 180," f"got {self.deviation}."
+                )
             elif isinstance(self.deviation, tuple):
                 for d in self.deviation:
-                    assert 0 <= d <= 180, f"Deviation must be 0 <= deviation <= 180, got {d}."
+                    assert (
+                        0 <= d <= 180
+                    ), f"Deviation must be 0 <= deviation <= 180, got {d}."
             else:
-                raise ValueError(f"Wrong type for 'deviation': '{type(self.deviation)}'.")
+                raise ValueError(
+                    f"Wrong type for 'deviation': '{type(self.deviation)}'."
+                )
 
         for feat in self.feature_names_in:
             assert self.x is not None, self._err_no_col(feat, "x")
@@ -471,7 +481,7 @@ class RegressionFeatures(StatsTransformer):
                 mask = mask | ((dx < 0) & (dy < 0))
             if 4 in self.rule:
                 mask = mask | ((dx > 0) & (dy < 0))
-        else:                       # selection by angles
+        else:  # selection by angles
             dx, dy = dx.values, dy.values
             if isinstance(self.deviation, int):
                 d = np.full(len(self.rule), self.deviation)

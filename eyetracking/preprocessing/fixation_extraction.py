@@ -1,12 +1,12 @@
-from typing import List, Union, Dict
+from typing import Dict, List, Union
 
 import numpy as np
 import pandas as pd
 import scipy
 from numba import jit
 
-from eyetracking.preprocessing.base import BasePreprocessor
 from eyetracking.preprocessing._utils import _get_distance
+from eyetracking.preprocessing.base import BasePreprocessor
 
 
 class IVT(BasePreprocessor):
@@ -36,9 +36,10 @@ class IVT(BasePreprocessor):
         assert self.x is not None, self._err_no_field(m, "x")
         assert self.y is not None, self._err_no_field(m, "y")
         assert self.t is not None, self._err_no_field(m, "t")
-        assert self.distance in self.available_distances,\
-            f"'distance' must be one of ({', '.join(self.available_distances)})," \
+        assert self.distance in self.available_distances, (
+            f"'distance' must be one of ({', '.join(self.available_distances)}),"
             f"got {self.distance}."
+        )
 
     # @jit(forceobj=True, looplift=True)
     def _preprocess(self, X: pd.DataFrame) -> pd.DataFrame:
@@ -93,7 +94,7 @@ class IDT(BasePreprocessor):
         t: str,
         min_duration: float,
         max_dispersion: float,
-        distance: str = 'euc',  # norm in R^2 for distance calculation
+        distance: str = "euc",  # norm in R^2 for distance calculation
         pk: List[str] = None,
         eps: float = 1e-20,
     ):
@@ -119,9 +120,10 @@ class IDT(BasePreprocessor):
         assert self.max_dispersion is not None, self._err_no_field(m, "min_duration")
         assert self.max_dispersion > 0, f"'max_dispersion' must be non-negative."
 
-        assert self.distance in self.available_distances,\
-            f"'distance' must be one of ({', '.join(self.available_distances)})," \
+        assert self.distance in self.available_distances, (
+            f"'distance' must be one of ({', '.join(self.available_distances)}),"
             f"got {self.distance}."
+        )
 
     # @jit(forceobj=True, looplift=True)
     def _preprocess(self, X: pd.DataFrame) -> pd.DataFrame:
@@ -162,11 +164,13 @@ class IDT(BasePreprocessor):
 
                 # update distances in window
                 next_point_disp = -np.inf
-                j = -1  # index of gaze with which 'last'-th gaze achieved max dispersion
+                j = (
+                    -1
+                )  # index of gaze with which 'last'-th gaze achieved max dispersion
                 for i in range(cur, next_idx):  # [cur, next_idx) == [cur, last]
-                    d = _get_distance(np.array(x[i], y[i]),
-                                      next_point,
-                                      distance=self.distance)
+                    d = _get_distance(
+                        np.array(x[i], y[i]), next_point, distance=self.distance
+                    )
 
                     disp[i] = max(disp[i], d)
                     if next_point_disp < d:
@@ -176,7 +180,7 @@ class IDT(BasePreprocessor):
                 # check for dispersion
                 if next_point_disp > self.max_dispersion:
                     # gazes [cur, j] cannot be part of fixation -> skip them
-                    disp[j + 1:next_idx] = -np.inf
+                    disp[j + 1 : next_idx] = -np.inf
                     cur = j + 1
                     last = j + 1
                     skip_gazes = True
@@ -196,8 +200,8 @@ class IDT(BasePreprocessor):
             # here we have correct window with duration >= min_duration
             # and dispersion <= max_dispersion.
             # Window could be extended further.
-            is_fixation[cur:last + 1] = 1  # [cur, last] is single fixation
-            disp[cur:last + 1] = window_disp
+            is_fixation[cur : last + 1] = 1  # [cur, last] is single fixation
+            disp[cur : last + 1] = window_disp
             cur = last + 1
             last = last + 1
 
@@ -245,7 +249,7 @@ class IHMM(BasePreprocessor):
         sac2fix: float = 0.05,
         fix_distrib: str = "norm",  # fixation distribution
         sac_distrib: str = "norm",
-        distrib_params: Union[str, Dict[str, float]] = 'auto',
+        distrib_params: Union[str, Dict[str, float]] = "auto",
         distance: str = "euc",
         pk: List[str] = None,
         eps: float = 1e-20,
@@ -280,19 +284,24 @@ class IHMM(BasePreprocessor):
         assert self.t is not None, self._err_no_field(m, "t")
 
         # TODO wrap this error message
-        assert self.distance in self.available_distances,\
-            f"'distance' must be one of ({', '.join(self.available_distances)})," \
+        assert self.distance in self.available_distances, (
+            f"'distance' must be one of ({', '.join(self.available_distances)}),"
             f"got '{self.distance}'."
-        assert self.fix_distrib in self.available_distributions,\
-            f"'fix_distrib' must be one of ({', '.join(self.available_distributions)})," \
+        )
+        assert self.fix_distrib in self.available_distributions, (
+            f"'fix_distrib' must be one of ({', '.join(self.available_distributions)}),"
             f"got '{self.sac_distrib}'."
-        assert self.sac_distrib in self.available_distributions,\
-            f"'sac_distrib' must be one of ({', '.join(self.available_distributions)})," \
+        )
+        assert self.sac_distrib in self.available_distributions, (
+            f"'sac_distrib' must be one of ({', '.join(self.available_distributions)}),"
             f"got '{self.sac_distrib}'."
-        assert isinstance(self.fix2sac, float) and (0.0 < self.fix2sac < 1.0),\
-            f"'fix2sac' must be float between 0.0 and 1.0."
-        assert isinstance(self.sac2fix, float) and (0.0 < self.sac2fix < 1.0),\
-            f"'sac2fix' must be float between 0.0 and 1.0."
+        )
+        assert isinstance(self.fix2sac, float) and (
+            0.0 < self.fix2sac < 1.0
+        ), f"'fix2sac' must be float between 0.0 and 1.0."
+        assert isinstance(self.sac2fix, float) and (
+            0.0 < self.sac2fix < 1.0
+        ), f"'sac2fix' must be float between 0.0 and 1.0."
 
     def _get_distribution(self, ed, ep):
         if ed == "norm":
@@ -311,42 +320,37 @@ class IHMM(BasePreprocessor):
         dt = np.diff(t)
         vel = dist / (dt + self.eps)
 
-        states = ('fixation', 'saccade')
-        start_probs = {'fixation': 0.5, 'saccade': 0.5}
+        states = ("fixation", "saccade")
+        start_probs = {"fixation": 0.5, "saccade": 0.5}
 
         transition_probs = {
-            'fixation': {'fixation': 1 - self.fix2sac, 'saccade': self.fix2sac},
-            'saccade': {'fixation': self.sac2fix, 'saccade': 1 - self.sac2fix}
+            "fixation": {"fixation": 1 - self.fix2sac, "saccade": self.fix2sac},
+            "saccade": {"fixation": self.sac2fix, "saccade": 1 - self.sac2fix},
         }
 
-        if self.distrib_params == 'auto':
+        if self.distrib_params == "auto":
             m, s = vel.mean(), vel.std()
-            dp = {
-                'fixation': {'loc': m, 'scale': s},
-                'saccade': {'loc': m, 'scale': s}
-            }
+            dp = {"fixation": {"loc": m, "scale": s}, "saccade": {"loc": m, "scale": s}}
         else:
             dp = self.distrib_params
 
-        fix_vel_distr = self._get_distribution(
-            self.fix_distrib, dp['fixation']
-        )
-        sac_vel_distr = self._get_distribution(
-            self.sac_distrib, dp['saccade']
-        )
+        fix_vel_distr = self._get_distribution(self.fix_distrib, dp["fixation"])
+        sac_vel_distr = self._get_distribution(self.sac_distrib, dp["saccade"])
 
         emission_probs = {
-            'fixation': lambda velocity: fix_vel_distr.cdf(velocity),
-            'saccade': lambda velocity: sac_vel_distr.cdf(velocity)
+            "fixation": lambda velocity: fix_vel_distr.cdf(velocity),
+            "saccade": lambda velocity: sac_vel_distr.cdf(velocity),
         }
 
-        _, best_path = self._viterbi(observations=vel,
-                                     states=states,
-                                     sp=start_probs,
-                                     tp=transition_probs,
-                                     ep=emission_probs)
+        _, best_path = self._viterbi(
+            observations=vel,
+            states=states,
+            sp=start_probs,
+            tp=transition_probs,
+            ep=emission_probs,
+        )
 
-        is_fixation = (best_path == 'fixation').astype(np.int32)
+        is_fixation = (best_path == "fixation").astype(np.int32)
 
         fixations = self._squash_fixations(is_fixation)
 
@@ -401,7 +405,9 @@ class IHMM(BasePreprocessor):
                 if i == 0:
                     q_prob_max = -np.log(sp[q])
                 else:
-                    q_prob_max = min(prev_probs[q_] - np.log(tp[q_][q]) for q_ in states)
+                    q_prob_max = min(
+                        prev_probs[q_] - np.log(tp[q_][q]) for q_ in states
+                    )
 
                 cur_probs[q] = -np.log(max(ep[q](o_i), self.eps)) + q_prob_max
 

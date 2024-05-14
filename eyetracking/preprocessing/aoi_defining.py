@@ -1,18 +1,15 @@
-from typing import List, Union, Any, Dict
-from typing import Any, List, Union
-
 import math
+from bisect import bisect_left
+from typing import Any, Dict, List, Union
+
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from numba import jit
-from bisect import bisect_left
-
-from scipy.stats import gaussian_kde
 from scipy.ndimage import maximum_filter, sobel
+from scipy.stats import gaussian_kde
 
 from eyetracking.utils import _split_dataframe
-
-import matplotlib.pyplot as plt
 
 
 def _get_fixation_density(

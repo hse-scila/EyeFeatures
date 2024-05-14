@@ -1,13 +1,14 @@
-from typing import List, Union
 from abc import abstractmethod
+from typing import List, Union
 
 import numpy as np
 import pandas as pd
-from numpy.typing import NDArray
 from numba import jit
+from numpy.typing import NDArray
 from sklearn.base import BaseEstimator, TransformerMixin
-from eyetracking.utils import _split_dataframe
+
 from eyetracking.preprocessing._utils import _get_distance
+from eyetracking.utils import _split_dataframe
 
 
 class BasePreprocessor(BaseEstimator, TransformerMixin):
@@ -61,8 +62,7 @@ class BasePreprocessor(BaseEstimator, TransformerMixin):
     def _get_distances(points: NDArray, distance):
         dist = np.zeros(len(points) - 1)
         for i in range(len(points) - 1):
-            dist[i] = _get_distance(points[i, :], points[i + 1, :],
-                                    distance=distance)
+            dist[i] = _get_distance(points[i, :], points[i + 1, :], distance=distance)
         return dist
 
     @jit(forceobj=True, looplift=True)
@@ -77,9 +77,7 @@ class BasePreprocessor(BaseEstimator, TransformerMixin):
             fixations = self._preprocess(X)
         else:
             fixations = None
-            groups: List[str, pd.DataFrame] = _split_dataframe(
-                X, self.pk, encode=False
-            )
+            groups: List[str, pd.DataFrame] = _split_dataframe(X, self.pk, encode=False)
             for group_ids, group_X in groups:
                 cur_fixations = self._preprocess(group_X)
 
