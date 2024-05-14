@@ -19,7 +19,7 @@ class BaseTransformer(BaseEstimator, TransformerMixin):
         pk: List[str] = None,
         expected_paths: Dict[str, pd.DataFrame] = None,
         fill_path: pd.DataFrame = None,
-        expected_path_method: str = "mean",
+        expected_paths_method: str = "mean",
         return_df: bool = True,
     ):
         self.x = x
@@ -33,7 +33,7 @@ class BaseTransformer(BaseEstimator, TransformerMixin):
         self.return_df = return_df
         self.expected_paths = expected_paths
         self.fill_path = fill_path
-        self.expected_paths_method = expected_path_method
+        self.expected_paths_method = expected_paths_method
 
     def _check_init(self, items: List[Tuple[Any, str]]):
         for value, nm in items:
@@ -87,6 +87,7 @@ class Extractor(BaseEstimator, TransformerMixin):
         aoi: str = None,
         path_pk: List[str] = None,
         pk: List[str] = None,
+        expected_paths_method: str = "mean",
         extra: List[str] = None,
         aggr_extra: str = None,
         return_df: bool = True,
@@ -100,12 +101,15 @@ class Extractor(BaseEstimator, TransformerMixin):
         self.aoi = aoi
         self.path_pk = path_pk
         self.pk = pk
+        self.expected_paths_method = expected_paths_method
         self.extra = extra
         self.aggr_extra = aggr_extra
         self.return_df = return_df
+        self.is_fitted = False
 
     @jit(forceobj=True, looplift=True)
     def fit(self, X: pd.DataFrame, y=None):
+        self.is_fitted = True
         if self.features is not None:
             for feature in self.features:
                 feature.set_data(
@@ -117,6 +121,7 @@ class Extractor(BaseEstimator, TransformerMixin):
                     aoi=self.aoi,
                     path_pk=self.path_pk,
                     pk=self.pk,
+                    expected_paths_method=self.expected_paths_method,
                     return_df=self.return_df,
                 )
                 feature.fit(X)
@@ -125,6 +130,9 @@ class Extractor(BaseEstimator, TransformerMixin):
 
     @jit(forceobj=True, looplift=True)
     def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
+        if not self.is_fitted:
+            raise RuntimeError("Class is not fitted")
+
         if self.features is None:
             return X if self.return_df else X.values
 
@@ -140,17 +148,6 @@ class Extractor(BaseEstimator, TransformerMixin):
             data_df = pd.concat([data_df, X[self.aoi]], axis=1)
 
         for feature in self.features:
-            feature.set_data(
-                x=self.x,
-                y=self.y,
-                t=self.t,
-                duration=self.duration,
-                dispersion=self.dispersion,
-                aoi=self.aoi,
-                path_pk=self.path_pk,
-                pk=self.pk,
-                return_df=self.return_df,
-            )
             gathered_features.append(feature.transform(data_df))
 
         if self.extra is not None:
