@@ -416,23 +416,41 @@ class SaccadeFeatures(StatsTransformer):
 
 
 class RegressionFeatures(StatsTransformer):
-    def __init__(self, rule: List[int], **kwargs):
+    def __init__(self, rule: Tuple[int, ...], deviation: Union[int, Tuple[int, ...]] = None, **kwargs):
         """
-        :param rule: specify list of quadrants direction to which classifies
-        regressions, 1st quadrant being upper-right square of plane and counting
-        anti-clockwise.
+        :param rule: must be either 1) tuple of quadrants direction to classify
+            regressions, 1st quadrant being upper-right square of plane and counting
+            anti-clockwise or 2) tuple of angles in degrees (0 <= angle <= 360).
+        :param deviation: if None, then `rule` is interpreted as quadrants. Otherwise,
+            `rule` is interpreted as angles. If integer, then is a +-deviation for all angles.
+            If tuple of integers, then must be of the same length as `rule`, each value being
+            a corresponding deviation for each angle. Angle = 0 is positive x-axis direction,
+            rotating anti-clockwise.
         """
         super().__init__(**kwargs)
         self.available_feats = ("length", "acceleration", "speed")
         self.rule = rule
+        self.deviation = deviation
 
     @property
     def _fp(self) -> str:
         return "reg"
 
     def _check_params(self):
-        for r in self.rule:
-            assert r in (1, 2, 3, 4), f"Wrong quadrant {r} in `rule`."
+        if self.deviation is None:
+            for q in self.rule:
+                assert q in (1, 2, 3, 4), f"Wrong quadrant {q} in 'rule'."
+        else:
+            for a in self.rule:
+                assert 0 <= a <= 360, f"Angles must be 0 <= angle <= 360, got {a}."
+            if isinstance(self.deviation, int):
+                assert 0 <= self.deviation <= 180, f"Deviation must be 0 <= deviation <= 180," \
+                                                   f"got {self.deviation}."
+            elif isinstance(self.deviation, tuple):
+                for d in self.deviation:
+                    assert 0 <= d <= 180, f"Deviation must be 0 <= deviation <= 180, got {d}."
+            else:
+                raise ValueError(f"Wrong type for 'deviation': '{type(self.deviation)}'.")
 
         for feat in self.feature_names_in:
             assert self.x is not None, self._err_no_col(feat, "x")
@@ -441,17 +459,59 @@ class RegressionFeatures(StatsTransformer):
                 assert self.t is not None
                 self._err_no_col(feat, "t")
 
-    def _select_regressions(self, dx, dy) -> NDArray:
+    def _select_regressions(self, dx: pd.Series, dy: pd.Series) -> NDArray:
         mask = np.zeros(len(dx))
-        if 1 in self.rule:
-            mask = mask | ((dx > 0) & (dy > 0))
-        if 2 in self.rule:
-            mask = mask | ((dx < 0) & (dy > 0))
-        if 3 in self.rule:
-            mask = mask | ((dx < 0) & (dy < 0))
-        if 4 in self.rule:
-            mask = mask | ((dx > 0) & (dy < 0))
-        return mask
+
+        if self.deviation is None:  # selection by quadrants
+            if 1 in self.rule:
+                mask = mask | ((dx > 0) & (dy > 0))
+            if 2 in self.rule:
+                mask = mask | ((dx < 0) & (dy > 0))
+            if 3 in self.rule:
+                mask = mask | ((dx < 0) & (dy < 0))
+            if 4 in self.rule:
+                mask = mask | ((dx > 0) & (dy < 0))
+        else:                       # selection by angles
+            dx, dy = dx.values, dy.values
+            if isinstance(self.deviation, int):
+                d = np.full(len(self.rule), self.deviation)
+            else:
+                d = np.array(self.deviation)
+
+            for i in range(len(mask)):
+                angle = self._get_angle(dx[i], dy[i], degrees=True)
+                for dev, allowed_angle in zip(self.rule, d):
+                    if self._check_angle_boundaries(angle, allowed_angle, dev):
+                        mask[i] = 1
+                        break
+
+        return mask.astype(bool)
+
+    @staticmethod
+    def _get_angle(dx, dy, degrees=True):
+        if dx == 0:
+            angle = np.pi / 2 * np.sign(dy)  # if dy == 0, then angle is zero
+        elif dx < 0:  # (90, 270) degrees
+            angle = np.arctan(dy / dx) + np.pi
+        else:  # dx > 0
+            angle = np.arctan(dy / dx)  # (-90, 90) degrees
+            if angle < 0:  # (270, 360) degrees
+                angle += 2 * np.pi
+
+        return angle * 180 / np.pi if degrees else angle
+
+    @staticmethod
+    def _check_angle_boundaries(angle, allowed_angle, deviation):
+        left = allowed_angle - deviation
+        right = allowed_angle + deviation
+
+        if left <= angle <= right:
+            return True
+        if left - 360 <= angle <= right - 360:
+            return True
+        if left + 360 <= angle <= right + 360:
+            return True
+        return False
 
     def _calc_feats(
         self, X: pd.DataFrame, features: List[str], transition_mask: NDArray
