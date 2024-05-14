@@ -19,6 +19,7 @@ class BaseTransformer(BaseEstimator, TransformerMixin):
         pk: List[str] = None,
         expected_paths: Dict[str, pd.DataFrame] = None,
         fill_path: pd.DataFrame = None,
+        expected_path_method: str = "mean",
         return_df: bool = True,
     ):
         self.x = x
@@ -32,6 +33,7 @@ class BaseTransformer(BaseEstimator, TransformerMixin):
         self.return_df = return_df
         self.expected_paths = expected_paths
         self.fill_path = fill_path
+        self.expected_paths_method = expected_path_method
 
     def _check_init(self, items: List[Tuple[Any, str]]):
         for value, nm in items:
@@ -50,6 +52,7 @@ class BaseTransformer(BaseEstimator, TransformerMixin):
         pk: List[str] = None,
         expected_paths: Dict[str, pd.DataFrame] = None,
         fill_path: pd.DataFrame = None,
+        expected_paths_method: str = "mean",
         return_df: bool = True,
     ):
         self.x = x
@@ -63,6 +66,7 @@ class BaseTransformer(BaseEstimator, TransformerMixin):
         self.return_df = return_df
         self.expected_paths = expected_paths
         self.fill_path = fill_path
+        self.expected_paths_method = expected_paths_method
 
     def fit(self, X: pd.DataFrame, y=None):
         return self

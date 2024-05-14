@@ -7,8 +7,8 @@ from numba import jit
 from tqdm import tqdm
 
 from eyetracking.features.extractor import BaseTransformer
-from eyetracking.features.scanpath_complex import (get_expected_path,
-                                                   get_fill_path)
+from eyetracking.features.scanpath_complex import (_get_fill_path,
+                                                   get_expected_path)
 from eyetracking.utils import Types, _split_dataframe
 
 
@@ -22,6 +22,7 @@ class DistanceTransformer(BaseTransformer):
         pk: List[str] = None,
         expected_paths: Dict[str, pd.DataFrame] = None,
         fill_path: pd.DataFrame = None,
+        expected_paths_method: str = "mean",
         return_df: bool = True,
     ):
         """
@@ -32,12 +33,14 @@ class DistanceTransformer(BaseTransformer):
         :param pk: List of column names used to split pd.Dataframe
         :param expected_paths: Dict which was obtained from method get_expected_path
         :param fill_path: pd.DataFrame path which was obtained from method get_fill_path
+        :param expected_paths_method: method to calculate expected path ("mean" or "fwp")
         :param return_df: Return pd.Dataframe object or np.ndarray
         """
 
         self.fill_path = fill_path
         self.requires_duration = False
         self.expected_paths = expected_paths
+        self.expected_paths_method = expected_paths_method
         super(DistanceTransformer, self).__init__(
             x=x, y=y, duration=duration, path_pk=path_pk, pk=pk, return_df=return_df
         )
@@ -48,6 +51,7 @@ class DistanceTransformer(BaseTransformer):
             (self.y, "y"),
             (self.pk, "pk"),
             (self.path_pk, "path_pk"),
+            (self.expected_paths_method, "expected_paths_method"),
         ]
 
     def _get_partition(self, df: Types.Data) -> Types.Partition:
@@ -64,8 +68,6 @@ class DistanceTransformer(BaseTransformer):
 
     @jit(forceobj=True, looplift=True)
     def fit(self, X: pd.DataFrame, y=None):
-        # TODO: modify for Types.Data
-
         # check must-have attributes
         super(DistanceTransformer, self)._check_init(self._get_required())
 
@@ -79,16 +81,18 @@ class DistanceTransformer(BaseTransformer):
                 duration=duration,
                 path_pk=self.path_pk,
                 pk=self.pk,
+                method=self.expected_paths_method,
             )
 
         # calculate filling path if not given
         if self.fill_path is None:
             duration = "duration_est" if self.requires_duration else None
-            self.fill_path = get_fill_path(
-                paths=list(self.expected_paths.values()),
+            self.fill_path = _get_fill_path(
+                data=list(self.expected_paths.values()),
                 x="x_est",
                 y="y_est",
                 duration=duration,
+                method=self.expected_paths_method,
             )
 
         return self
@@ -106,6 +110,7 @@ class SimpleDistances(DistanceTransformer):
         path_pk: List[str] = None,
         expected_paths: Dict[str, pd.DataFrame] = None,
         fill_path: pd.DataFrame = None,
+        expected_paths_method: str = "mean",
         return_df: bool = True,
     ):
         """
@@ -116,6 +121,7 @@ class SimpleDistances(DistanceTransformer):
         :param pk: List of column names used to split pd.Dataframe
         :param expected_paths: Dict which was returned from get_expected_path method with the same params
         :param fill_path: pd.DataFrame path which was returned from get_fill_path method for the same expected_paths
+        :param expected_paths_method: method to calculate expected path ("mean" or "fwp")
         :param return_df: Return pd.Dataframe object else np.ndarray
         """
 
@@ -126,6 +132,7 @@ class SimpleDistances(DistanceTransformer):
             path_pk=path_pk,
             expected_paths=expected_paths,
             fill_path=fill_path,
+            expected_paths_method=expected_paths_method,
             return_df=return_df,
         )
 
@@ -162,6 +169,7 @@ class SimpleDistances(DistanceTransformer):
                 path_pk=self.path_pk,
                 expected_paths=self.expected_paths,
                 fill_path=self.fill_path,
+                expected_paths_method=self.expected_paths_method,
                 return_df=self.return_df,
             )
             dataframes.append(self._methods_cls[method].transform(data_part))
@@ -185,8 +193,10 @@ class EucDist(DistanceTransformer):
         data_part: Types.Partition = super(EucDist, self)._get_partition(X)
 
         # calculate distances for each group
+        group_names = []
         columns, features = ["euc_dist"], []
         for group_nm, group_path in tqdm(data_part):
+            group_names.append(group_nm)
             path_group = super(EucDist, self)._get_path_group(
                 group_path.head(1)[self.path_pk].values[0]
             )
@@ -198,7 +208,7 @@ class EucDist(DistanceTransformer):
             dist = calc_euc_dist(group_path[[self.x, self.y]], expected_path)
             features.append([dist])
 
-        features_df = pd.DataFrame(data=features, columns=columns)
+        features_df = pd.DataFrame(data=features, columns=columns, index=group_names)
         return features_df if self.return_df else features_df.values
 
 
@@ -217,8 +227,10 @@ class HauDist(DistanceTransformer):
         data_part: Types.Partition = super(HauDist, self)._get_partition(X)
 
         # calculate distances for each group
+        group_names = []
         columns, features = ["hau_dist"], []
         for group_nm, group_path in tqdm(data_part):
+            group_names.append(group_nm)
             path_group = super(HauDist, self)._get_path_group(
                 group_path.head(1)[self.path_pk].values[0]
             )
@@ -230,7 +242,7 @@ class HauDist(DistanceTransformer):
             dist = calc_hau_dist(group_path[[self.x, self.y]], expected_path)
             features.append([dist])
 
-        features_df = pd.DataFrame(data=features, columns=columns)
+        features_df = pd.DataFrame(data=features, columns=columns, index=group_names)
         return features_df if self.return_df else features_df.values
 
 
@@ -249,8 +261,10 @@ class DTWDist(DistanceTransformer):
         data_part: Types.Partition = super(DTWDist, self)._get_partition(X)
 
         # calculate distances for each group
+        group_names = []
         columns, features = ["dtw_dist"], []
         for group_nm, group_path in tqdm(data_part):
+            group_names.append(group_nm)
             path_group = super(DTWDist, self)._get_path_group(
                 group_path.head(1)[self.path_pk].values[0]
             )
@@ -262,7 +276,7 @@ class DTWDist(DistanceTransformer):
             dist = calc_dtw_dist(group_path[[self.x, self.y]], expected_path)
             features.append([dist])
 
-        features_df = pd.DataFrame(data=features, columns=columns)
+        features_df = pd.DataFrame(data=features, columns=columns, index=group_names)
         return features_df if self.return_df else features_df.values
 
 
@@ -280,6 +294,7 @@ class ScanMatchDist(DistanceTransformer):
         t_bin: int = 20,
         expected_paths: Dict[str, pd.DataFrame] = None,
         fill_path: pd.DataFrame = None,
+        expected_paths_method: str = "mean",
         return_df: bool = True,
     ):
         """
@@ -292,6 +307,7 @@ class ScanMatchDist(DistanceTransformer):
         :param t_bin: Temporal bin for quantifying fixation durations
         :param expected_paths: Dict which was returned from get_expected_path method with the same params
         :param fill_path: pd.DataFrame path which was returned from get_fill_path method for the same expected_paths
+        :param expected_paths_method: method to calculate expected path ("mean" or "fwp")
         :param return_df: Return pd.Dataframe object else np.ndarray
         """
 
@@ -310,6 +326,7 @@ class ScanMatchDist(DistanceTransformer):
             pk=pk,
             expected_paths=expected_paths,
             fill_path=fill_path,
+            expected_paths_method=expected_paths_method,
             return_df=return_df,
         )
         self.requires_duration = True
@@ -337,8 +354,10 @@ class ScanMatchDist(DistanceTransformer):
         data_part: Types.Partition = super(ScanMatchDist, self)._get_partition(X)
 
         # calculate distances for each group
+        group_names = []
         columns, features = ["scan_match_dist"], []
         for group_nm, group_path in tqdm(data_part):
+            group_names.append(group_nm)
             path_group = super(ScanMatchDist, self)._get_path_group(
                 group_path.head(1)[self.path_pk].values[0]
             )
@@ -355,7 +374,7 @@ class ScanMatchDist(DistanceTransformer):
             )
             features.append([dist])
 
-        features_df = pd.DataFrame(data=features, columns=columns)
+        features_df = pd.DataFrame(data=features, columns=columns, index=group_names)
         return features_df if self.return_df else features_df.values
 
     def __repr__(self, **kwargs):
@@ -377,8 +396,10 @@ class MannanDist(DistanceTransformer):
         data_part: Types.Partition = super(MannanDist, self)._get_partition(X)
 
         # calculate distances for each group
+        group_names = []
         columns, features = ["man_dist"], []
         for group_nm, group_path in tqdm(data_part):
+            group_names.append(group_nm)
             path_group = super(MannanDist, self)._get_path_group(
                 group_path.head(1)[self.path_pk].values[0]
             )
@@ -390,7 +411,7 @@ class MannanDist(DistanceTransformer):
             dist = calc_man_dist(group_path[[self.x, self.y]], expected_path)
             features.append([dist])
 
-        features_df = pd.DataFrame(data=features, columns=columns)
+        features_df = pd.DataFrame(data=features, columns=columns, index=group_names)
         return features_df if self.return_df else features_df.values
 
 
@@ -409,8 +430,10 @@ class EyeAnalysisDist(DistanceTransformer):
         data_part: Types.Partition = super(EyeAnalysisDist, self)._get_partition(X)
 
         # calculate distances for each group
+        group_names = []
         columns, features = ["eye_dist"], []
         for group_nm, group_path in tqdm(data_part):
+            group_names.append(group_nm)
             path_group = super(EyeAnalysisDist, self)._get_path_group(
                 group_path.head(1)[self.path_pk].values[0]
             )
@@ -422,7 +445,7 @@ class EyeAnalysisDist(DistanceTransformer):
             dist = calc_eye_dist(group_path[[self.x, self.y]], expected_path)
             features.append([dist])
 
-        features_df = pd.DataFrame(data=features, columns=columns)
+        features_df = pd.DataFrame(data=features, columns=columns, index=group_names)
         return features_df if self.return_df else features_df.values
 
 
@@ -441,8 +464,10 @@ class DFDist(DistanceTransformer):
         data_part: Types.Partition = super(DFDist, self)._get_partition(X)
 
         # calculate distances for each group
+        group_names = []
         columns, features = ["dfr_dist"], []
         for group_nm, group_path in tqdm(data_part):
+            group_names.append(group_nm)
             path_group = super(DFDist, self)._get_path_group(
                 group_path.head(1)[self.path_pk].values[0]
             )
@@ -454,7 +479,7 @@ class DFDist(DistanceTransformer):
             dist = calc_dfr_dist(group_path[[self.x, self.y]], expected_path)
             features.append([dist])
 
-        features_df = pd.DataFrame(data=features, columns=columns)
+        features_df = pd.DataFrame(data=features, columns=columns, index=group_names)
         return features_df if self.return_df else features_df.values
 
 
@@ -470,6 +495,7 @@ class TDEDist(DistanceTransformer):
         pk: List[str] = None,
         expected_paths: Dict[str, pd.DataFrame] = None,
         fill_path: pd.DataFrame = None,
+        expected_paths_method: str = "mean",
         return_df: bool = True,
     ):
         """
@@ -480,6 +506,7 @@ class TDEDist(DistanceTransformer):
         :param pk: List of column names used to split pd.Dataframe
         :param expected_paths: Dict which was returned from get_expected_path method with the same params
         :param fill_path: pd.DataFrame path which was returned from get_fill_path method for the same expected_paths
+        :param expected_paths_method: method to calculate expected path ("mean" or "fwp")
         :param return_df: Return pd.Dataframe object else np.ndarray
         """
 
@@ -493,6 +520,7 @@ class TDEDist(DistanceTransformer):
             pk=pk,
             expected_paths=expected_paths,
             fill_path=fill_path,
+            expected_paths_method=expected_paths_method,
             return_df=return_df,
         )
 
@@ -508,8 +536,10 @@ class TDEDist(DistanceTransformer):
         data_part: Types.Partition = super(TDEDist, self)._get_partition(X)
 
         # calculate distances for each group
+        group_names = []
         columns, features = ["tde_dist"], []
         for group_nm, group_path in tqdm(data_part):
+            group_names.append(group_nm)
             path_group = super(TDEDist, self)._get_path_group(
                 group_path.head(1)[self.path_pk].values[0]
             )
@@ -521,7 +551,7 @@ class TDEDist(DistanceTransformer):
             dist = calc_tde_dist(group_path[[self.x, self.y]], expected_path, k=self.k)
             features.append([dist])
 
-        features_df = pd.DataFrame(data=features, columns=columns)
+        features_df = pd.DataFrame(data=features, columns=columns, index=group_names)
         return features_df if self.return_df else features_df.values
 
 
@@ -537,6 +567,7 @@ class MultiMatchDist(DistanceTransformer):
         pk: List[str] = None,
         expected_paths: Dict[str, pd.DataFrame] = None,
         fill_path: pd.DataFrame = None,
+        expected_paths_method: str = "mean",
         return_df: bool = True,
     ):
         """
@@ -547,6 +578,7 @@ class MultiMatchDist(DistanceTransformer):
         :param pk: List of column names used to split pd.Dataframe
         :param expected_paths: Dict which was returned from get_expected_path method with the same params
         :param fill_path: pd.DataFrame path which was returned from get_fill_path method for the same expected_paths
+        :param expected_paths_method: method to calculate expected path ("mean" or "fwp")
         :param return_df: Return pd.Dataframe object else np.ndarray
         """
 
@@ -558,6 +590,7 @@ class MultiMatchDist(DistanceTransformer):
             pk=pk,
             expected_paths=expected_paths,
             fill_path=fill_path,
+            expected_paths_method=expected_paths_method,
             return_df=return_df,
         )
         self.requires_duration = True
@@ -584,8 +617,10 @@ class MultiMatchDist(DistanceTransformer):
 
         # calculate distances for each group
         features = []
+        group_names = []
         columns = ["mm_shape", "mm_angle", "mm_len", "mm_pos", "mm_duration"]
         for group_nm, group_path in tqdm(data_part):
+            group_names.append(group_nm)
             path_group = super(MultiMatchDist, self)._get_path_group(
                 group_path.head(1)[self.path_pk].values[0]
             )
@@ -599,7 +634,7 @@ class MultiMatchDist(DistanceTransformer):
             )
             features.append([shape, angle, length, pos, duration])
 
-        features_df = pd.DataFrame(data=features, columns=columns)
+        features_df = pd.DataFrame(data=features, columns=columns, index=group_names)
         return features_df if self.return_df else features_df.values
 
 

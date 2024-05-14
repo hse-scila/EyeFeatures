@@ -7,6 +7,8 @@ from numpy.typing import NDArray
 from scipy.linalg import sqrtm
 from scipy.optimize import minimize
 
+from eyetracking.utils import Types, _split_dataframe
+
 
 def _target_norm(fwp: np.ndarray, fixations: np.ndarray) -> float:
     return np.linalg.norm(fixations - fwp, axis=1).sum()
@@ -18,6 +20,7 @@ def get_expected_path(
     y: str,
     path_pk: List[str],
     pk: List[str],
+    method: str = "mean",
     duration: str = None,
     return_df: bool = True,
 ) -> Dict[str, Union[pd.DataFrame, np.ndarray]]:
@@ -28,79 +31,101 @@ def get_expected_path(
     :param y: Column name of y-coordinate
     :param path_pk: List of column names of groups to calculate expected path (must be a subset of pk)
     :param pk: List of column names used to split pd.Dataframe
+    :param method: method to calculate expected path ("mean" or "fwp")
     :param duration: Column name of fixations duration if needed
     :param return_df: Return pd.Dataframe object else np.ndarray
-    :return: Dict of groups and pd.Dataframe or np.ndarray of form (x_est, y_est, duration_est [if duration is passed])
+    :return: Dict of groups and Union[pd.Dataframe, np.ndarray] of form (x_est, y_est) or (x_est, y_est, duration_est)
     """
 
-    assert set(path_pk).issubset(set(pk)), "path_pk must be a subset of pk"
+    if not set(path_pk).issubset(set(pk)):
+        raise ValueError("path_pk must be a subset of pk")
 
     columns = [x, y]
+    columns_ret = ["x_est", "y_est"]
     if duration is not None:
         columns.append(duration)
+        columns_ret.append("duration_est")
 
-    expected_paths = dict()
-    path_groups = data[path_pk].drop_duplicates().values
-    pk_dif = [col for col in pk if col not in path_pk]  # pk \ path_pk
+    resulted_paths = {}
+    path_groups: Types.Partition = _split_dataframe(data, path_pk)
 
-    for path_group in path_groups:
-        length = 0
-        cur_data = data[pd.DataFrame(data[path_pk] == path_group).all(axis=1)]
-        expected_path, cur_paths = [], []
-        groups = cur_data[pk_dif].drop_duplicates().values
-        for group in groups:
-            mask = pd.DataFrame(cur_data[pk_dif] == group).all(axis=1)
-            path_data = cur_data[mask]
-            length = max(length, len(path_data))
-            cur_paths.append(path_data[columns].values)
+    for group_nm, group_path in path_groups:
+        expected_path = []
+        data_part: Types.Partition = _split_dataframe(group_path, pk)
+        path_length = max(len(part_path) for part_nm, part_path in data_part)
 
-        for i in range(length):
-            vector_coord = []
-            cnt, total_duration = 0, 0
-            for path in cur_paths:
-                if path.shape[0] > i:
-                    cnt += 1
-                    vector_coord.append(path[i, :2])
-                    if len(columns) == 3:
-                        total_duration += path[i, 2]
+        if method == "mean":
+            reshaped_paths = [
+                np.pad(
+                    part_path[columns],
+                    pad_width=((0, path_length - len(part_path)), (0, 0)),
+                    mode="constant",
+                )
+                for part_nm, part_path in data_part
+            ]
+            expected_path = np.mean(np.array(reshaped_paths), axis=0)
+        elif method == "fwp":
+            for step in range(path_length):
+                duration_sum = 0
+                observed_points = []
+                for part_nm, part_path in data_part:
+                    part_path = part_path[columns].values
+                    if part_path.shape[0] > step:
+                        observed_points.append(part_path[step, :2])
+                        if len(columns) == 3:
+                            duration_sum += part_path[step, 2]
 
-            vector_coord = np.array(vector_coord)
-            fwp_init = np.mean(vector_coord, axis=0)
-            fwp_init = minimize(
-                _target_norm, fwp_init, args=(vector_coord,), method="L-BFGS-B"
-            )
-            next_fixation = [fwp_init.x[0], fwp_init.x[1]]
-            if len(columns) == 3:
-                next_fixation.append(total_duration / cnt)
-            expected_path.append(next_fixation)
-        ret_columns = ["x_est", "y_est"]
-        if len(columns) == 3:
-            ret_columns.append("duration_est")
-        path_df = pd.DataFrame(expected_path, columns=ret_columns)
-        expected_paths["_".join([str(g) for g in path_group])] = (
-            path_df if return_df else path_df.values
+                vector_points = np.array(observed_points)
+                fwp_init = np.mean(vector_points, axis=0)
+                fwp_opt = minimize(
+                    _target_norm, fwp_init, args=(vector_points,), method="L-BFGS-B"
+                )
+                fix_opt = [fwp_opt.x[0], fwp_opt.x[1]]
+                if len(columns) == 3:
+                    fix_opt.append(duration_sum / max(1, len(observed_points)))
+
+                expected_path.append(fix_opt)
+        else:
+            raise ValueError('Only "mean" and "fwp" methods are supported')
+
+        expected_path_df = pd.DataFrame(expected_path, columns=columns_ret)
+        resulted_paths[group_nm] = (
+            expected_path_df if return_df else expected_path_df.values
         )
 
-    return expected_paths
+    return resulted_paths
 
 
-def get_fill_path(
-    paths: List[pd.DataFrame], x: str, y: str, duration: str = None
+def _get_fill_path(
+    data: List[pd.DataFrame],
+    x: str,
+    y: str,
+    method: str = "mean",
+    duration: str = None,
 ) -> pd.DataFrame:
-    all_paths = pd.concat(
-        [path.assign(pid=k) for k, path in enumerate(paths)], ignore_index=True
+    """
+    Calculates fill path as expected path of given expected paths
+    :param data: paths data
+    :param x: Column name of x-coordinate
+    :param y: Column name of y-coordinate
+    :param method: method to calculate expected path ("mean" or "fwp")
+    :param duration: Column name of fixations duration if needed
+    """
+
+    paths = pd.concat(
+        [path.assign(dummy=k) for k, path in enumerate(data)], ignore_index=True
     )
-    all_paths["dummy"] = 1
-    return list(
-        get_expected_path(
-            data=all_paths,
-            x=x,
-            y=y,
-            path_pk=["dummy"],
-            pk=["dummy", "pid"],
-            duration=duration,
-        ).values()
-    )[0]
+
+    fill_path = get_expected_path(
+        data=paths,
+        x=x,
+        y=y,
+        path_pk=["dummy"],
+        pk=["dummy"],
+        method=method,
+        duration=duration,
+    )
+    return list(fill_path.values())[0]
 
 
 # ======================== SIMILARITY MATRIX ========================
