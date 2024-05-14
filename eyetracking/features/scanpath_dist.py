@@ -114,7 +114,7 @@ class SimpleDistances(DistanceTransformer):
         return_df: bool = True,
     ):
         """
-        :param methods: list of methods to use (e.g. "euc", "hau")
+        :param methods: list of methods to use ("euc", "hau", "dfr", "eye", "man", "dtw")
         :param x: Column name of x-coordinate
         :param y: Column name of y-coordinate
         :param path_pk: List of column names of groups to calculate expected path

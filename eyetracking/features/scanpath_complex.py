@@ -6,6 +6,7 @@ from numba import jit
 from numpy.typing import NDArray
 from scipy.linalg import sqrtm
 from scipy.optimize import minimize
+from tqdm import tqdm
 
 from eyetracking.utils import Types, _split_dataframe
 
@@ -175,3 +176,27 @@ def get_sim_matrix(scanpaths: List[NDArray], sim_metric: Callable):
     m = np.max(sim_matrix)
     m = m if m != 0 else 1
     return sim_matrix / m
+
+
+@jit(forceobj=True, looplift=True)
+def get_dist_matrix(
+    scanpaths: List[pd.DataFrame], dist_metric: Callable
+) -> pd.DataFrame:
+    """
+    Computes pairwise distance matrix given distance metric.
+    :param scanpaths: List of scanpaths DataFrames of form (x, y)
+    :param dist_metric: Metric used to calculate distance from features.scanpath_dist
+    """
+
+    if len(scanpaths) == 0:
+        raise ValueError("scanpaths list is empty")
+
+    distances = []
+    for i in tqdm(range(len(scanpaths))):
+        for j in range(i + 1):
+            distance = dist_metric(scanpaths[i], scanpaths[j])
+            distances.append([i, j, distance])
+            distances.append([j, i, distance])
+
+    distances_df = pd.DataFrame(distances, columns=["p", "q", "dist"])
+    return distances_df.reset_index().pivot_table(index="p", columns="q", values="dist")
