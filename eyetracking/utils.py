@@ -6,6 +6,11 @@ import pandas as pd
 
 @dataclass
 class Types:
+    """
+    Partition: List of split pairs <pk, Dataframe>
+    Data: either Dataframe or Partition
+    """
+
     Partition = List[Tuple[str, pd.DataFrame]]
     Data = Union[pd.DataFrame, Partition]
 

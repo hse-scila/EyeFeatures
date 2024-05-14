@@ -55,6 +55,13 @@ class DistanceTransformer(BaseTransformer):
             raise TypeError("Input must be DataFrame or Partition")
         return df if isinstance(df, List) else _split_dataframe(df=df, pk=self.pk)
 
+    @staticmethod
+    def _get_path_group(pg: np.ndarray) -> str:
+        return "_".join(str(v) for v in pg)
+
+    def get_expected_paths(self) -> Dict[str, Union[pd.DataFrame, np.ndarray]]:
+        return self.expected_paths
+
     @jit(forceobj=True, looplift=True)
     def fit(self, X: pd.DataFrame, y=None):
         # TODO: modify for Types.Data
@@ -180,9 +187,12 @@ class EucDist(DistanceTransformer):
         # calculate distances for each group
         columns, features = ["euc_dist"], []
         for group_nm, group_path in tqdm(data_part):
+            path_group = super(EucDist, self)._get_path_group(
+                group_path.head(1)[self.path_pk].values[0]
+            )
             expected_path = (
-                self.expected_paths[group_nm]
-                if group_nm in self.expected_paths.keys()
+                self.expected_paths[path_group]
+                if path_group in self.expected_paths.keys()
                 else self.fill_path
             )
             dist = calc_euc_dist(group_path[[self.x, self.y]], expected_path)
@@ -209,9 +219,12 @@ class HauDist(DistanceTransformer):
         # calculate distances for each group
         columns, features = ["hau_dist"], []
         for group_nm, group_path in tqdm(data_part):
+            path_group = super(HauDist, self)._get_path_group(
+                group_path.head(1)[self.path_pk].values[0]
+            )
             expected_path = (
-                self.expected_paths[group_nm]
-                if group_nm in self.expected_paths.keys()
+                self.expected_paths[path_group]
+                if path_group in self.expected_paths.keys()
                 else self.fill_path
             )
             dist = calc_hau_dist(group_path[[self.x, self.y]], expected_path)
@@ -238,9 +251,12 @@ class DTWDist(DistanceTransformer):
         # calculate distances for each group
         columns, features = ["dtw_dist"], []
         for group_nm, group_path in tqdm(data_part):
+            path_group = super(DTWDist, self)._get_path_group(
+                group_path.head(1)[self.path_pk].values[0]
+            )
             expected_path = (
-                self.expected_paths[group_nm]
-                if group_nm in self.expected_paths.keys()
+                self.expected_paths[path_group]
+                if path_group in self.expected_paths.keys()
                 else self.fill_path
             )
             dist = calc_dtw_dist(group_path[[self.x, self.y]], expected_path)
@@ -261,7 +277,7 @@ class ScanMatchDist(DistanceTransformer):
         path_pk: List[str] = None,
         pk: List[str] = None,
         sub_mat: np.ndarray = np.ones((20, 20)),
-        t_bin: int = 200,
+        t_bin: int = 20,
         expected_paths: Dict[str, pd.DataFrame] = None,
         fill_path: pd.DataFrame = None,
         return_df: bool = True,
@@ -281,10 +297,11 @@ class ScanMatchDist(DistanceTransformer):
 
         self.t_bin = t_bin
         self.sub_mat = sub_mat
-        assert sub_mat.shape == (
-            20,
-            20,
-        ), f"Sub matrix size must be of shape (20, 20), got {sub_mat.shape}"
+        if sub_mat.shape != (20, 20):
+            raise ValueError(
+                f"Sub matrix size must be of shape (20, 20), got {sub_mat.shape}"
+            )
+
         super(ScanMatchDist, self).__init__(
             x=x,
             y=y,
@@ -304,6 +321,8 @@ class ScanMatchDist(DistanceTransformer):
             (self.pk, "pk"),
             (self.path_pk, "path_pk"),
             (self.duration, "duration"),
+            (self.t_bin, "t_bin"),
+            (self.sub_mat, "sub_mat"),
         ]
 
     @jit(forceobj=True, looplift=True)
@@ -320,9 +339,12 @@ class ScanMatchDist(DistanceTransformer):
         # calculate distances for each group
         columns, features = ["scan_match_dist"], []
         for group_nm, group_path in tqdm(data_part):
+            path_group = super(ScanMatchDist, self)._get_path_group(
+                group_path.head(1)[self.path_pk].values[0]
+            )
             expected_path = (
-                self.expected_paths[group_nm]
-                if group_nm in self.expected_paths.keys()
+                self.expected_paths[path_group]
+                if path_group in self.expected_paths.keys()
                 else self.fill_path
             )
             dist = calc_scan_match_dist(
@@ -357,9 +379,12 @@ class MannanDist(DistanceTransformer):
         # calculate distances for each group
         columns, features = ["man_dist"], []
         for group_nm, group_path in tqdm(data_part):
+            path_group = super(MannanDist, self)._get_path_group(
+                group_path.head(1)[self.path_pk].values[0]
+            )
             expected_path = (
-                self.expected_paths[group_nm]
-                if group_nm in self.expected_paths.keys()
+                self.expected_paths[path_group]
+                if path_group in self.expected_paths.keys()
                 else self.fill_path
             )
             dist = calc_man_dist(group_path[[self.x, self.y]], expected_path)
@@ -386,9 +411,12 @@ class EyeAnalysisDist(DistanceTransformer):
         # calculate distances for each group
         columns, features = ["eye_dist"], []
         for group_nm, group_path in tqdm(data_part):
+            path_group = super(EyeAnalysisDist, self)._get_path_group(
+                group_path.head(1)[self.path_pk].values[0]
+            )
             expected_path = (
-                self.expected_paths[group_nm]
-                if group_nm in self.expected_paths.keys()
+                self.expected_paths[path_group]
+                if path_group in self.expected_paths.keys()
                 else self.fill_path
             )
             dist = calc_eye_dist(group_path[[self.x, self.y]], expected_path)
@@ -415,9 +443,12 @@ class DFDist(DistanceTransformer):
         # calculate distances for each group
         columns, features = ["dfr_dist"], []
         for group_nm, group_path in tqdm(data_part):
+            path_group = super(DFDist, self)._get_path_group(
+                group_path.head(1)[self.path_pk].values[0]
+            )
             expected_path = (
-                self.expected_paths[group_nm]
-                if group_nm in self.expected_paths.keys()
+                self.expected_paths[path_group]
+                if path_group in self.expected_paths.keys()
                 else self.fill_path
             )
             dist = calc_dfr_dist(group_path[[self.x, self.y]], expected_path)
@@ -453,7 +484,8 @@ class TDEDist(DistanceTransformer):
         """
 
         self.k = k
-        assert k > 0, "k must be strictly positive"
+        if self.k <= 0:
+            raise ValueError("k must be positive")
         super(TDEDist, self).__init__(
             x=x,
             y=y,
@@ -478,9 +510,12 @@ class TDEDist(DistanceTransformer):
         # calculate distances for each group
         columns, features = ["tde_dist"], []
         for group_nm, group_path in tqdm(data_part):
+            path_group = super(TDEDist, self)._get_path_group(
+                group_path.head(1)[self.path_pk].values[0]
+            )
             expected_path = (
-                self.expected_paths[group_nm]
-                if group_nm in self.expected_paths.keys()
+                self.expected_paths[path_group]
+                if path_group in self.expected_paths.keys()
                 else self.fill_path
             )
             dist = calc_tde_dist(group_path[[self.x, self.y]], expected_path, k=self.k)
@@ -551,9 +586,12 @@ class MultiMatchDist(DistanceTransformer):
         features = []
         columns = ["mm_shape", "mm_angle", "mm_len", "mm_pos", "mm_duration"]
         for group_nm, group_path in tqdm(data_part):
+            path_group = super(MultiMatchDist, self)._get_path_group(
+                group_path.head(1)[self.path_pk].values[0]
+            )
             expected_path = (
-                self.expected_paths[group_nm]
-                if group_nm in self.expected_paths.keys()
+                self.expected_paths[path_group]
+                if path_group in self.expected_paths.keys()
                 else self.fill_path
             )
             shape, angle, length, pos, duration = calc_mm_features(
@@ -567,7 +605,10 @@ class MultiMatchDist(DistanceTransformer):
 
 # ===================== FUNCTIONS =====================
 def _transform_fixation(x, y, duration, t_bin):
-    assert (0 <= x <= 1) and (0 <= y <= 1), "Fixations domain must be [0, 1] x [0, 1]"
+    if x < 0 or x > 1 or y < 0 or y > 1:
+        raise ValueError(
+            "Fixations domain must be from unit square (i.e. in [0, 1] x [0, 1])"
+        )
     character = chr(97 + int(100 * x) // 5) + chr(65 + int(100 * y) // 5)
     return character * int(duration // t_bin)
 
@@ -671,7 +712,7 @@ def calc_scan_match_dist(
     p: pd.DataFrame,
     q: pd.DataFrame,
     sub_mat: np.ndarray = np.ones((20, 20)),
-    t_bin: int = 200,
+    t_bin: int = 20,
 ) -> float:
     """
     Calculates ScanMatch distance between paths p and q
@@ -801,7 +842,8 @@ def calc_tde_dist(p: pd.DataFrame, q: pd.DataFrame, k: int = 1) -> float:
     """
 
     dist = np.nan
-    assert k > 0, "k must be strictly positive"
+    if k <= 0:
+        raise ValueError("k must be positive")
     if k <= min(len(p), len(q)):
         p_data = p.values
         q_data = q.values

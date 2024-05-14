@@ -35,7 +35,8 @@ class BaseTransformer(BaseEstimator, TransformerMixin):
 
     def _check_init(self, items: List[Tuple[Any, str]]):
         for value, nm in items:
-            assert value is not None, f"{nm} is not initialized"
+            if value is None:
+                raise RuntimeError(f"{nm} is not initialized")
 
     def set_data(
         self,
