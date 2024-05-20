@@ -1,15 +1,14 @@
 from typing import Any, Dict, List, Tuple, Union
 
-import multimatch_gaze as mm
 import numpy as np
 import pandas as pd
-from numba import jit
-from tqdm import tqdm
-
+import scipy
 from eyetracking.features.extractor import BaseTransformer
 from eyetracking.features.scanpath_complex import (_get_fill_path,
                                                    get_expected_path)
 from eyetracking.utils import Types, _split_dataframe
+from numba import jit
+from tqdm import tqdm
 
 
 class DistanceTransformer(BaseTransformer):
@@ -906,27 +905,103 @@ def calc_mm_features(
     :param q: pd.DataFrame containing columns (x, y, duration) only
     """
 
-    shape, angle = np.nan, np.nan
-    length, pos, duration = np.nan, np.nan, np.nan
+    n, m = len(p), len(q)
+    if n < 2 or m < 2:
+        return np.nan, np.nan, np.nan, np.nan, np.nan
 
-    if len(p) * len(q) > 0:
-        p_x, p_y, p_dur = p.columns
-        q_x, q_y, q_dur = q.columns
-        p_prep = p.rename(
-            columns=dict([(p_x, "start_x"), (p_y, "start_y"), (p_dur, "duration")])
-        )
-        q_prep = q.rename(
-            columns=dict([(q_x, "start_x"), (q_y, "start_y"), (q_dur, "duration")])
-        )
+    # calculate pairwise saccade difference matrix
+    p_sac_x, p_sac_y = np.diff(p.values[:, 0]), np.diff(p.values[:, 1])
+    q_sac_x, q_sac_y = np.diff(q.values[:, 0]), np.diff(q.values[:, 1])
 
-        p_prep = p_prep.reset_index()
-        q_prep = q_prep.reset_index()
-        sim = mm.docomparison(
-            fixation_vectors1=p_prep,
-            fixation_vectors2=q_prep,
-            screensize=[1, 1],
-        )
+    dist = []
+    for i in range(n - 1):
+        delta_x = p_sac_x[i] * np.ones(m - 1) - q_sac_x
+        delta_y = p_sac_y[i] * np.ones(m - 1) - q_sac_y
+        dist.append(np.sqrt(delta_x**2 + delta_y**2))
 
-        shape, angle, length, pos, duration = sim
+    # prepare input for scipy coo_matrix
+    nodes_from, nodes_to, edge_weights = [], [], []
+    for i in range(n - 2):
+        for j in range(m - 2):
+            v = i * (m - 1) + j
+            r, d, r_d = v + 1, v + (m - 1), v + (m - 1) + 1
+            nodes_from.extend([v] * 3)
+            nodes_to.extend([r, d, r_d])
+            edge_weights.extend([dist[i][j + 1], dist[i + 1][j], dist[i + 1][j + 1]])
 
-    return shape, angle, length, pos, duration
+    for j in range(m - 2):
+        v = (n - 2) * (m - 1) + j
+        nodes_from.append(v)
+        nodes_to.append(v + 1)
+        edge_weights.append(dist[n - 2][j + 1])
+
+    for i in range(n - 2):
+        v = i * (m - 1) + m - 2
+        nodes_from.append(v)
+        nodes_to.append(v + (m - 1))
+        edge_weights.append(dist[i + 1][m - 2])
+
+    n_nodes = (n - 1) * (m - 1)
+    sparse_dist = scipy.sparse.coo_matrix(
+        (edge_weights, (nodes_from, nodes_to)), shape=(n_nodes, n_nodes)
+    ).tocsr()
+
+    # find and restore the shortest path using dijkstra
+    _, predecessors = scipy.sparse.csgraph.dijkstra(
+        csgraph=sparse_dist, indices=0, return_predecessors=True, directed=True
+    )
+
+    cur = n_nodes - 1
+    shortest_path = []
+    while cur != -9999:
+        shortest_path.append(cur)
+        cur = predecessors[cur]
+
+    shortest_path.reverse()
+
+    # calculate features using the shortest path
+    p_fix_x, p_fix_y = p.values[:, 0], p.values[:, 0]
+    q_fix_x, q_fix_y = q.values[:, 0], q.values[:, 1]
+    p_fix_dur, q_fix_dur = p.values[:, 2], q.values[:, 2]
+    p_sac_rho, p_sac_phi = np.sqrt(p_sac_x**2 + p_sac_y**2), np.arctan2(
+        p_sac_y, p_sac_x
+    )
+    q_sac_rho, q_sac_phi = np.sqrt(q_sac_x**2 + q_sac_y**2), np.arctan2(
+        q_sac_y, q_sac_x
+    )
+
+    shape_diff, angle_diff = [], []
+    length_diff, position_diff, duration_diff = [], [], []
+    for v in shortest_path:
+        # get corresponding saccades
+        i, j = v // (m - 1), v % (m - 1)
+        # calculate shape diff
+        delta_x = p_sac_x[i] - q_sac_x[j]
+        delta_y = p_sac_y[i] - q_sac_y[j]
+        shape_diff.append(np.sqrt(delta_x**2 + delta_y**2))
+        # calculate angle diff
+        angle_diff.append(abs(p_sac_phi[i] - q_sac_phi[j]))
+        # calculate length diff
+        length_diff.append(abs(p_sac_rho[i] - q_sac_rho[j]))
+        # calculate position diff
+        fix_delta_x = p_fix_x[i] - q_fix_x[j]
+        fix_delta_y = p_fix_y[i] - q_fix_y[j]
+        position_diff.append(np.sqrt(fix_delta_x**2 + fix_delta_y**2))
+        # calculate duration diff
+        mx_dur = max(p_fix_dur[i], q_fix_dur[j])
+        duration_diff.append(abs(p_fix_dur[i] - q_fix_dur[j]) / mx_dur)
+
+    shape_m = np.median(shape_diff)
+    angle_m = np.median(angle_diff)
+    length_m = np.median(length_diff)
+    position_m = np.median(position_diff)
+    duration_m = np.median(duration_diff)
+
+    # normalize features into [0, 1]
+    shape_m /= np.sqrt(8)  # max_shape = 2 * len(diagonal)
+    angle_m /= 2 * np.pi  # max_angle = 2 * pi
+    length_m /= np.sqrt(2)  # max_length = len(diagonal)
+    position_m /= np.sqrt(2)  # max_position = len(diagonal)
+
+    # return similarities
+    return 1 - shape_m, 1 - angle_m, 1 - length_m, 1 - position_m, 1 - duration_m
