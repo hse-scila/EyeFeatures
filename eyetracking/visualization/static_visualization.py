@@ -138,6 +138,7 @@ def scanpath_visualization(
                         edgecolors="black",
                     )
             if show_hull:
+                assert points[x].shape[0] > 2, "Error: Need more points for aoi"
                 points_num = np.array([points[x].to_numpy(), points[y].to_numpy()])
                 points_num = points_num.T
 
@@ -165,89 +166,95 @@ def scanpath_visualization(
         for i in enumeration:
             plt.annotate(i, xy=(X[i], Y[i]))
 
-    if only_points:
-        plt.show()
-        return
+    if not only_points:
+        c_sac = np.array(mpl.colors.to_rgb(path_color))
+        if seq_colormap:
+            ls = np.linspace(0, 1, len(fixation_size))
+        else:
+            ls = np.ones(len(fixation_size))
 
-    c_sac = np.array(mpl.colors.to_rgb(path_color))
-    if seq_colormap:
-        ls = np.linspace(0, 1, len(fixation_size))
-    else:
-        ls = np.ones(len(fixation_size))
-
-    if not is_vectors:
-        for i in range(len(X) - 1):
-            plt.plot(
-                [X.iloc[i], X.iloc[i + 1]],
-                [Y.iloc[i], Y.iloc[i + 1]],
-                color=c_sac * ls[i],
-                linewidth=path_width,
-            )
-        if regression_color is not None:
-            c_reg = np.array(mpl.colors.to_rgb(regression_color))
-            regX = [(X.iloc[i - 1], X.iloc[i]) for i in reg_only.index]
-            regY = [(Y.iloc[i - 1], Y.iloc[i]) for i in reg_only.index]
-            for i in range(len(regX)):
-                plt.plot(regX[i], regY[i], color=c_reg * ls[i], linewidth=path_width)
-    else:
-        for i in range(len(X) - 1):
-            plt.quiver(
-                X.iloc[i],
-                Y.iloc[i],
-                X.iloc[i + 1] - X.iloc[i],
-                Y.iloc[i + 1] - Y.iloc[i],
-                angles="xy",
-                scale_units="xy",
-                color=c_sac * ls[i],
-                scale=1,
-                width=path_width / 500,
-                edgecolor="yellow",
-                linewidth=path_width / 1000,
-            )
-        if regression_color is not None:
-            c_reg = np.array(mpl.colors.to_rgb(regression_color))
-            regX = np.array([(X.iloc[i - 1], X.iloc[i]) for i in reg_only.index])
-            regY = np.array([(Y.iloc[i - 1], Y.iloc[i]) for i in reg_only.index])
-            for i in range(len(regX)):
+        if not is_vectors:
+            for i in range(len(X) - 1):
+                plt.plot(
+                    [X.iloc[i], X.iloc[i + 1]],
+                    [Y.iloc[i], Y.iloc[i + 1]],
+                    color=c_sac * ls[i],
+                    linewidth=path_width,
+                )
+            if regression_color is not None:
+                c_reg = np.array(mpl.colors.to_rgb(regression_color))
+                regX = [(X.iloc[i - 1], X.iloc[i]) for i in reg_only.index]
+                regY = [(Y.iloc[i - 1], Y.iloc[i]) for i in reg_only.index]
+                for i in range(len(regX)):
+                    plt.plot(
+                        regX[i], regY[i], color=c_reg * ls[i], linewidth=path_width
+                    )
+        else:
+            for i in range(len(X) - 1):
                 plt.quiver(
-                    regX[i][0],
-                    regY[i][0],
-                    regX[i][1] - regX[i][0],
-                    regY[i][1] - regY[i][0],
+                    X.iloc[i],
+                    Y.iloc[i],
+                    X.iloc[i + 1] - X.iloc[i],
+                    Y.iloc[i + 1] - Y.iloc[i],
                     angles="xy",
                     scale_units="xy",
-                    color=c_reg * ls[i],
+                    color=c_sac * ls[i],
                     scale=1,
                     width=path_width / 500,
                     edgecolor="yellow",
                     linewidth=path_width / 1000,
                 )
+            if regression_color is not None:
+                c_reg = np.array(mpl.colors.to_rgb(regression_color))
+                regX = np.array([(X.iloc[i - 1], X.iloc[i]) for i in reg_only.index])
+                regY = np.array([(Y.iloc[i - 1], Y.iloc[i]) for i in reg_only.index])
+                for i in range(len(regX)):
+                    plt.quiver(
+                        regX[i][0],
+                        regY[i][0],
+                        regX[i][1] - regX[i][0],
+                        regY[i][1] - regY[i][0],
+                        angles="xy",
+                        scale_units="xy",
+                        color=c_reg * ls[i],
+                        scale=1,
+                        width=path_width / 500,
+                        edgecolor="yellow",
+                        linewidth=path_width / 1000,
+                    )
 
-    if micro_sac_color is not None:  # TODO (doesn't work with normalized coordinates)
-        assert (
-            dispersion is not None
-        ), "Error: provide 'dispersion' column before calling visualization"
-        assert (
-            time_stamps is not None
-        ), "Error: provide 'time_stamps' column before calling visualization"
-        assert (
-            duration is not None
-        ), "Error: provide 'duration' column before calling visualization"
-        dr = np.sqrt(dX**2 + dY**2)
-        dt = data[time_stamps] - (data[time_stamps] + data[duration] / 1000).shift(1)
-        v = dr / (dt + eps)
-
-        mic_sac = data[(data[dispersion] > min_dispersion) & (v < max_velocity)]
-        mic_sacX = np.array([(X.iloc[i - 1], X.iloc[i]) for i in mic_sac.index])
-        mic_sacY = np.array([(Y.iloc[i - 1], Y.iloc[i]) for i in mic_sac.index])
-        for i in range(len(mic_sacX)):
-            plt.plot(
-                mic_sacX[i], mic_sacY[i], color=micro_sac_color, linewidth=path_width
+        if (
+            micro_sac_color is not None
+        ):  # TODO (doesn't work with normalized coordinates)
+            assert (
+                dispersion is not None
+            ), "Error: provide 'dispersion' column before calling visualization"
+            assert (
+                time_stamps is not None
+            ), "Error: provide 'time_stamps' column before calling visualization"
+            assert (
+                duration is not None
+            ), "Error: provide 'duration' column before calling visualization"
+            dr = np.sqrt(dX**2 + dY**2)
+            dt = data[time_stamps] - (data[time_stamps] + data[duration] / 1000).shift(
+                1
             )
+            v = dr / (dt + eps)
+
+            mic_sac = data[(data[dispersion] > min_dispersion) & (v < max_velocity)]
+            mic_sacX = np.array([(X.iloc[i - 1], X.iloc[i]) for i in mic_sac.index])
+            mic_sacY = np.array([(Y.iloc[i - 1], Y.iloc[i]) for i in mic_sac.index])
+            for i in range(len(mic_sacX)):
+                plt.plot(
+                    mic_sacX[i],
+                    mic_sacY[i],
+                    color=micro_sac_color,
+                    linewidth=path_width,
+                )
     if path_to_img is not None:
         if not with_axes:
             plt.axis("off")
-        plt.savefig(path_to_img)
+        plt.savefig(path_to_img, dpi=100)
         plt.axis("on")
     # plt.show()
     return
