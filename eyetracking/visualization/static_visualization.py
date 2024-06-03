@@ -38,6 +38,8 @@ def scanpath_visualization(
     show_hull: bool = False,
     show_legend: bool = False,
     path_to_img: str = None,
+    with_axes: bool = False,
+    axes_limits: tuple = None,
 ):
     plt.figure(figsize=fig_size)
     eps = 1e-8
@@ -65,6 +67,8 @@ def scanpath_visualization(
         disp = data[dispersion]
         disp /= disp.max()
         fixation_size = np.array(disp * points_width)
+
+    plt.axis(axes_limits)
 
     if img_path is not None:
         plt.imshow(plt.imread(img_path))
@@ -241,7 +245,8 @@ def scanpath_visualization(
                 mic_sacX[i], mic_sacY[i], color=micro_sac_color, linewidth=path_width
             )
     if path_to_img is not None:
-        plt.axis("off")
+        if not with_axes:
+            plt.axis("off")
         plt.savefig(path_to_img)
         plt.axis("on")
     # plt.show()
