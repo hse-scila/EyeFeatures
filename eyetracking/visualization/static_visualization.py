@@ -32,7 +32,7 @@ def scanpath_visualization(
     is_vectors: bool = False,
     min_dispersion: float = 1.2,
     max_velocity: float = 4.7,
-    aoi_c: Dict[str, mpl.colors] = None,
+    aoi_c: Dict[str, str] = None,
     only_points: bool = False,
     seq_colormap: bool = False,
     show_hull: bool = False,
@@ -53,7 +53,7 @@ def scanpath_visualization(
     X, Y = data[x], data[y]
     dX, dY = data[x].diff(), data[y].diff()
     XY = pd.concat([dX, dY], axis=1)
-    fixation_size = np.arange(points_width, X.shape[0])
+    fixation_size = np.full(X.shape[0], points_width)
     reg_only = XY[(XY.iloc[:, 0] < 0) | (XY.iloc[:, 1] > 0)]
 
     if duration is not None:
@@ -251,6 +251,8 @@ def scanpath_visualization(
                     color=micro_sac_color,
                     linewidth=path_width,
                 )
+    else:
+        plt.show()
     if path_to_img is not None:
         if not with_axes:
             plt.axis("off")
