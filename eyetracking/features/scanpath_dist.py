@@ -3,12 +3,13 @@ from typing import Any, Dict, List, Tuple, Union
 import numpy as np
 import pandas as pd
 import scipy
+from numba import jit
+from tqdm import tqdm
+
 from eyetracking.features.extractor import BaseTransformer
 from eyetracking.features.scanpath_complex import (_get_fill_path,
                                                    get_expected_path)
 from eyetracking.utils import Types, _split_dataframe
-from numba import jit
-from tqdm import tqdm
 
 
 class DistanceTransformer(BaseTransformer):

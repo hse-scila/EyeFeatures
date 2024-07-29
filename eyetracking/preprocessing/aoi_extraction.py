@@ -4,12 +4,16 @@ from typing import Any, Dict, List, Union
 import numpy as np
 import pandas as pd
 from numba import jit
-from scipy.ndimage import maximum_filter, sobel, prewitt
+from scipy.ndimage import maximum_filter, prewitt, sobel
+from sklearn.base import BaseEstimator, TransformerMixin
 
-from eyetracking.preprocessing.base import BasePreprocessor
+from eyetracking.features.measures import Entropy
+from eyetracking.preprocessing.base import BaseAOIPreprocessor
+from eyetracking.utils import _split_dataframe
 
 
-class ThresholdBased(BasePreprocessor):
+# ======== AOI PREPROCESSORS ========
+class ThresholdBased(BaseAOIPreprocessor):
     """
     Defines the AOI for each fixation using density maximum and Kmeans (Find local maximum, pre-threshold it, and use it as a center of aoi)
     :param data: DataFrame with fixations.
@@ -173,7 +177,7 @@ class ThresholdBased(BasePreprocessor):
         return X
 
 
-class GradientBased(BasePreprocessor):
+class GradientBased(BaseAOIPreprocessor):
 
     def __init__(
         self,
@@ -291,3 +295,76 @@ class GradientBased(BasePreprocessor):
 
         X[self.aoi] = aoi_list
         return X
+
+
+# ======== EXTRACTOR FOR AOI CLASSES ========
+class AOIExtractor(BaseEstimator, TransformerMixin):
+    def __init__(
+        self,
+        methods: List[BaseAOIPreprocessor],
+        x: str,
+        y: str,
+        window_size: int = None,
+        threshold: float = None,
+        pk: List[str] = None,
+        aoi_name: str = None,
+        show_best: bool = False,
+    ):
+        self.x = x
+        self.y = y
+        self.methods = methods
+        self.window_size = window_size
+        self.threshold = threshold
+        self.pk = pk
+        self.aoi = aoi_name
+        self.show_best = show_best
+
+    # @jit(forceobj=True, looplift=True)
+    def fit(self, X: pd.DataFrame, y=None):
+        for method in self.methods:
+            method.x = self.x
+            method.y = self.y
+            if self.window_size is not None:
+                method.window_size = self.window_size
+            if self.threshold is not None:
+                method.threshold = self.threshold
+            method.pk = self.pk
+            method.aoi = self.aoi
+            method.fit(X)
+        return self
+
+    # @jit(forceobj=True, looplift=True)
+    def transform(self, X: pd.DataFrame) -> pd.DataFrame:
+        if self.methods is None:
+            return X
+
+        data_df: pd.DataFrame = X[[self.x, self.y]]
+        if self.pk is not None:
+            data_df = pd.concat([data_df, X[self.pk]], axis=1)
+
+        fixations = None
+        groups: List[str, pd.DataFrame] = _split_dataframe(
+            data_df, self.pk, encode=False
+        )
+        entropy_transformer = Entropy(aoi=self.aoi, pk=self.pk)
+        for group_ids, group_X in groups:
+            min_entropy = np.inf
+            fixations_with_aoi = None
+            for method in self.methods:
+                cur_fixations = method.transform(group_X)
+                entropy = entropy_transformer.transform(cur_fixations)[
+                    "entropy"
+                ].values[0][0]
+                if min_entropy > entropy:
+                    min_entropy = entropy
+                    fixations_with_aoi = cur_fixations
+                    if self.show_best:
+                        fixations_with_aoi["best_method"] = method.__class__.__name__
+            if fixations is None:
+                fixations = fixations_with_aoi
+            else:
+                fixations = pd.concat(
+                    [fixations, fixations_with_aoi], ignore_index=True, axis=0
+                )
+
+        return fixations

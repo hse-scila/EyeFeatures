@@ -1,10 +1,9 @@
 from typing import Dict
 
-import matplotlib.pyplot as plt
 import matplotlib as mpl
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-
 from scipy.spatial import ConvexHull
 
 

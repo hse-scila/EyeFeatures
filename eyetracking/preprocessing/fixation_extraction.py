@@ -6,10 +6,11 @@ import scipy
 from numba import jit
 
 from eyetracking.preprocessing._utils import _get_distance
-from eyetracking.preprocessing.base import BasePreprocessor
+from eyetracking.preprocessing.base import BaseFixationPreprocessor
 
 
-class IVT(BasePreprocessor):
+# ======== FIXATION PREPROCESSORS ========
+class IVT(BaseFixationPreprocessor):
     def __init__(
         self,
         x: str,
@@ -86,7 +87,7 @@ class IVT(BasePreprocessor):
         return fixations_df
 
 
-class IDT(BasePreprocessor):
+class IDT(BaseFixationPreprocessor):
     def __init__(
         self,
         x: str,
@@ -239,7 +240,7 @@ class IDT(BasePreprocessor):
         return fixations_df
 
 
-class IHMM(BasePreprocessor):
+class IHMM(BaseFixationPreprocessor):
     def __init__(
         self,
         x: str,

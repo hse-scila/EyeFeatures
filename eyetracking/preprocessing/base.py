@@ -1,17 +1,15 @@
 from abc import abstractmethod
-from typing import List, Union, Any
+from typing import Any, List, Union
 
 import numpy as np
 import pandas as pd
 from numba import jit
 from numpy.typing import NDArray
+from scipy.stats import gaussian_kde
 from sklearn.base import BaseEstimator, TransformerMixin
 
-from eyetracking.features.measures import Entropy
 from eyetracking.preprocessing._utils import _get_distance
 from eyetracking.utils import _split_dataframe
-
-from scipy.stats import gaussian_kde
 
 
 class BasePreprocessor(BaseEstimator, TransformerMixin):
@@ -40,6 +38,39 @@ class BasePreprocessor(BaseEstimator, TransformerMixin):
     def _err_no_field(m, c):
         return f"Method {m} requires {c} for preprocessing."
 
+    @jit(forceobj=True, looplift=True)
+    def fit(self, X: pd.DataFrame, y=None):
+        self._check_params()
+        return self
+
+    @jit(forceobj=True, looplift=True)
+    def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, NDArray]:
+        self._check_params()
+        if self.pk is None:
+            fixations = self._preprocess(X)
+        else:
+            fixations = None
+            groups: List[str, pd.DataFrame] = _split_dataframe(X, self.pk, encode=False)
+            for group_ids, group_X in groups:
+                cur_fixations = self._preprocess(group_X)
+
+                for i in range(len(self.pk)):
+                    cur_fixations.insert(loc=i, column=self.pk[i], value=group_ids[i])
+
+                if fixations is None:
+                    fixations = cur_fixations
+                else:
+                    fixations = pd.concat(
+                        [fixations, cur_fixations], ignore_index=True, axis=0
+                    )
+
+        return fixations
+
+
+class BaseFixationPreprocessor(BasePreprocessor):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
     @staticmethod
     def _squash_fixations(is_fixation: NDArray) -> NDArray:
         """
@@ -67,6 +98,11 @@ class BasePreprocessor(BaseEstimator, TransformerMixin):
         for i in range(len(points) - 1):
             dist[i] = _get_distance(points[i, :], points[i + 1, :], distance=distance)
         return dist
+
+
+class BaseAOIPreprocessor(BasePreprocessor):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
     @staticmethod
     def _get_fixation_density(
@@ -108,103 +144,3 @@ class BasePreprocessor(BaseEstimator, TransformerMixin):
                     if loc_max_matrix[i][j - 1] == loc_max_matrix[i][j]:
                         loc_max_matrix[i][j - 1] = 0
         return np.transpose(np.nonzero(loc_max_matrix))
-
-    @jit(forceobj=True, looplift=True)
-    def fit(self, X: pd.DataFrame, y=None):
-        self._check_params()
-        return self
-
-    @jit(forceobj=True, looplift=True)
-    def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, NDArray]:
-        self._check_params()
-        if self.pk is None:
-            fixations = self._preprocess(X)
-        else:
-            fixations = None
-            groups: List[str, pd.DataFrame] = _split_dataframe(X, self.pk, encode=False)
-            for group_ids, group_X in groups:
-                cur_fixations = self._preprocess(group_X)
-
-                for i in range(len(self.pk)):
-                    cur_fixations.insert(loc=i, column=self.pk[i], value=group_ids[i])
-
-                if fixations is None:
-                    fixations = cur_fixations
-                else:
-                    fixations = pd.concat(
-                        [fixations, cur_fixations], ignore_index=True, axis=0
-                    )
-
-        return fixations
-
-
-class AOIExtractor(BaseEstimator, TransformerMixin):
-    def __init__(
-        self,
-        methods: List[BasePreprocessor],
-        x: str,
-        y: str,
-        window_size: int = None,
-        threshold: float = None,
-        pk: List[str] = None,
-        aoi_name: str = None,
-        show_best: bool = False,
-    ):
-        self.x = x
-        self.y = y
-        self.methods = methods
-        self.window_size = window_size
-        self.threshold = threshold
-        self.pk = pk
-        self.aoi = aoi_name
-        self.show_best = show_best
-
-    # @jit(forceobj=True, looplift=True)
-    def fit(self, X: pd.DataFrame, y=None):
-        for method in self.methods:
-            method.x = self.x
-            method.y = self.y
-            if self.window_size is not None:
-                method.window_size = self.window_size
-            if self.threshold is not None:
-                method.threshold = self.threshold
-            method.pk = self.pk
-            method.aoi = self.aoi
-            method.fit(X)
-        return self
-
-    # @jit(forceobj=True, looplift=True)
-    def transform(self, X: pd.DataFrame) -> pd.DataFrame:
-        if self.methods is None:
-            return X
-
-        data_df: pd.DataFrame = X[[self.x, self.y]]
-        if self.pk is not None:
-            data_df = pd.concat([data_df, X[self.pk]], axis=1)
-
-        fixations = None
-        groups: List[str, pd.DataFrame] = _split_dataframe(
-            data_df, self.pk, encode=False
-        )
-        entropy_transformer = Entropy(aoi=self.aoi, pk=self.pk)
-        for group_ids, group_X in groups:
-            min_entropy = np.inf
-            fixations_with_aoi = None
-            for method in self.methods:
-                cur_fixations = method.transform(group_X)
-                entropy = entropy_transformer.transform(cur_fixations)[
-                    "entropy"
-                ].values[0][0]
-                if min_entropy > entropy:
-                    min_entropy = entropy
-                    fixations_with_aoi = cur_fixations
-                    if self.show_best:
-                        fixations_with_aoi["best_method"] = method.__class__.__name__
-            if fixations is None:
-                fixations = fixations_with_aoi
-            else:
-                fixations = pd.concat(
-                    [fixations, fixations_with_aoi], ignore_index=True, axis=0
-                )
-
-        return fixations
