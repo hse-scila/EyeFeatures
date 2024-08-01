@@ -17,9 +17,9 @@ class StatsTransformer(BaseTransformer):
         x: str = None,
         y: str = None,
         t: str = None,
-        duration: str = None,  # TODO consider units, i.e. ps, ns, ms.
+        duration: str = None,    # TODO consider units, i.e. ps, ns, ms.
         dispersion: str = None,
-        aoi: str = None,  # TODO add option to calc regular features even with aoi?
+        aoi: str = None,         # TODO add option to calc regular features even with aoi?
         pk: List[str] = None,
         shift_pk: List[str] = None,
         shift_features: Dict[str, List[str]] = None,
@@ -194,7 +194,11 @@ class StatsTransformer(BaseTransformer):
         self._check_features_stats()
 
         if self.aoi is not None:
-            self.aoi_nms = X[self.aoi].drop_duplicates().values
+            # check if aoi column contains any NaNs
+            aoi_view = X[self.aoi]
+            if aoi_view.isnull().values.any():
+                raise RuntimeError(f"Passed column '{self.aoi}' for AOI contains NaNs.")
+            self.aoi_nms = aoi_view.drop_duplicates().values
 
         self.feature_names_in_ = [
             f"{feat_nm}{aoi_nm}_{stat}"
@@ -499,13 +503,16 @@ class RegressionFeatures(StatsTransformer):
 
     @staticmethod
     def _get_angle(dx, dy, degrees=True):
+        """
+        Method calculates non-negative angle between vectors dx and dy in R^2, such that ||dx||, ||dy|| <= 1.
+        """
         if dx == 0:
-            angle = np.pi / 2 * np.sign(dy)  # if dy == 0, then angle is zero
-        elif dx < 0:  # (90, 270) degrees
-            angle = np.arctan(dy / dx) + np.pi
-        else:  # dx > 0
-            angle = np.arctan(dy / dx)  # (-90, 90) degrees
-            if angle < 0:  # (270, 360) degrees
+            angle = np.pi / 2 * np.sign(dy)      # if dy == 0, then angle is zero
+        elif dx < 0:
+            angle = np.arctan(dy / dx) + np.pi   # (90, 270) degrees
+        else:                                    # dx > 0
+            angle = np.arctan(dy / dx)           # (-90, 90) degrees
+            if angle < 0:                        # (0, 90) or (270, 360) degrees
                 angle += 2 * np.pi
 
         return angle * 180 / np.pi if degrees else angle
