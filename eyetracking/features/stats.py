@@ -7,7 +7,7 @@ from numba import jit
 from numpy.typing import NDArray
 
 from eyetracking.features.extractor import BaseTransformer
-from eyetracking.utils import _calc_dt, _get_id, _split_dataframe
+from eyetracking.utils import _calc_dt, _get_id, _split_dataframe, _select_regressions
 
 
 class StatsTransformer(BaseTransformer):
@@ -17,9 +17,9 @@ class StatsTransformer(BaseTransformer):
         x: str = None,
         y: str = None,
         t: str = None,
-        duration: str = None,    # TODO consider units, i.e. ps, ns, ms.
+        duration: str = None,  # TODO consider units, i.e. ps, ns, ms.
         dispersion: str = None,
-        aoi: str = None,         # TODO add option to calc regular features even with aoi?
+        aoi: str = None,  # TODO add option to calc regular features even with aoi?
         pk: List[str] = None,
         shift_pk: List[str] = None,
         shift_features: Dict[str, List[str]] = None,
@@ -473,63 +473,6 @@ class RegressionFeatures(StatsTransformer):
                 assert self.t is not None
                 self._err_no_col(feat, "t")
 
-    def _select_regressions(self, dx: pd.Series, dy: pd.Series) -> NDArray:
-        mask = np.zeros(len(dx))
-
-        if self.deviation is None:  # selection by quadrants
-            if 1 in self.rule:
-                mask = mask | ((dx > 0) & (dy > 0))
-            if 2 in self.rule:
-                mask = mask | ((dx < 0) & (dy > 0))
-            if 3 in self.rule:
-                mask = mask | ((dx < 0) & (dy < 0))
-            if 4 in self.rule:
-                mask = mask | ((dx > 0) & (dy < 0))
-        else:  # selection by angles
-            dx, dy = dx.values, dy.values
-            if isinstance(self.deviation, int):
-                d = np.full(len(self.rule), self.deviation)
-            else:
-                d = np.array(self.deviation)
-
-            for i in range(len(mask)):
-                angle = self._get_angle(dx[i], dy[i], degrees=True)
-                for dev, allowed_angle in zip(self.rule, d):
-                    if self._check_angle_boundaries(angle, allowed_angle, dev):
-                        mask[i] = 1
-                        break
-
-        return mask.astype(bool)
-
-    @staticmethod
-    def _get_angle(dx, dy, degrees=True):
-        """
-        Method calculates non-negative angle between vectors dx and dy in R^2, such that ||dx||, ||dy|| <= 1.
-        """
-        if dx == 0:
-            angle = np.pi / 2 * np.sign(dy)      # if dy == 0, then angle is zero
-        elif dx < 0:
-            angle = np.arctan(dy / dx) + np.pi   # (90, 270) degrees
-        else:                                    # dx > 0
-            angle = np.arctan(dy / dx)           # (-90, 90) degrees
-            if angle < 0:                        # (0, 90) or (270, 360) degrees
-                angle += 2 * np.pi
-
-        return angle * 180 / np.pi if degrees else angle
-
-    @staticmethod
-    def _check_angle_boundaries(angle, allowed_angle, deviation):
-        left = allowed_angle - deviation
-        right = allowed_angle + deviation
-
-        if left <= angle <= right:
-            return True
-        if left - 360 <= angle <= right - 360:
-            return True
-        if left + 360 <= angle <= right + 360:
-            return True
-        return False
-
     def _calc_feats(
         self, X: pd.DataFrame, features: List[str], transition_mask: NDArray
     ) -> List[Tuple[str, pd.Series]]:
@@ -537,7 +480,7 @@ class RegressionFeatures(StatsTransformer):
 
         dx: pd.Series = X[self.x].diff()
         dy: pd.Series = X[self.y].diff()
-        sm = self._select_regressions(dx, dy)  # selection_mask
+        sm = _select_regressions(dx, dy, self.rule, self.deviation)  # selection_mask
         dr = np.sqrt(dx**2 + dy**2)
         dt = None
 
