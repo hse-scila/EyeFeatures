@@ -7,10 +7,12 @@ from eyetracking.preprocessing.base import BaseSmoothingPreprocessor
 
 
 # ======== SMOOTHING PREPROCESSORS ========
-class SavGolFilter(BaseSmoothingPreprocessor):
+class SavGolFilter(BaseSmoothingPreprocessor):     # TODO 2D SG filter: https://github.com/espdev/sgolay2
     """
     Savitzkiy-Golay filter. 'x' and 'y' directions are filtered independently, time is ignored.
     Parameters are passed to `scipy.signal.savgol_filter`.
+
+    Default values are taken from https://arxiv.org/pdf/2303.02134.
     """
     def __init__(
         self,
@@ -33,7 +35,6 @@ class SavGolFilter(BaseSmoothingPreprocessor):
         assert self.y is not None, self._err_no_field(m, "y")
 
     def _preprocess(self, X: pd.DataFrame):
-        # TODO 2D SG filter: https://github.com/espdev/sgolay2
         if self.pk:
             X = X.drop(self.pk, axis=1)
 
@@ -46,7 +47,7 @@ class SavGolFilter(BaseSmoothingPreprocessor):
         return X_filt
 
 
-class FIRFilter(BaseSmoothingPreprocessor):
+class FIRFilter(BaseSmoothingPreprocessor):          # TODO 2D version?
     """
     FIR filter. Convolution with RIR kernel along 'x' and 'y'. `kwargs` are passed to `scipy.signal.firwin`
     to determine the kernel.
@@ -106,7 +107,7 @@ class FIRFilter(BaseSmoothingPreprocessor):
         return X_filt
 
 
-class IIRFilter(BaseSmoothingPreprocessor):
+class IIRFilter(BaseSmoothingPreprocessor):          # TODO 2D version?
     """
     IIR filter. Convolution with IIR kernel along 'x' and 'y'. `kwargs` are passed to `scipy.signal.iirfilter`
     to determine the kernel.
