@@ -29,14 +29,19 @@ def get_heatmap(x: NDArray, y: NDArray, k: int):
     return np.reshape(kernel(positions), x.shape)
 
 
-def get_heatmaps(df: pd.DataFrame, x: str, y: str, pk: List[str], k: int):
-    groups = df[pk].drop_duplicates().values
-    heatmaps = np.zeros((len(groups), k, k))
+def get_heatmaps(df: pd.DataFrame, x: str, y: str, k: int, pk: List[str] = None):
+    if pk is None:
+        x_path, y_path = df[x].values, df[y].values
+        heatmap = get_heatmap(x_path, y_path, k)
+        heatmaps = heatmap[np.newaxis, :, :]
+    else:
+        groups = df[pk].drop_duplicates().values
+        heatmaps = np.zeros((len(groups), k, k))
 
-    for i, group in enumerate(groups):
-        cur_X = df[pd.DataFrame(df[pk] == group).all(axis=1)]
-        x_path, y_path = cur_X[x], cur_X[y]
-        heatmaps[i, :, :] = get_heatmap(x_path, y_path, k)
+        for i, group in enumerate(groups):
+            cur_X = df[pd.DataFrame(df[pk] == group).all(axis=1)]
+            x_path, y_path = cur_X[x], cur_X[y]
+            heatmaps[i, :, :] = get_heatmap(x_path, y_path, k)
 
     return heatmaps
 

@@ -311,7 +311,7 @@ class IHMM(BaseFixationPreprocessor):
 
         raise NotImplementedError(f"Distribution '{ed}' is not supported.")
 
-    def _preprocess(self, X: pd.DataFrame):
+    def _preprocess(self, X: pd.DataFrame) -> pd.DataFrame:
         points = X[[self.x, self.y]].values
         dist = self._get_distances(points, self.distance)
 

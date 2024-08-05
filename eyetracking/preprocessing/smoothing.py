@@ -34,7 +34,7 @@ class SavGolFilter(BaseSmoothingPreprocessor):     # TODO 2D SG filter: https://
         assert self.x is not None, self._err_no_field(m, "x")
         assert self.y is not None, self._err_no_field(m, "y")
 
-    def _preprocess(self, X: pd.DataFrame):
+    def _preprocess(self, X: pd.DataFrame) -> pd.DataFrame:
         if self.pk:
             X = X.drop(self.pk, axis=1)
 
@@ -81,7 +81,7 @@ class FIRFilter(BaseSmoothingPreprocessor):          # TODO 2D version?
         assert self.x is not None, self._err_no_field(m, "x")
         assert self.y is not None, self._err_no_field(m, "y")
 
-    def _preprocess(self, X: pd.DataFrame):
+    def _preprocess(self, X: pd.DataFrame) -> pd.DataFrame:
         if self.pk:
             X = X.drop(self.pk, axis=1)
 
@@ -136,7 +136,7 @@ class IIRFilter(BaseSmoothingPreprocessor):          # TODO 2D version?
         assert self.y is not None, self._err_no_field(m, "y")
         assert self.iir_kw.get('output', 'ba') == 'ba', "Only 'output'='ba' is supported."
 
-    def _preprocess(self, X: pd.DataFrame):
+    def _preprocess(self, X: pd.DataFrame) -> pd.DataFrame:
         if self.pk:
             X = X.drop(self.pk, axis=1)
 
@@ -153,6 +153,116 @@ class IIRFilter(BaseSmoothingPreprocessor):          # TODO 2D version?
         k, h = len(a) - 1, (len(a) - 1) // 2
         X_filt = X[h + (k % 2):-h]
 
+        X_filt.loc[:, self.x] = x_filt
+        X_filt.loc[:, self.y] = y_filt
+        return X_filt
+
+
+class WienerFilter(BaseSmoothingPreprocessor):
+    """
+    Wiener filter. Applied independently along 'x' and 'y' axis.
+    :param K: estimate of ratio of noise-to-signal spectra. If 'auto', such value of K
+              on grid [-1e-3, 1e-3] with 2e3 values is chosen to minimize PSNR.
+    :param sigma: std of Gaussian filter.
+    :param size: length of Gaussian filter.
+    """
+    def __init__(
+        self,
+        x: str,
+        y: str,
+        t: str = None,
+        pk: List[str] = None,
+        K: Union[float, Literal["auto"]] = 4.3e-5,
+        sigma: float = 0.2,
+        size: int = 11
+    ):
+        super().__init__(x=x, y=y, t=t, pk=pk)
+        self.K = K
+        self.sigma = sigma
+        self.size = size
+
+    def _check_params(self):
+        assert self.K == 'auto' or isinstance(self.K, float)
+
+    @staticmethod
+    def _gaussian_kernel(size, sigma):
+        if size % 2 == 0:
+            x = (np.arange(-size / 2, size / 2, 1) + 0.5).ravel()
+        else:
+            x = np.arange(-size // 2 + 1, size // 2 + 1, 1).ravel()
+
+        # get 1D kernel using Gaussian PDF
+        kernel = 1 / (2 * np.pi * np.square(sigma)) * np.exp(- np.square(x) / (2 * np.square(sigma)))
+        # normalize kernel
+        kernel = kernel / np.sum(kernel)
+        return kernel
+
+    @staticmethod
+    def _compute_psnr(seq1, seq2):
+        """
+        Peak-Signal-to-Noise Ratio. Must be applied to normalized coordinates with maximum value of 1.
+        """
+        mse = np.sum(np.square(seq1 - seq2)) / len(seq1)
+        psnr = 20 * np.log10(2 / np.sqrt(mse))  # 2 = length of [-1, 1]
+        return psnr
+
+    @staticmethod
+    def _kernel_fft(kernel: np.array, length: int):
+        diff = length - len(kernel.ravel())
+        l = diff // 2
+        r = diff - l
+
+        # pad the kernel
+        kernel_padded = np.pad(kernel, pad_width=(l, r))
+        # IFFT for center-based kernel
+        kernel_adjusted = np.fft.ifftshift(kernel_padded)
+        # FFT to adjust kernel to the correct position
+        kernel_transformed = np.fft.fft(kernel_adjusted)
+        return kernel_transformed
+
+    def _wiener_filter(self, seq: np.array, kernel: np.array, K):
+        H = self._kernel_fft(kernel, seq.shape[-1])
+        G = np.fft.fft(seq)
+        H_conj = np.conjugate(H)
+
+        F_est = (H_conj * G) / (H * H_conj + K)
+        f_est = np.fft.ifft(F_est)
+
+        return np.abs(f_est)  # take modulus of complex numbers
+
+    def _preprocess(self, X: pd.DataFrame) -> pd.DataFrame:
+        if self.pk:
+            X = X.drop(self.pk, axis=1)
+
+        # check if input has enough length
+        if len(X) <= self.size:
+            return X
+
+        # define sequences for Wiener filter
+        x_path, y_path = X[self.x].values, X[self.y].values
+        # get 1D Gaussian kernel
+        kernel = self._gaussian_kernel(self.size, self.sigma)
+
+        # find optimal value for K
+        if self.K == 'auto':
+            best_psnr = -np.inf
+            best_K = 0
+
+            for K in list(np.linspace(-1e-3, 1e-3, 2001)):
+                x_filt = self._wiener_filter(x_path, kernel=kernel, K=K)
+                y_filt = self._wiener_filter(y_path, kernel=kernel, K=K)
+
+                psnr = self._compute_psnr(x_filt, y_filt)
+                if psnr > best_psnr:
+                    best_psnr = psnr
+                    best_K = K
+
+            self.K = best_K
+
+        x_filt = self._wiener_filter(x_path, kernel=kernel, K=self.K)
+        y_filt = self._wiener_filter(y_path, kernel=kernel, K=self.K)
+
+        X_filt = X.copy()
         X_filt.loc[:, self.x] = x_filt
         X_filt.loc[:, self.y] = y_filt
         return X_filt
