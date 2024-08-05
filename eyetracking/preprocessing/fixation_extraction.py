@@ -11,6 +11,10 @@ from eyetracking.preprocessing.base import BaseFixationPreprocessor
 
 # ======== FIXATION PREPROCESSORS ========
 class IVT(BaseFixationPreprocessor):
+    """
+    Velocity Threshold Identification.
+    Complexity: O(n) for single group.
+    """
     def __init__(
         self,
         x: str,
@@ -21,10 +25,6 @@ class IVT(BaseFixationPreprocessor):
         pk: List[str] = None,
         eps: float = 1e-10,
     ):
-        """
-        Velocity Threshold Identification.
-        Complexity: O(n).
-        """
         super().__init__(x=x, y=y, t=t, pk=pk)
         self.threshold = threshold
         self.distance = distance
@@ -88,6 +88,11 @@ class IVT(BaseFixationPreprocessor):
 
 
 class IDT(BaseFixationPreprocessor):
+    """
+    Dispersion Threshold Identification.
+    Complexity: O(n * W)  for single group, where W is size of maximum window.
+    Worst case is O(n^2) for W = n.
+    """
     def __init__(
         self,
         x: str,
@@ -99,10 +104,6 @@ class IDT(BaseFixationPreprocessor):
         pk: List[str] = None,
         eps: float = 1e-20,
     ):
-        """
-        Dispersion Threshold Identification.
-        Complexity: O(n * W), where W is size of maximum window. Worst case is O(n^2).
-        """
         super().__init__(x=x, y=y, t=t, pk=pk)
         self.min_duration = min_duration
         self.max_dispersion = max_dispersion
@@ -241,6 +242,16 @@ class IDT(BaseFixationPreprocessor):
 
 
 class IHMM(BaseFixationPreprocessor):
+    """
+    Hidden Markov Model Identification.
+    Complexity: O(n^2) for single group.
+    :param fix2sac: probability of transition from fixation to saccade.
+    :param sac2fix: probability of transition from saccade to fixation.
+    :param fix_distrib: distribution of fixations.
+    :param sac_distrib: distribution of saccades.
+    :param distrib_params: 'auto' for default params and dict {"fixation": params1, "saccade": params2}, where
+           "params" are arguments for  appropriate `scipy.stats` function.
+    """
     def __init__(
         self,
         x: str,
@@ -255,16 +266,6 @@ class IHMM(BaseFixationPreprocessor):
         pk: List[str] = None,
         eps: float = 1e-20,
     ):
-        """
-        Hidden Markov Model Identification.
-        Complexity: O(n^2).
-        :param fix2sac: probability of transition from fixation to saccade.
-        :param sac2fix: probability of transition from saccade to fixation.
-        :param fix_distrib: distribution of fixations.
-        :param sac_distrib: distribution of saccades.
-        :param distrib_params: 'auto' for default params and dict {"fixation": params1, "saccade": params2}, where
-               "params" are arguments for  appropriate `scipy.stats` function.
-        """
         super().__init__(x=x, y=y, t=t, pk=pk)
         self.fix2sac = fix2sac
         self.sac2fix = sac2fix

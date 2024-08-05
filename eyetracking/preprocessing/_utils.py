@@ -17,7 +17,7 @@ def _get_distance(
     .. note::
         If u and v are numbers, then all distances are equivalent to |v - u|.
         If u and v are vectors of size d, then corresponding metric in R^d is returned.
-        If u and v are matrices, then must be of size n x d, that is, rows are vectors.
+        If u and v are matrices, then must be of size n x d, rows are treated as vectors.
 
         All distances are norms in Euclidean space.
     """

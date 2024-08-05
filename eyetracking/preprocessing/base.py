@@ -1,4 +1,4 @@
-from abc import abstractmethod
+from abc import abstractmethod, ABC
 from typing import Any, List, Union
 
 import numpy as np
@@ -13,11 +13,7 @@ from eyetracking.utils import _split_dataframe
 
 
 class BasePreprocessor(BaseEstimator, TransformerMixin):
-    def __init__(self, x: str, y: str, t: str, aoi: str = None, pk: List[str] = None):
-        self.x = x
-        self.y = y
-        self.t = t
-        self.aoi = aoi
+    def __init__(self, pk: List[str] = None):
         self.pk = pk
 
     @abstractmethod
@@ -36,7 +32,7 @@ class BasePreprocessor(BaseEstimator, TransformerMixin):
 
     @staticmethod
     def _err_no_field(m, c):
-        return f"Method {m} requires {c} for preprocessing."
+        return f"Method '{m}' requires '{c}' for preprocessing."
 
     @jit(forceobj=True, looplift=True)
     def fit(self, X: pd.DataFrame, y=None):
@@ -67,9 +63,12 @@ class BasePreprocessor(BaseEstimator, TransformerMixin):
         return fixations
 
 
-class BaseFixationPreprocessor(BasePreprocessor):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+class BaseFixationPreprocessor(BasePreprocessor, ABC):
+    def __init__(self, x: str, y: str, t: str, pk: List[str] = None):
+        super().__init__(pk=pk)
+        self.x = x
+        self.y = y
+        self.t = t
 
     @staticmethod
     def _squash_fixations(is_fixation: NDArray) -> NDArray:
@@ -100,9 +99,13 @@ class BaseFixationPreprocessor(BasePreprocessor):
         return dist
 
 
-class BaseAOIPreprocessor(BasePreprocessor):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+class BaseAOIPreprocessor(BasePreprocessor, ABC):
+    def __init__(self, x: str, y: str, t: str, aoi: str = None, pk: List[str] = None):
+        super().__init__(pk=pk)
+        self.x = x
+        self.y = y
+        self.t = t
+        self.aoi = aoi
 
     @staticmethod
     def _get_fixation_density(
@@ -128,7 +131,7 @@ class BaseAOIPreprocessor(BasePreprocessor):
     @staticmethod
     @jit(forceobj=True, looplift=True)
     def _build_local_max_coordinates(loc_max_matrix: np.ndarray) -> np.ndarray:
-        for i in range(loc_max_matrix.shape[0]):
+        for i in range(loc_max_matrix.shape[0]):          # TODO vectorize with numpy?
             for j in range(loc_max_matrix.shape[1]):
                 if i == 0 and j != 0:
                     if loc_max_matrix[i][j - 1] == loc_max_matrix[i][j]:
@@ -144,3 +147,11 @@ class BaseAOIPreprocessor(BasePreprocessor):
                     if loc_max_matrix[i][j - 1] == loc_max_matrix[i][j]:
                         loc_max_matrix[i][j - 1] = 0
         return np.transpose(np.nonzero(loc_max_matrix))
+
+
+class BaseSmoothingPreprocessor(BasePreprocessor, ABC):
+    def __init__(self, x: str, y: str, t: str, pk: List[str] = None):
+        super().__init__(pk=pk)
+        self.x = x
+        self.y = y
+        self.t = t

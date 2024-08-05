@@ -75,7 +75,7 @@ class BaseTransformer(BaseEstimator, TransformerMixin):
         return X if self.return_df else X.values
 
 
-class Extractor(BaseEstimator, TransformerMixin):
+class Extractor(BaseEstimator, TransformerMixin):  # TODO rename to FeatureExtractor
     def __init__(
         self,
         features: List[BaseTransformer] = None,
