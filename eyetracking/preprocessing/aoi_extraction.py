@@ -296,6 +296,75 @@ class GradientBased(BaseAOIPreprocessor):
         X[self.aoi] = aoi_list
         return X
 
+class OverlapCLustering(BaseAOIPreprocessor):
+
+    def __init__(
+            self,
+            x: str = None,
+            y: str = None,
+            diameters: str = None,
+            centers: str = None,
+            pk: List[str] = None,
+            aoi_name: str = None,
+            eps: float = 0.0
+    ):
+        super().__init__(x=x, y=y, t=None, aoi=aoi_name, pk=pk)
+        self.diameters = diameters
+        self.centers = centers
+        self.eps = eps
+
+    def _check_aoi(self):
+        m = "OverlapCLustering"
+        assert self.x is not None, self._err_no_field(m, "x")
+        assert self.y is not None, self._err_no_field(m, "y")
+        assert self.diameters is not None, self._err_no_field(m, "diameters")
+        assert self.centers is not None, self._err_no_field(m, "centers")
+
+    def _build_clusters(self, X: pd.DataFrame) -> pd.DataFrame:
+        X[self.aoi] = 0
+        cl = 1
+        for index, row in X.iterrows():
+            if X.loc[index, X.columns == self.aoi].values[0] == 0:
+                X.loc[index, X.columns == self.aoi] = cl
+                center = row[self.centers]
+                diameter = row[self.diameters]
+                X["diff_center"] = X[self.centers].apply(lambda p: (p[0] - center[0])**2 + (p[1] - center[1])**2)
+                X["diff_diam"] = abs(diameter - X[self.diameters]) / 2
+                fixation_in_cluster = X[X["diff_center"] <= X["diff_diam"]].index
+                X.loc[fixation_in_cluster, self.aoi] = cl
+                cl += 1
+
+        return X
+
+    def _merge_clusters(self, X: pd.DataFrame) -> pd.DataFrame:
+        used = []
+        while len(X[~X[self.aoi].isin(used)]) > 0:
+            max_cluster = X[~X[self.aoi].isin(used)].groupby(self.aoi).count().idxmax().iloc[0]
+            # print(max_cluster)
+            points = X[X[self.aoi] == max_cluster].index.values.tolist()
+            ind = 0
+            end_ = len(points)
+            used.append(max_cluster)
+            while ind < end_:
+                row = X.iloc[points[ind]]
+                X["length"] = X[self.centers].apply(lambda p: np.linalg.norm(p - row[self.centers]))
+                to_merge = X[(X["length"] <= abs((X[self.diameters] + row[self.diameters]) / 2 + self.eps)) & (~X[self.aoi].isin(used))][self.aoi].unique()
+                add_fixations = X[(X[self.aoi].isin(to_merge)) & (~X[self.aoi].isin(used))].index.values
+                X.loc[X[self.aoi].isin(to_merge), (X.columns == self.aoi)] = max_cluster
+                points.extend(add_fixations)
+                ind += 1
+                end_ += len(add_fixations)
+
+        return X
+    def _preprocess(self, X: pd.DataFrame) -> pd.DataFrame:
+        X.drop(columns=self.pk, inplace=True)
+        X.reset_index(drop=True, inplace=True)
+        copy_X = X.copy()
+        copy_X = self._build_clusters(copy_X)
+        copy_X = self._merge_clusters(copy_X)
+        X[self.aoi] = copy_X[self.aoi]
+        return X
+
 
 # ======== EXTRACTOR FOR AOI CLASSES ========
 class AOIExtractor(BaseEstimator, TransformerMixin):
@@ -347,19 +416,67 @@ class AOIExtractor(BaseEstimator, TransformerMixin):
             data_df, self.pk, encode=False
         )
         entropy_transformer = Entropy(aoi=self.aoi, pk=self.pk)
+        prev_pattern = dict()
         for group_ids, group_X in groups:
             min_entropy = np.inf
             fixations_with_aoi = None
+            add_pattern = None
             for method in self.methods:
+                print(0)
                 cur_fixations = method.transform(group_X)
+                print(1)
+                all_areas = np.unique(cur_fixations[self.aoi].values)
+                areas_names = [f"aoi_{i}" for i in range(len(all_areas))]
+                map_areas = dict(zip(all_areas, areas_names))
+                cur_fixations[self.aoi] = cur_fixations[self.aoi].map(map_areas)
+                used = []
+                new_pattern = dict()
+                for i in range(len(all_areas), 0, -1):
+                    if prev_pattern.get(i, 0) != 0:
+                        pattern = prev_pattern[i]
+                        for cur_area in areas_names:
+                            print(1)
+                            cur_x_max, cur_y_max, cur_x_min, cur_y_min = \
+                            cur_fixations[cur_fixations[self.aoi] == cur_area][self.x].max(), \
+                            cur_fixations[cur_fixations[self.aoi] == cur_area][self.y].max(), \
+                            cur_fixations[cur_fixations[self.aoi] == cur_area][self.x].min(), \
+                            cur_fixations[cur_fixations[self.aoi] == cur_area][self.y].min()
+                            intersection = -1
+                            new_name = None
+                            for key, value in pattern.items():
+                                x_max, y_max, x_min, y_min = value[0], value[1], value[2], value[3]
+                                width = min(x_max, cur_x_max) - max(x_min, cur_x_min)
+                                height = min(y_max, cur_y_max) - max(y_min, cur_y_min)
+                                if (height > 0) and (width > 0) and (
+                                        key not in used) and intersection <= width * height:
+                                    new_name = key
+                                    intersection = width * height
+                            used.append(new_name)
+                        for j in range(len(used)):
+                            if used[j] is None:
+                                for k in range(len(areas_names)):
+                                    if areas_names[k] not in used:
+                                        used[j] = areas_names[k]
+                                        break
+                        cur_fixations[self.aoi] = cur_fixations[self.aoi].map(dict(zip(areas_names, used)))
+                        break
+                for area in areas_names:
+                    cur_x_max, cur_y_max, cur_x_min, cur_y_min = cur_fixations[cur_fixations[self.aoi] == area][
+                        self.x].max(), cur_fixations[cur_fixations[self.aoi] == area][self.y].max(), \
+                        cur_fixations[cur_fixations[self.aoi] == area][self.x].min(), \
+                        cur_fixations[cur_fixations[self.aoi] == area][self.y].min()
+                    new_pattern[area] = [cur_x_max, cur_y_max, cur_x_min, cur_y_min]
+
                 entropy = entropy_transformer.transform(cur_fixations)[
                     "entropy"
                 ].values[0][0]
                 if min_entropy > entropy:
                     min_entropy = entropy
                     fixations_with_aoi = cur_fixations
+                    add_pattern = new_pattern
                     if self.show_best:
                         fixations_with_aoi["best_method"] = method.__class__.__name__
+            prev_pattern[len(np.unique(fixations_with_aoi[self.aoi].values))] = add_pattern
             if fixations is None:
                 fixations = fixations_with_aoi
             else:

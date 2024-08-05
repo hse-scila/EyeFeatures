@@ -8,6 +8,7 @@ from numba import jit
 from eyetracking.preprocessing._utils import _get_distance
 from eyetracking.preprocessing.base import BaseFixationPreprocessor
 
+from _utils import _get_MEC
 
 # ======== FIXATION PREPROCESSORS ========
 class IVT(BaseFixationPreprocessor):
@@ -70,6 +71,15 @@ class IVT(BaseFixationPreprocessor):
         )
 
         fixations_df = fixations_df[fixations_df["fixation_id"] != 0]
+        diameters = []
+        centers = []
+
+        for i in set(fixations):
+            if i != 0:
+                points = fixations_df.loc[fixations_df["fixation_id"] == i, fixations_df.columns.isin([self.x, self.y])].values
+                x, y, radius = _get_MEC(np.unique(points, axis=0))
+                diameters.append(radius * 2)
+                centers.append(np.array([x, y]))
 
         fixations_df = fixations_df.groupby(by=["fixation_id"]).agg(
             {
@@ -82,6 +92,8 @@ class IVT(BaseFixationPreprocessor):
             }
         )
 
+        fixations_df["diameters"] = diameters
+        fixations_df["centers"] = centers
         fixations_df["duration"] = fixations_df.end_time - fixations_df.start_time
 
         return fixations_df
