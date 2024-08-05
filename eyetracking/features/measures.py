@@ -4,6 +4,10 @@ import numpy as np
 import pandas as pd
 from numba import jit
 
+from scipy import ifft
+from scipy.stats import entropy
+from scipy.spatial.distance import pdist, squareform
+
 from eyetracking.features.extractor import BaseTransformer
 from eyetracking.utils import _split_dataframe
 
@@ -131,7 +135,7 @@ class HurstExponent(BaseTransformer):
         return features_df if self.return_df else features_df.values
 
 
-class Entropy(BaseTransformer):
+class ShannonEntropy(BaseTransformer):
     def __init__(
         self,
         aoi: str = None,
@@ -184,4 +188,404 @@ class Entropy(BaseTransformer):
                 gathered_features.append([[entropy]])
 
         features_df = pd.DataFrame(data=gathered_features, columns=features_names)
+        return features_df if self.return_df else features_df.values
+
+
+class SpectralEntropy(BaseTransformer):
+    def __init__(
+        self,
+        aoi: str = None,
+        pk: List[str] = None,
+        return_df: bool = True,
+    ):
+        super().__init__(pk=pk, return_df=return_df)
+        self.aoi = aoi
+
+    def _check_init(self, X_len: int):
+        assert self.aoi is not None, "Error: Provide aoi column"
+        assert X_len != 0, "Error: there are no fixations"
+
+    @jit(forceobj=True, looplift=True)
+    def fit(self, X: pd.DataFrame, y=None):
+        return self
+
+    @jit(forceobj=True, looplift=True)
+    def spectral_entropy(self, X: pd.DataFrame) -> float:
+        coords = [self.x, self.y]
+        transformed_seq = ifft(X[coords].values)
+        power_spectrum_seq = np.linalg.norm(transformed_seq, axis=1) ** 2
+        proba_distribution = power_spectrum_seq / np.sum(power_spectrum_seq)
+        return entropy(proba_distribution)
+
+    @jit(forceobj=True, looplift=True)
+    def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
+        self._check_init(X_len=X.shape[0])
+
+        columns_names = []
+        gathered_features = []
+
+        if self.pk is None:
+            columns_names.append("spec_ent")
+            gathered_features.append([self.spectral_entropy(X)])
+        else:
+            X_splited = _split_dataframe(X, self.pk)
+            for group, current_X in X_splited:
+                columns_names.append(f"spec_ent_{str(group)}")
+                gathered_features.append([self.spectral_entropy(current_X)])
+
+        features_df = pd.DataFrame(data=gathered_features, columns=columns_names)
+        return features_df if self.return_df else features_df.values
+
+
+class FuzzyEntropy(BaseTransformer):
+    """
+    :param m: embedding dimension
+    :param r: tolerance threshold for matches acceptance (usually std)
+    """
+
+    def __init__(
+        self,
+        m: int = 2,
+        r: float = 0.2,
+        aoi: str = None,
+        pk: List[str] = None,
+        return_df: bool = True,
+    ):
+        super().__init__(pk=pk, return_df=return_df)
+        self.m = m
+        self.r = r
+        self.aoi = aoi
+        self.eps = 1e-7
+
+    def _check_init(self, X_len: int):
+        assert self.aoi is not None, "Error: Provide aoi column"
+        assert X_len != 0, "Error: there are no fixations"
+
+    def fuzzy_entropy(self, X: pd.DataFrame) -> float:
+        n = 2 * len(X)
+        phi_m = np.zeros(2)
+        coords = [self.x, self.y]
+        X_coord = X[coords].values.flatten()
+        for i in range(2):
+            X_emb = np.array(
+                [X_coord[j : j + self.m + i] for j in range(n - self.m - i)]
+            )
+            dist_matrix = squareform(pdist(X_emb, metric="chebyshev"))
+            phi_m[i] = np.sum(np.exp(-(dist_matrix**2) / (2 * self.r**2))) / (
+                n - self.m - i
+            )
+
+        return np.log(phi_m[0] / (phi_m[1] + self.eps))
+
+    def fit(self, X: pd.DataFrame, y=None):
+        return self
+
+    def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
+        self._check_init(X_len=X.shape[0])
+
+        columns_names = []
+        gathered_features = []
+
+        if self.pk is None:
+            columns_names.append("fuzzy_ent")
+            gathered_features.append([self.fuzzy_entropy(X)])
+        else:
+            X_splited = _split_dataframe(X, self.pk)
+            for group, current_X in X_splited:
+                columns_names.append(f"fuzzy_ent_{str(group)}")
+                gathered_features.append([self.fuzzy_entropy(X)])
+
+        features_df = pd.DataFrame(data=gathered_features, columns=columns_names)
+        return features_df if self.return_df else features_df.values
+
+
+class SampleEntropy(BaseTransformer):
+    """
+    :param m: embedding dimension
+    :param r: tolerance threshold for matches acceptance (usually std)
+    """
+
+    def __init__(
+        self,
+        m: int = 2,
+        r: float = 0.2,
+        aoi: str = None,
+        pk: List[str] = None,
+        return_df: bool = True,
+    ):
+        super().__init__(pk=pk, return_df=return_df)
+        self.m = m
+        self.r = r
+        self.aoi = aoi
+        self.eps = 1e-7
+
+    def _check_init(self, X_len: int):
+        assert self.aoi is not None, "Error: Provide aoi column"
+        assert X_len != 0, "Error: there are no fixations"
+
+    def sample_entropy(self, X: pd.DataFrame) -> float:
+        n = 2 * len(X)
+        coords = [self.x, self.y]
+        X_coord = X[coords].values.flatten()
+        X_emb = np.array([X_coord[j : j + self.m] for j in range(n - self.m + 1)])
+        dist_matrix = squareform(pdist(X_emb, metric="chebyshev"))
+        B = np.sum(np.sum(dist_matrix < self.r, axis=0) - 1)
+        X_emb = np.array([X_coord[j : j + self.m + 1] for j in range(n - self.m)])
+        dist_matrix = squareform(pdist(X_emb, metric="chebyshev"))
+        A = np.sum(np.sum(dist_matrix < self.r, axis=0) - 1)
+        return -np.log(A / (B + self.eps))
+
+    def fit(self, X: pd.DataFrame, y=None):
+        return self
+
+    def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
+        self._check_init(X_len=X.shape[0])
+
+        columns_names = []
+        gathered_features = []
+
+        if self.pk is None:
+            columns_names.append("sample_ent")
+            gathered_features.append([self.sample_entropy(X)])
+        else:
+            X_splited = _split_dataframe(X, self.pk)
+            for group, current_X in X_splited:
+                columns_names.append(f"sample_ent_{str(group)}")
+                gathered_features.append([self.sample_entropy(X)])
+
+        features_df = pd.DataFrame(data=gathered_features, columns=columns_names)
+        return features_df if self.return_df else features_df.values
+
+
+class IncrementalEntropy(BaseTransformer):
+    def __init__(self, aoi: str = None, pk: List[str] = None, return_df: bool = True):
+        super().__init__(pk=pk, return_df=return_df)
+        self.aoi = aoi
+
+    def _check_init(self, X_len: int):
+        assert self.aoi is not None, "Error: Provide aoi column"
+        assert X_len != 0, "Error: there are no fixations"
+
+    def incremental_entropy(self, X: pd.DataFrame) -> float:
+        n = len(X)
+        coords = [self.x, self.y]
+        X_coord = X[coords].values.flatten()
+        incremental_entropies = np.zeros(n)
+        for i in range(1, n):
+            hist, _ = np.histogram(X_coord[: i + 1], bins="auto", density=True)
+            hist = hist[hist > 0]
+            incremental_entropies[i] = -np.sum(hist * np.log(hist))
+
+        return incremental_entropies.mean()
+
+    def fit(self, X: pd.DataFrame, y=None):
+        return self
+
+    def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
+        self._check_init(X_len=X.shape[0])
+
+        columns_names = []
+        gathered_features = []
+
+        if self.pk is None:
+            columns_names.append("inc_ent")
+            gathered_features.append([self.incremental_entropy(X)])
+        else:
+            X_splited = _split_dataframe(X, self.pk)
+            for group, current_X in X_splited:
+                columns_names.append(f"inc_ent_{str(group)}")
+                gathered_features.append([self.incremental_entropy(X)])
+
+        features_df = pd.DataFrame(data=gathered_features, columns=columns_names)
+        return features_df if self.return_df else features_df.values
+
+
+class GriddedDistributionEntropy(BaseTransformer):
+    """
+    :param grid_size: the number of bins (grid cells) for creating the histogram
+    """
+
+    def __init__(
+        self,
+        grid_size: int = 10,
+        aoi: str = None,
+        pk: List[str] = None,
+        return_df: bool = True,
+    ):
+        super().__init__(pk=pk, return_df=return_df)
+        self.grid_size = grid_size
+        self.aoi = aoi
+
+    def _check_init(self, X_len: int):
+        assert self.aoi is not None, "Error: Provide aoi column"
+        assert X_len != 0, "Error: there are no fixations"
+
+    def gridded_distribution_entropy(self, X: pd.DataFrame) -> float:
+        coords = [self.x, self.y]
+        X_coord = X[coords].values
+        H, edges = np.histogramdd(X_coord, bins=self.grid_size)
+        P = H / np.sum(H)
+        P = P[P > 0]
+        return -np.sum(P * np.log(P))
+
+    def fit(self, X: pd.DataFrame, y=None):
+        return self
+
+    def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
+        self._check_init(X_len=X.shape[0])
+
+        columns_names = []
+        gathered_features = []
+
+        if self.pk is None:
+            columns_names.append("grid_ent")
+            gathered_features.append([self.gridded_distribution_entropy(X)])
+        else:
+            X_splited = _split_dataframe(X, self.pk)
+            for group, current_X in X_splited:
+                columns_names.append(f"grid_ent_{str(group)}")
+                gathered_features.append([self.gridded_distribution_entropy(X)])
+
+        features_df = pd.DataFrame(data=gathered_features, columns=columns_names)
+        return features_df if self.return_df else features_df.values
+
+
+class PhaseEntropy(BaseTransformer):
+    """
+    :param m: embedding dimension
+    :param tau: time delay for phase space reconstruction, the lag between each point in the phase space vectors.
+    """
+
+    def __init__(
+        self,
+        m: int = 2,
+        tau: int = 1,
+        aoi: str = None,
+        pk: List[str] = None,
+        return_df: bool = True,
+    ):
+        super().__init__(pk=pk, return_df=return_df)
+        self.m = m
+        self.tau = tau
+        self.aoi = aoi
+
+    def _check_init(self, X_len: int):
+        assert self.aoi is not None, "Error: Provide aoi column"
+        assert X_len != 0, "Error: there are no fixations"
+
+    def phase_entropy(self, X: pd.DataFrame) -> float:
+        n = 2 * len(X)
+        coords = [self.x, self.y]
+        X_coord = X[coords].values.flatten()
+        X_emb = np.array(
+            [
+                X_coord[j : j + self.m * self.tau : self.tau]
+                for j in range(n - (self.m - 1) * self.tau)
+            ]
+        )
+        dist_matrix = squareform(pdist(X_emb, metric="euclidean"))
+        prob_dist = np.histogram(dist_matrix, bins="auto", density=True)[0]
+        prob_dist = prob_dist[prob_dist > 0]
+        return -np.sum(prob_dist * np.log(prob_dist))
+
+    def fit(self, X: pd.DataFrame, y=None):
+        return self
+
+    def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
+        self._check_init(X_len=X.shape[0])
+
+        columns_names = []
+        gathered_features = []
+
+        if self.pk is None:
+            columns_names.append("phase_ent")
+            gathered_features.append([self.phase_entropy(X)])
+        else:
+            X_splited = _split_dataframe(X, self.pk)
+            for group, current_X in X_splited:
+                columns_names.append(f"phase_ent_{str(group)}")
+                gathered_features.append([self.phase_entropy(X)])
+
+        features_df = pd.DataFrame(data=gathered_features, columns=columns_names)
+        return features_df if self.return_df else features_df.values
+
+
+class LyapunovExponent(BaseTransformer):
+    """
+    :param m: embedding dimension
+    :param tau: time delay for phase space reconstruction
+    :param T: time steps to average the divergence over
+    """
+
+    def __init__(
+        self,
+        m: int = 2,
+        tau: int = 1,
+        T: int = 1,
+        aoi: str = None,
+        pk: List[str] = None,
+        return_df: bool = True,
+    ):
+        super().__init__(pk=pk, return_df=return_df)
+        self.m = m
+        self.tau = tau
+        self.T = T
+        self.aoi = aoi
+
+    def _check_init(self, X_len: int):
+        assert self.aoi is not None, "Error: Provide aoi column"
+        assert X_len != 0, "Error: there are no fixations"
+
+    def embed(self, X):
+        N = len(X)
+        return np.array(
+            [
+                X[i : i + self.m * self.tau : self.tau]
+                for i in range(N - (self.m - 1) * self.tau)
+            ]
+        )
+
+    def largest_lyapunov_exponent(self, X: pd.DataFrame) -> float:
+        coords = [self.x, self.y]
+        X_coord = X[coords].values.flatten()
+        X_emb = self.embed(X_coord)
+        n = len(X_emb)
+        divergence = []
+
+        for i in range(n):
+            dist_matrix = squareform(pdist(X_emb, metric="euclidean"))
+            np.fill_diagonal(dist_matrix, np.inf)
+            nearest_index = np.argmin(dist_matrix[i])
+            distances = []
+
+            for t in range(1, self.T + 1):
+                if i + t < n and nearest_index + t < n:
+                    distance = np.linalg.norm(X_emb[i + t] - X_emb[nearest_index + t])
+                    if distance != 0:
+                        distances.append(np.log(distance))
+
+            if distances:
+                divergence.append(np.mean(distances))
+
+        return np.mean(divergence) / self.T if divergence else np.inf
+
+    def fit(self, X: pd.DataFrame, y=None):
+        return self
+
+    def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
+        self._check_init(X_len=X.shape[0])
+
+        columns_names = []
+        gathered_features = []
+
+        if self.pk is None:
+            columns_names.append("lyap_exp")
+            gathered_features.append([self.largest_lyapunov_exponent(X)])
+        else:
+            X_splited = _split_dataframe(X, self.pk)
+            for group, current_X in X_splited:
+                columns_names.append(f"lyap_exp_{str(group)}")
+                gathered_features.append([self.largest_lyapunov_exponent(X)])
+
+        features_df = pd.DataFrame(data=gathered_features, columns=columns_names)
         return features_df if self.return_df else features_df.values
