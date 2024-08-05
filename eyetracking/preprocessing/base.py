@@ -131,7 +131,7 @@ class BaseAOIPreprocessor(BasePreprocessor, ABC):
     @staticmethod
     @jit(forceobj=True, looplift=True)
     def _build_local_max_coordinates(loc_max_matrix: np.ndarray) -> np.ndarray:
-        for i in range(loc_max_matrix.shape[0]):          # TODO vectorize with numpy?
+        for i in range(loc_max_matrix.shape[0]):  # TODO vectorize with numpy?
             for j in range(loc_max_matrix.shape[1]):
                 if i == 0 and j != 0:
                     if loc_max_matrix[i][j - 1] == loc_max_matrix[i][j]:

@@ -70,6 +70,7 @@ def _is_valid_circle(points: NDArray, center: NDArray, radius: float):
             return False
     return True
 
+
 def _build_min_circle(points: NDArray):
     assert points.shape[0] <= 3
     if points.shape[0] == 0:
@@ -103,6 +104,7 @@ def _build_min_circle(points: NDArray):
     r = np.linalg.norm(np.array([x, y]) - points[0])
     return np.array([x, y, r])
 
+
 def _welzl_algorithm(points: NDArray, border: List[int], N: int):
     if N == 0 or len(border) == 3:
         return _build_min_circle(np.array(border))
@@ -114,6 +116,7 @@ def _welzl_algorithm(points: NDArray, border: List[int], N: int):
     border.append(points[N - 1])
 
     return _welzl_algorithm(points, border.copy(), N - 1)
+
 
 def _get_MEC(points: NDArray):
     points = points.copy()

@@ -296,17 +296,18 @@ class GradientBased(BaseAOIPreprocessor):
         X[self.aoi] = aoi_list
         return X
 
+
 class OverlapCLustering(BaseAOIPreprocessor):
 
     def __init__(
-            self,
-            x: str = None,
-            y: str = None,
-            diameters: str = None,
-            centers: str = None,
-            pk: List[str] = None,
-            aoi_name: str = None,
-            eps: float = 0.0
+        self,
+        x: str = None,
+        y: str = None,
+        diameters: str = None,
+        centers: str = None,
+        pk: List[str] = None,
+        aoi_name: str = None,
+        eps: float = 0.0,
     ):
         super().__init__(x=x, y=y, t=None, aoi=aoi_name, pk=pk)
         self.diameters = diameters
@@ -328,7 +329,9 @@ class OverlapCLustering(BaseAOIPreprocessor):
                 X.loc[index, X.columns == self.aoi] = cl
                 center = row[self.centers]
                 diameter = row[self.diameters]
-                X["diff_center"] = X[self.centers].apply(lambda p: (p[0] - center[0])**2 + (p[1] - center[1])**2)
+                X["diff_center"] = X[self.centers].apply(
+                    lambda p: (p[0] - center[0]) ** 2 + (p[1] - center[1]) ** 2
+                )
                 X["diff_diam"] = abs(diameter - X[self.diameters]) / 2
                 fixation_in_cluster = X[X["diff_center"] <= X["diff_diam"]].index
                 X.loc[fixation_in_cluster, self.aoi] = cl
@@ -339,7 +342,9 @@ class OverlapCLustering(BaseAOIPreprocessor):
     def _merge_clusters(self, X: pd.DataFrame) -> pd.DataFrame:
         used = []
         while len(X[~X[self.aoi].isin(used)]) > 0:
-            max_cluster = X[~X[self.aoi].isin(used)].groupby(self.aoi).count().idxmax().iloc[0]
+            max_cluster = (
+                X[~X[self.aoi].isin(used)].groupby(self.aoi).count().idxmax().iloc[0]
+            )
             # print(max_cluster)
             points = X[X[self.aoi] == max_cluster].index.values.tolist()
             ind = 0
@@ -347,15 +352,26 @@ class OverlapCLustering(BaseAOIPreprocessor):
             used.append(max_cluster)
             while ind < end_:
                 row = X.iloc[points[ind]]
-                X["length"] = X[self.centers].apply(lambda p: np.linalg.norm(p - row[self.centers]))
-                to_merge = X[(X["length"] <= abs((X[self.diameters] + row[self.diameters]) / 2 + self.eps)) & (~X[self.aoi].isin(used))][self.aoi].unique()
-                add_fixations = X[(X[self.aoi].isin(to_merge)) & (~X[self.aoi].isin(used))].index.values
+                X["length"] = X[self.centers].apply(
+                    lambda p: np.linalg.norm(p - row[self.centers])
+                )
+                to_merge = X[
+                    (
+                        X["length"]
+                        <= abs((X[self.diameters] + row[self.diameters]) / 2 + self.eps)
+                    )
+                    & (~X[self.aoi].isin(used))
+                ][self.aoi].unique()
+                add_fixations = X[
+                    (X[self.aoi].isin(to_merge)) & (~X[self.aoi].isin(used))
+                ].index.values
                 X.loc[X[self.aoi].isin(to_merge), (X.columns == self.aoi)] = max_cluster
                 points.extend(add_fixations)
                 ind += 1
                 end_ += len(add_fixations)
 
         return X
+
     def _preprocess(self, X: pd.DataFrame) -> pd.DataFrame:
         X.drop(columns=self.pk, inplace=True)
         X.reset_index(drop=True, inplace=True)
@@ -436,19 +452,37 @@ class AOIExtractor(BaseEstimator, TransformerMixin):
                         pattern = prev_pattern[i]
                         for cur_area in areas_names:
                             print(1)
-                            cur_x_max, cur_y_max, cur_x_min, cur_y_min = \
-                            cur_fixations[cur_fixations[self.aoi] == cur_area][self.x].max(), \
-                            cur_fixations[cur_fixations[self.aoi] == cur_area][self.y].max(), \
-                            cur_fixations[cur_fixations[self.aoi] == cur_area][self.x].min(), \
-                            cur_fixations[cur_fixations[self.aoi] == cur_area][self.y].min()
+                            cur_x_max, cur_y_max, cur_x_min, cur_y_min = (
+                                cur_fixations[cur_fixations[self.aoi] == cur_area][
+                                    self.x
+                                ].max(),
+                                cur_fixations[cur_fixations[self.aoi] == cur_area][
+                                    self.y
+                                ].max(),
+                                cur_fixations[cur_fixations[self.aoi] == cur_area][
+                                    self.x
+                                ].min(),
+                                cur_fixations[cur_fixations[self.aoi] == cur_area][
+                                    self.y
+                                ].min(),
+                            )
                             intersection = -1
                             new_name = None
                             for key, value in pattern.items():
-                                x_max, y_max, x_min, y_min = value[0], value[1], value[2], value[3]
+                                x_max, y_max, x_min, y_min = (
+                                    value[0],
+                                    value[1],
+                                    value[2],
+                                    value[3],
+                                )
                                 width = min(x_max, cur_x_max) - max(x_min, cur_x_min)
                                 height = min(y_max, cur_y_max) - max(y_min, cur_y_min)
-                                if (height > 0) and (width > 0) and (
-                                        key not in used) and intersection <= width * height:
+                                if (
+                                    (height > 0)
+                                    and (width > 0)
+                                    and (key not in used)
+                                    and intersection <= width * height
+                                ):
                                     new_name = key
                                     intersection = width * height
                             used.append(new_name)
@@ -458,13 +492,17 @@ class AOIExtractor(BaseEstimator, TransformerMixin):
                                     if areas_names[k] not in used:
                                         used[j] = areas_names[k]
                                         break
-                        cur_fixations[self.aoi] = cur_fixations[self.aoi].map(dict(zip(areas_names, used)))
+                        cur_fixations[self.aoi] = cur_fixations[self.aoi].map(
+                            dict(zip(areas_names, used))
+                        )
                         break
                 for area in areas_names:
-                    cur_x_max, cur_y_max, cur_x_min, cur_y_min = cur_fixations[cur_fixations[self.aoi] == area][
-                        self.x].max(), cur_fixations[cur_fixations[self.aoi] == area][self.y].max(), \
-                        cur_fixations[cur_fixations[self.aoi] == area][self.x].min(), \
-                        cur_fixations[cur_fixations[self.aoi] == area][self.y].min()
+                    cur_x_max, cur_y_max, cur_x_min, cur_y_min = (
+                        cur_fixations[cur_fixations[self.aoi] == area][self.x].max(),
+                        cur_fixations[cur_fixations[self.aoi] == area][self.y].max(),
+                        cur_fixations[cur_fixations[self.aoi] == area][self.x].min(),
+                        cur_fixations[cur_fixations[self.aoi] == area][self.y].min(),
+                    )
                     new_pattern[area] = [cur_x_max, cur_y_max, cur_x_min, cur_y_min]
 
                 entropy = entropy_transformer.transform(cur_fixations)[
@@ -476,7 +514,9 @@ class AOIExtractor(BaseEstimator, TransformerMixin):
                     add_pattern = new_pattern
                     if self.show_best:
                         fixations_with_aoi["best_method"] = method.__class__.__name__
-            prev_pattern[len(np.unique(fixations_with_aoi[self.aoi].values))] = add_pattern
+            prev_pattern[len(np.unique(fixations_with_aoi[self.aoi].values))] = (
+                add_pattern
+            )
             if fixations is None:
                 fixations = fixations_with_aoi
             else:

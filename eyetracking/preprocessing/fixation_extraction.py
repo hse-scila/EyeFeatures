@@ -10,12 +10,14 @@ from eyetracking.preprocessing.base import BaseFixationPreprocessor
 
 from _utils import _get_MEC
 
+
 # ======== FIXATION PREPROCESSORS ========
 class IVT(BaseFixationPreprocessor):
     """
     Velocity Threshold Identification.
     Complexity: O(n) for single group.
     """
+
     def __init__(
         self,
         x: str,
@@ -76,7 +78,10 @@ class IVT(BaseFixationPreprocessor):
 
         for i in set(fixations):
             if i != 0:
-                points = fixations_df.loc[fixations_df["fixation_id"] == i, fixations_df.columns.isin([self.x, self.y])].values
+                points = fixations_df.loc[
+                    fixations_df["fixation_id"] == i,
+                    fixations_df.columns.isin([self.x, self.y]),
+                ].values
                 x, y, radius = _get_MEC(np.unique(points, axis=0))
                 diameters.append(radius * 2)
                 centers.append(np.array([x, y]))
@@ -105,6 +110,7 @@ class IDT(BaseFixationPreprocessor):
     Complexity: O(n * W)  for single group, where W is size of maximum window.
     Worst case is O(n^2) for W = n.
     """
+
     def __init__(
         self,
         x: str,
@@ -264,6 +270,7 @@ class IHMM(BaseFixationPreprocessor):
     :param distrib_params: 'auto' for default params and dict {"fixation": params1, "saccade": params2}, where
            "params" are arguments for  appropriate `scipy.stats` function.
     """
+
     def __init__(
         self,
         x: str,
