@@ -438,9 +438,7 @@ class AOIExtractor(BaseEstimator, TransformerMixin):
             fixations_with_aoi = None
             add_pattern = None
             for method in self.methods:
-                print(0)
                 cur_fixations = method.transform(group_X)
-                print(1)
                 all_areas = np.unique(cur_fixations[self.aoi].values)
                 areas_names = [f"aoi_{i}" for i in range(len(all_areas))]
                 map_areas = dict(zip(all_areas, areas_names))
@@ -451,7 +449,6 @@ class AOIExtractor(BaseEstimator, TransformerMixin):
                     if prev_pattern.get(i, 0) != 0:
                         pattern = prev_pattern[i]
                         for cur_area in areas_names:
-                            print(1)
                             cur_x_max, cur_y_max, cur_x_min, cur_y_min = (
                                 cur_fixations[cur_fixations[self.aoi] == cur_area][
                                     self.x
