@@ -107,15 +107,12 @@ class BaseAOIPreprocessor(BasePreprocessor, ABC):
         self.t = t
         self.aoi = aoi
 
-    @staticmethod
     def _get_fixation_density(
         self, data: pd.DataFrame
     ) -> tuple[np.ndarray[Any, np.dtype], Any, Any]:
         """
         Finds the fixation density of a given dataframe.
         :param data: DataFrame with fixations.
-        :param x: x coordinate of fixation.
-        :param y: y coordinate of fixation.
         :return: density for each point in [x_min, x_max] x [y_min, y_max] area
         """
         df = data[[self.x, self.y]]
@@ -130,7 +127,11 @@ class BaseAOIPreprocessor(BasePreprocessor, ABC):
 
     @staticmethod
     @jit(forceobj=True, looplift=True)
-    def _build_local_max_coordinates(loc_max_matrix: np.ndarray) -> np.ndarray:
+    def _find_local_max_coordinates(loc_max_matrix: np.ndarray) -> np.ndarray:
+        """
+        Finds the local max coordinates of a fixation density matrix.
+        :param loc_max_matrix: matrix with maxima.
+        """
         for i in range(loc_max_matrix.shape[0]):  # TODO vectorize with numpy?
             for j in range(loc_max_matrix.shape[1]):
                 if i == 0 and j != 0:
@@ -147,6 +148,11 @@ class BaseAOIPreprocessor(BasePreprocessor, ABC):
                     if loc_max_matrix[i][j - 1] == loc_max_matrix[i][j]:
                         loc_max_matrix[i][j - 1] = 0
         return np.transpose(np.nonzero(loc_max_matrix))
+
+    def _scale_coordinates(self, X: pd.DataFrame) -> pd.DataFrame:
+        X[self.x] -= X[self.x].mean()
+        X[self.y] -= X[self.y].mean()
+        return X
 
 
 class BaseSmoothingPreprocessor(BasePreprocessor, ABC):

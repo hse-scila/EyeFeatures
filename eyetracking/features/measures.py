@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 from numba import jit
 
-from scipy import ifft
+from scipy.fftpack import ifft
 from scipy.stats import entropy
 from scipy.spatial.distance import pdist, squareform
 
