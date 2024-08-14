@@ -19,13 +19,15 @@ def scanpath_visualization(
     y: str,
     duration: str = None,
     dispersion: str = None,
+    size_column: str = None,
+    shape_column: str = None,
     time_stamps: str = None,
     aoi: str = None,
     img_path: str = None,
     fig_size: tuple[float, float] = (10.0, 10.0),
     points_width: float = 75,
     path_width: float = 0.004,
-    points_color: str = None,
+    points_color: str = "blue",
     path_color: str = "green",
     points_enumeration: bool = False,
     regression_color: str = None,
@@ -49,6 +51,7 @@ def scanpath_visualization(
     marks = ("o", "^", "s", "*", "p")
     legend = dict()
     data = data_.copy()
+    data["color"] = points_color
     if aoi is not None:
         data.dropna(subset=[aoi], inplace=True)
 
@@ -57,20 +60,16 @@ def scanpath_visualization(
     dX, dY = data[x].diff(), data[y].diff()
     XY = pd.concat([dX, dY], axis=1)
     fixation_size = np.full(X.shape[0], points_width)
-    reg_only = XY[(XY.iloc[:, 0] < 0) | (XY.iloc[:, 1] > 0)]
 
-    if duration is not None:
-        dur_intervals = np.linspace(0, data[duration].max(), 6)
-        for i in range(1, len(dur_intervals)):
-            # legend.append(
-            #     f"[{round(dur_intervals[i - 1], 2)}, {round(dur_intervals[i], 2)})"
-            # )
+    if shape_column is not None:
+        intervals = np.linspace(0, data[shape_column].max(), 6)
+        for i in range(1, len(intervals)):
             legend[marks[i - 1]] = (
-                f"[{round(dur_intervals[i - 1], 2)}, {round(dur_intervals[i], 2)})"
+                f"[{round(intervals[i - 1], 2)}, {round(intervals[i], 2)})"
             )
             data.loc[
-                (data["duration"] >= dur_intervals[i - 1])
-                & (data["duration"] < dur_intervals[i]),
+                (data[shape_column] >= intervals[i - 1])
+                & (data[shape_column] < intervals[i]),
                 "mark",
             ] = marks[i - 1]
         markers = marks
@@ -86,10 +85,10 @@ def scanpath_visualization(
                 aoi_c[data[aoi].unique()[i]] = get_aoi_cm(i)
         data["color"] = data[aoi].map(aoi_c)
 
-    if dispersion is not None:  # Not used
-        disp = data[dispersion]
-        disp /= disp.max()
-        fixation_size = np.array(disp * points_width)
+    if size_column is not None:  # Not used
+        size = data[size_column]
+        size /= size.max()
+        fixation_size = np.array(size * points_width)
 
     plt.axis(axes_limits)
 
@@ -97,7 +96,7 @@ def scanpath_visualization(
         plt.imshow(plt.imread(img_path))
 
     for i in range(len(markers)):
-        if duration is not None:
+        if shape_column is not None:
             plt.scatter(
                 x=data[x][data["mark"] == markers[i]],
                 y=data[y][data["mark"] == markers[i]],
@@ -110,7 +109,7 @@ def scanpath_visualization(
             plt.scatter(
                 x=data[x][data["mark"] == markers[i]],
                 y=data[y][data["mark"] == markers[i]],
-                color=data["color"][data["mark"] == markers[i]],
+                color=data["color"][data["mark"] == markers[i]].values[0],
                 marker=markers[i],
                 edgecolors="black",
             )
@@ -257,3 +256,127 @@ def scanpath_visualization(
         plt.axis("on")
 
     return
+
+
+def baseline_visualization(
+    data_: pd.DataFrame,
+    x: str,
+    y: str,
+    fig_size: tuple[float, float] = (10.0, 10.0),
+    path_width: float = 1,
+    show_legend: bool = False,
+    path_to_img: str = None,
+    with_axes: bool = False,
+):
+    scanpath_visualization(
+        data_,
+        x,
+        y,
+        fig_size=fig_size,
+        show_legend=show_legend,
+        path_to_img=path_to_img,
+        with_axes=with_axes,
+        path_width=path_width,
+    )
+
+
+def aoi_visualization(
+    data_: pd.DataFrame,
+    x: str,
+    y: str,
+    aoi: str,
+    size_column: str = None,
+    shape_column: str = None,
+    img_path: str = None,
+    fig_size: tuple[float, float] = (10.0, 10.0),
+    points_width: float = 75,
+    path_width: float = 1,
+    points_color: str = None,
+    aoi_c: Dict[str, str] = None,
+    seq_colormap: bool = False,
+    show_legend: bool = False,
+    path_to_img: str = None,
+    with_axes: bool = False,
+    axes_limits: tuple = None,
+):
+    scanpath_visualization(
+        data_,
+        x,
+        y,
+        size_column=size_column,
+        shape_column=shape_column,
+        aoi=aoi,
+        img_path=img_path,
+        fig_size=fig_size,
+        points_width=points_width,
+        path_width=path_width,
+        points_color=points_color,
+        seq_colormap=seq_colormap,
+        show_legend=show_legend,
+        aoi_c=aoi_c,
+        with_axes=with_axes,
+        axes_limits=axes_limits,
+        path_to_img=path_to_img,
+        show_hull=True,
+        only_points=True,
+    )
+
+
+def saccade_visualization(
+    data_: pd.DataFrame,
+    x: str,
+    y: str,
+    size_column: str = None,
+    shape_column: str = None,
+    duration: str = None,
+    dispersion: str = None,
+    time_stamps: str = None,
+    img_path: str = None,
+    fig_size: tuple[float, float] = (10.0, 10.0),
+    points_width: float = 75,
+    path_width: float = 1,
+    points_color: str = None,
+    path_color: str = "green",
+    points_enumeration: bool = False,
+    regression_color: str = None,
+    micro_sac_color: str = None,
+    is_vectors: bool = False,
+    min_dispersion: float = 1.2,
+    max_velocity: float = 4.7,
+    seq_colormap: bool = False,
+    show_legend: bool = False,
+    path_to_img: str = None,
+    with_axes: bool = False,
+    axes_limits: tuple = None,
+    rule: Tuple[int, ...] = (2,),
+    deviation: Union[int, Tuple[int, ...]] = None,
+):
+    scanpath_visualization(
+        data_,
+        x,
+        y,
+        size_column=size_column,
+        shape_column=shape_column,
+        duration=duration,
+        dispersion=dispersion,
+        time_stamps=time_stamps,
+        img_path=img_path,
+        fig_size=fig_size,
+        points_width=points_width,
+        path_width=path_width,
+        points_color=points_color,
+        seq_colormap=seq_colormap,
+        show_legend=show_legend,
+        path_to_img=path_to_img,
+        with_axes=with_axes,
+        axes_limits=axes_limits,
+        rule=rule,
+        deviation=deviation,
+        path_color=path_color,
+        points_enumeration=points_enumeration,
+        regression_color=regression_color,
+        micro_sac_color=micro_sac_color,
+        is_vectors=is_vectors,
+        min_dispersion=min_dispersion,
+        max_velocity=max_velocity,
+    )
