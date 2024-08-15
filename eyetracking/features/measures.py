@@ -3,10 +3,9 @@ from typing import List, Literal, Union
 import numpy as np
 import pandas as pd
 from numba import jit
-
 from scipy.fftpack import ifft
-from scipy.stats import entropy
 from scipy.spatial.distance import pdist, squareform
+from scipy.stats import entropy
 
 from eyetracking.features.extractor import BaseTransformer
 from eyetracking.utils import _split_dataframe
@@ -536,19 +535,18 @@ class LyapunovExponent(BaseTransformer):
         assert self.aoi is not None, "Error: Provide aoi column"
         assert X_len != 0, "Error: there are no fixations"
 
-    def embed(self, X):
-        N = len(X)
+    def build_embedding(self, X: np.ndarray) -> np.ndarray:
         return np.array(
             [
                 X[i : i + self.m * self.tau : self.tau]
-                for i in range(N - (self.m - 1) * self.tau)
+                for i in range(len(X) - (self.m - 1) * self.tau)
             ]
         )
 
     def largest_lyapunov_exponent(self, X: pd.DataFrame) -> float:
         coords = [self.x, self.y]
         X_coord = X[coords].values.flatten()
-        X_emb = self.embed(X_coord)
+        X_emb = self.build_embedding(X_coord)
         n = len(X_emb)
         divergence = []
 
@@ -586,6 +584,144 @@ class LyapunovExponent(BaseTransformer):
             for group, current_X in X_splited:
                 columns_names.append(f"lyap_exp_{str(group)}")
                 gathered_features.append([self.largest_lyapunov_exponent(X)])
+
+        features_df = pd.DataFrame(data=gathered_features, columns=columns_names)
+        return features_df if self.return_df else features_df.values
+
+
+class FractalDimension(BaseTransformer):
+    """
+    :param m: embedding dimension
+    :param tau: time delay for phase space reconstruction
+    """
+
+    def __init__(
+        self,
+        m: int = 2,
+        tau: int = 1,
+        aoi: str = None,
+        pk: List[str] = None,
+        return_df: bool = True,
+    ):
+        super().__init__(pk=pk, return_df=return_df)
+        self.m = m
+        self.tau = tau
+        self.aoi = aoi
+
+    def _check_init(self, X_len: int):
+        assert self.aoi is not None, "Error: Provide aoi column"
+        assert X_len != 0, "Error: there are no fixations"
+
+    def build_embedding(self, X: np.ndarray) -> np.ndarray:
+        return np.array(
+            [
+                X[i : i + self.m * self.tau : self.tau]
+                for i in range(len(X) - (self.m - 1) * self.tau)
+            ]
+        )
+
+    def box_counting_dimension(self, X: pd.DataFrame) -> float:
+        coords = [self.x, self.y]
+        X_coord = X[coords].values.flatten()
+        X_emb = self.build_embedding(X_coord)
+
+        min_val, max_val = np.min(X_emb), np.max(X_emb)
+        box_sizes = np.logspace(np.log10(1), np.log10(max_val - min_val), num=20)
+        counts = []
+
+        for box_size in box_sizes:
+            grid = (X_emb - min_val) // box_size
+            unique_boxes = np.unique(grid, axis=0)
+            counts.append(len(unique_boxes))
+
+        coeffs = np.polyfit(np.log(box_sizes), np.log(counts), 1)
+        return -coeffs[0]
+
+    def fit(self, X: pd.DataFrame, y=None):
+        return self
+
+    def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
+        self._check_init(X_len=X.shape[0])
+
+        columns_names = []
+        gathered_features = []
+
+        if self.pk is None:
+            columns_names.append("fractal_dim")
+            gathered_features.append([self.box_counting_dimension(X)])
+        else:
+            X_splited = _split_dataframe(X, self.pk)
+            for group, current_X in X_splited:
+                columns_names.append(f"fractal_dim_{str(group)}")
+                gathered_features.append([self.box_counting_dimension(current_X)])
+
+        features_df = pd.DataFrame(data=gathered_features, columns=columns_names)
+        return features_df if self.return_df else features_df.values
+
+
+class CorrelationDimension(BaseTransformer):
+    """
+    :param m: embedding dimension
+    :param tau: time delay for phase space reconstruction
+    :param r: radius threshold for correlation sum
+    """
+
+    def __init__(
+        self,
+        m: int = 2,
+        tau: int = 1,
+        r: float = 0.5,
+        aoi: str = None,
+        pk: List[str] = None,
+        return_df: bool = True,
+    ):
+        super().__init__(pk=pk, return_df=return_df)
+        self.m = m
+        self.tau = tau
+        self.r = r
+        self.aoi = aoi
+        self.eps = 1e-7
+
+    def _check_init(self, X_len: int):
+        assert self.aoi is not None, "Error: Provide aoi column"
+        assert X_len != 0, "Error: there are no fixations"
+
+    def build_embedding(self, X: np.ndarray) -> np.ndarray:
+        return np.array(
+            [
+                X[i : i + self.m * self.tau : self.tau]
+                for i in range(len(X) - (self.m - 1) * self.tau)
+            ]
+        )
+
+    def correlation_dimension(self, X: pd.DataFrame) -> float:
+        coords = [self.x, self.y]
+        X_coord = X[coords].values.flatten()
+        X_emb = self.build_embedding(X_coord)
+
+        dist_matrix = squareform(pdist(X_emb, metric="euclidean"))
+        count = np.sum(dist_matrix < self.r) - len(dist_matrix)
+
+        corr_dim = np.log(self.eps + count / len(dist_matrix)) / np.log(self.r)
+        return corr_dim
+
+    def fit(self, X: pd.DataFrame, y=None):
+        return self
+
+    def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
+        self._check_init(X_len=X.shape[0])
+
+        columns_names = []
+        gathered_features = []
+
+        if self.pk is None:
+            columns_names.append("corr_dim")
+            gathered_features.append([self.correlation_dimension(X)])
+        else:
+            X_splited = _split_dataframe(X, self.pk)
+            for group, current_X in X_splited:
+                columns_names.append(f"corr_dim_{str(group)}")
+                gathered_features.append([self.correlation_dimension(current_X)])
 
         features_df = pd.DataFrame(data=gathered_features, columns=columns_names)
         return features_df if self.return_df else features_df.values
