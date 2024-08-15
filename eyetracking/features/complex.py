@@ -1,7 +1,8 @@
-from typing import List
+from typing import Callable, List
 
 import numpy as np
 import pandas as pd
+from numba import jit
 from numpy.typing import NDArray
 from scipy.stats import gaussian_kde
 
@@ -29,17 +30,17 @@ def get_heatmap(x: NDArray, y: NDArray, k: int):
     return np.reshape(kernel(positions), x.shape)
 
 
-def get_heatmaps(df: pd.DataFrame, x: str, y: str, k: int, pk: List[str] = None):
+def get_heatmaps(data: pd.DataFrame, x: str, y: str, k: int, pk: List[str] = None):
     if pk is None:
-        x_path, y_path = df[x].values, df[y].values
+        x_path, y_path = data[x].values, data[y].values
         heatmap = get_heatmap(x_path, y_path, k)
         heatmaps = heatmap[np.newaxis, :, :]
     else:
-        groups = df[pk].drop_duplicates().values
+        groups = data[pk].drop_duplicates().values
         heatmaps = np.zeros((len(groups), k, k))
 
         for i, group in enumerate(groups):
-            cur_X = df[pd.DataFrame(df[pk] == group).all(axis=1)]
+            cur_X = data[pd.DataFrame(data[pk] == group).all(axis=1)]
             x_path, y_path = cur_X[x], cur_X[y]
             heatmaps[i, :, :] = get_heatmap(x_path, y_path, k)
 
@@ -87,3 +88,30 @@ def pca(matrix: NDArray, p: int, cum_sum: float = None):
 
     projection = evecs.T @ matrix
     return evecs, projection, row_means
+
+
+@jit(forceobj=True, looplift=True)
+def get_rqa(
+    data: pd.DataFrame, x: str, y: str, metric: Callable, rho: float
+) -> np.ndarray:
+    """
+    Calculates recurrence quantification analysis matrix based on given fixations.
+    :param data: dataframe containing fixations
+    :param x: column name of x-coordinate
+    :param y: column name of y-coordinate
+    :param metric: callable metric on R^2 points
+    :param rho: threshold radius
+
+    :return: rqa matrix
+    """
+    n = data.size
+    fixations = data[[x, y]].values
+    rqa_matrix = np.zeros((n, n), dtype=np.int32)
+
+    for i in range(n):
+        for j in range(i + 1, n):
+            dist = metric(fixations[i], fixations[j])
+            rqa_matrix[i][j] = int(dist <= rho)
+            rqa_matrix[j][i] = int(dist <= rho)
+
+    return rqa_matrix

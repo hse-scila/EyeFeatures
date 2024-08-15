@@ -1,12 +1,13 @@
-from typing import List, Literal, Union
+from typing import Callable, List, Literal, Union
 
 import numpy as np
 import pandas as pd
 from numba import jit
 from scipy.fftpack import ifft
-from scipy.spatial.distance import pdist, squareform
+from scipy.spatial.distance import euclidean, pdist, squareform
 from scipy.stats import entropy
 
+from eyetracking.features.complex import get_rqa
 from eyetracking.features.extractor import BaseTransformer
 from eyetracking.utils import _split_dataframe
 
@@ -260,6 +261,7 @@ class FuzzyEntropy(BaseTransformer):
         assert self.aoi is not None, "Error: Provide aoi column"
         assert X_len != 0, "Error: there are no fixations"
 
+    @jit(forceobj=True, looplift=True)
     def fuzzy_entropy(self, X: pd.DataFrame) -> float:
         n = 2 * len(X)
         phi_m = np.zeros(2)
@@ -276,9 +278,11 @@ class FuzzyEntropy(BaseTransformer):
 
         return np.log(phi_m[0] / (phi_m[1] + self.eps))
 
+    @jit(forceobj=True, looplift=True)
     def fit(self, X: pd.DataFrame, y=None):
         return self
 
+    @jit(forceobj=True, looplift=True)
     def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
         self._check_init(X_len=X.shape[0])
 
@@ -322,6 +326,7 @@ class SampleEntropy(BaseTransformer):
         assert self.aoi is not None, "Error: Provide aoi column"
         assert X_len != 0, "Error: there are no fixations"
 
+    @jit(forceobj=True, looplift=True)
     def sample_entropy(self, X: pd.DataFrame) -> float:
         n = 2 * len(X)
         coords = [self.x, self.y]
@@ -334,9 +339,11 @@ class SampleEntropy(BaseTransformer):
         A = np.sum(np.sum(dist_matrix < self.r, axis=0) - 1)
         return -np.log(A / (B + self.eps))
 
+    @jit(forceobj=True, looplift=True)
     def fit(self, X: pd.DataFrame, y=None):
         return self
 
+    @jit(forceobj=True, looplift=True)
     def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
         self._check_init(X_len=X.shape[0])
 
@@ -365,6 +372,7 @@ class IncrementalEntropy(BaseTransformer):
         assert self.aoi is not None, "Error: Provide aoi column"
         assert X_len != 0, "Error: there are no fixations"
 
+    @jit(forceobj=True, looplift=True)
     def incremental_entropy(self, X: pd.DataFrame) -> float:
         n = len(X)
         coords = [self.x, self.y]
@@ -377,9 +385,11 @@ class IncrementalEntropy(BaseTransformer):
 
         return incremental_entropies.mean()
 
+    @jit(forceobj=True, looplift=True)
     def fit(self, X: pd.DataFrame, y=None):
         return self
 
+    @jit(forceobj=True, looplift=True)
     def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
         self._check_init(X_len=X.shape[0])
 
@@ -419,6 +429,7 @@ class GriddedDistributionEntropy(BaseTransformer):
         assert self.aoi is not None, "Error: Provide aoi column"
         assert X_len != 0, "Error: there are no fixations"
 
+    @jit(forceobj=True, looplift=True)
     def gridded_distribution_entropy(self, X: pd.DataFrame) -> float:
         coords = [self.x, self.y]
         X_coord = X[coords].values
@@ -427,9 +438,11 @@ class GriddedDistributionEntropy(BaseTransformer):
         P = P[P > 0]
         return -np.sum(P * np.log(P))
 
+    @jit(forceobj=True, looplift=True)
     def fit(self, X: pd.DataFrame, y=None):
         return self
 
+    @jit(forceobj=True, looplift=True)
     def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
         self._check_init(X_len=X.shape[0])
 
@@ -472,6 +485,7 @@ class PhaseEntropy(BaseTransformer):
         assert self.aoi is not None, "Error: Provide aoi column"
         assert X_len != 0, "Error: there are no fixations"
 
+    @jit(forceobj=True, looplift=True)
     def phase_entropy(self, X: pd.DataFrame) -> float:
         n = 2 * len(X)
         coords = [self.x, self.y]
@@ -487,9 +501,11 @@ class PhaseEntropy(BaseTransformer):
         prob_dist = prob_dist[prob_dist > 0]
         return -np.sum(prob_dist * np.log(prob_dist))
 
+    @jit(forceobj=True, looplift=True)
     def fit(self, X: pd.DataFrame, y=None):
         return self
 
+    @jit(forceobj=True, looplift=True)
     def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
         self._check_init(X_len=X.shape[0])
 
@@ -535,6 +551,7 @@ class LyapunovExponent(BaseTransformer):
         assert self.aoi is not None, "Error: Provide aoi column"
         assert X_len != 0, "Error: there are no fixations"
 
+    @jit(forceobj=True, looplift=True)
     def build_embedding(self, X: np.ndarray) -> np.ndarray:
         return np.array(
             [
@@ -543,6 +560,7 @@ class LyapunovExponent(BaseTransformer):
             ]
         )
 
+    @jit(forceobj=True, looplift=True)
     def largest_lyapunov_exponent(self, X: pd.DataFrame) -> float:
         coords = [self.x, self.y]
         X_coord = X[coords].values.flatten()
@@ -567,9 +585,11 @@ class LyapunovExponent(BaseTransformer):
 
         return np.mean(divergence) / self.T if divergence else np.inf
 
+    @jit(forceobj=True, looplift=True)
     def fit(self, X: pd.DataFrame, y=None):
         return self
 
+    @jit(forceobj=True, looplift=True)
     def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
         self._check_init(X_len=X.shape[0])
 
@@ -612,6 +632,7 @@ class FractalDimension(BaseTransformer):
         assert self.aoi is not None, "Error: Provide aoi column"
         assert X_len != 0, "Error: there are no fixations"
 
+    @jit(forceobj=True, looplift=True)
     def build_embedding(self, X: np.ndarray) -> np.ndarray:
         return np.array(
             [
@@ -620,6 +641,7 @@ class FractalDimension(BaseTransformer):
             ]
         )
 
+    @jit(forceobj=True, looplift=True)
     def box_counting_dimension(self, X: pd.DataFrame) -> float:
         coords = [self.x, self.y]
         X_coord = X[coords].values.flatten()
@@ -637,9 +659,11 @@ class FractalDimension(BaseTransformer):
         coeffs = np.polyfit(np.log(box_sizes), np.log(counts), 1)
         return -coeffs[0]
 
+    @jit(forceobj=True, looplift=True)
     def fit(self, X: pd.DataFrame, y=None):
         return self
 
+    @jit(forceobj=True, looplift=True)
     def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
         self._check_init(X_len=X.shape[0])
 
@@ -686,6 +710,7 @@ class CorrelationDimension(BaseTransformer):
         assert self.aoi is not None, "Error: Provide aoi column"
         assert X_len != 0, "Error: there are no fixations"
 
+    @jit(forceobj=True, looplift=True)
     def build_embedding(self, X: np.ndarray) -> np.ndarray:
         return np.array(
             [
@@ -694,6 +719,7 @@ class CorrelationDimension(BaseTransformer):
             ]
         )
 
+    @jit(forceobj=True, looplift=True)
     def correlation_dimension(self, X: pd.DataFrame) -> float:
         coords = [self.x, self.y]
         X_coord = X[coords].values.flatten()
@@ -705,9 +731,11 @@ class CorrelationDimension(BaseTransformer):
         corr_dim = np.log(self.eps + count / len(dist_matrix)) / np.log(self.r)
         return corr_dim
 
+    @jit(forceobj=True, looplift=True)
     def fit(self, X: pd.DataFrame, y=None):
         return self
 
+    @jit(forceobj=True, looplift=True)
     def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
         self._check_init(X_len=X.shape[0])
 
@@ -722,6 +750,106 @@ class CorrelationDimension(BaseTransformer):
             for group, current_X in X_splited:
                 columns_names.append(f"corr_dim_{str(group)}")
                 gathered_features.append([self.correlation_dimension(current_X)])
+
+        features_df = pd.DataFrame(data=gathered_features, columns=columns_names)
+        return features_df if self.return_df else features_df.values
+
+
+class RQAMeasures(BaseTransformer):
+    """
+    Calculates Reccurence (REC), Determinism (DET), Laminarity (LAM) and Center of Recurrence Mass (CORM) measures.
+    :param metric: callable metric on R^2 points
+    :param rho: threshold radius for RQA matrix
+    :param min_length: min length of lines
+    :param measures: list of measure to calculate (corresponding str)
+    """
+
+    def __init__(
+        self,
+        metric: Callable = euclidean,
+        rho: float = 1e-1,
+        min_length: float = 1e-1,
+        measures: List[str] = ["rec", "det", "lam", "corm"],
+        aoi: str = None,
+        pk: List[str] = None,
+        return_df: bool = True,
+    ):
+        super().__init__(pk=pk, return_df=return_df)
+        self.metric = metric
+        self.rho = rho
+        self.min_length = min_length
+        self.measures = measures
+        self.aoi = aoi
+        self.eps = 1e-7
+
+    def _check_init(self, X_len: int):
+        assert len(self.measures) > 0, "Error: at least one measure must be passed"
+        assert self.aoi is not None, "Error: Provide aoi column"
+        assert X_len != 0, "Error: there are no fixations"
+
+    @jit(forceobj=True, looplift=True)
+    def fit(self, X: pd.DataFrame, y=None):
+        return self
+
+    @jit(forceobj=True, looplift=True)
+    def calculate_measures(self, X: pd.DataFrame) -> List[float]:
+        features = []
+        rqa_matrix = get_rqa(X, self.x, self.y, self.metric, self.rho)
+        n = rqa_matrix.shape[0]
+        r = np.sum(np.triu(rqa_matrix, k=1)) + self.eps
+
+        if "rec" in self.measures:
+            features.append(100 * 2 * r / (n * (n - 1)))
+
+        if "det" in self.measures:
+            DL = []
+            for offset in range(1, n):
+                diagonal = np.diag(rqa_matrix, k=offset)
+                if len(diagonal) >= self.min_length:
+                    for k in range(len(diagonal) - self.min_length + 1):
+                        if np.all(diagonal[k : k + self.min_length]):
+                            DL.append(np.sum(diagonal[k:]))
+            features.append(100 * np.sum(DL) / r)
+
+        if "lam" in self.measures:
+            HL, VL = [], []
+            for i in range(n):
+                horizontal = rqa_matrix[i, :]
+                vertical = rqa_matrix[:, i]
+                for k in range(n - self.min_length + 1):
+                    if np.all(horizontal[k : k + self.min_length]):
+                        HL.append(np.sum(horizontal[k:]))
+                    if np.all(vertical[k : k + self.min_length]):
+                        VL.append(np.sum(vertical[k:]))
+            features.append(100 * (np.sum(HL) + np.sum(VL)) / (2 * r))
+
+        if "corm" in self.measures:
+            corm_num = 0
+            for i in range(n - 1):
+                for j in range(i + 1, n):
+                    corm_num += (j - i) * rqa_matrix[i, j]
+            features.append(100 * corm_num / ((n - 1) * r))
+
+        return features
+
+    @jit(forceobj=True, looplift=True)
+    def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
+        self._check_init(X_len=X.shape[0])
+
+        columns_names = []
+        gathered_features = []
+
+        if self.pk is None:
+            columns_names.extend(["rec", "det", "lam", "corm"])
+            gathered_features.extend(self.calculate_measures(X))
+        else:
+            X_splited = _split_dataframe(X, self.pk)
+            for group, current_X in X_splited:
+                gnm = str(group)
+                columns_names.extend(
+                    [f"rec_{gnm}", f"det_{gnm}", f"lam_{gnm}", f"corm_{gnm}"]
+                )
+                gathered_features.extend(self.calculate_measures(current_X))
 
         features_df = pd.DataFrame(data=gathered_features, columns=columns_names)
         return features_df if self.return_df else features_df.values
