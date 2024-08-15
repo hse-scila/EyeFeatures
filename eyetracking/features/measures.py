@@ -793,12 +793,13 @@ class RQAMeasures(BaseTransformer):
 
     @jit(forceobj=True, looplift=True)
     def calculate_measures(self, X: pd.DataFrame) -> List[float]:
-        features = []
+        columns, features = [], []
         rqa_matrix = get_rqa(X, self.x, self.y, self.metric, self.rho)
         n = rqa_matrix.shape[0]
         r = np.sum(np.triu(rqa_matrix, k=1)) + self.eps
 
         if "rec" in self.measures:
+            columns.append("rec")
             features.append(100 * 2 * r / (n * (n - 1)))
 
         if "det" in self.measures:
@@ -809,6 +810,7 @@ class RQAMeasures(BaseTransformer):
                     for k in range(len(diagonal) - self.min_length + 1):
                         if np.all(diagonal[k : k + self.min_length]):
                             DL.append(np.sum(diagonal[k:]))
+            columns.append("det")
             features.append(100 * np.sum(DL) / r)
 
         if "lam" in self.measures:
@@ -821,6 +823,7 @@ class RQAMeasures(BaseTransformer):
                         HL.append(np.sum(horizontal[k:]))
                     if np.all(vertical[k : k + self.min_length]):
                         VL.append(np.sum(vertical[k:]))
+            columns.append("lam")
             features.append(100 * (np.sum(HL) + np.sum(VL)) / (2 * r))
 
         if "corm" in self.measures:
@@ -828,9 +831,10 @@ class RQAMeasures(BaseTransformer):
             for i in range(n - 1):
                 for j in range(i + 1, n):
                     corm_num += (j - i) * rqa_matrix[i, j]
+            columns.append("corm")
             features.append(100 * corm_num / ((n - 1) * r))
 
-        return features
+        return columns, features
 
     @jit(forceobj=True, looplift=True)
     def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
@@ -840,16 +844,18 @@ class RQAMeasures(BaseTransformer):
         gathered_features = []
 
         if self.pk is None:
-            columns_names.extend(["rec", "det", "lam", "corm"])
-            gathered_features.extend(self.calculate_measures(X))
+            cur_names, cur_features = self.calculate_measures(X)
+            columns_names.extend(cur_names)
+            gathered_features.extend(cur_features)
         else:
             X_splited = _split_dataframe(X, self.pk)
             for group, current_X in X_splited:
                 gnm = str(group)
-                columns_names.extend(
-                    [f"rec_{gnm}", f"det_{gnm}", f"lam_{gnm}", f"corm_{gnm}"]
-                )
-                gathered_features.extend(self.calculate_measures(current_X))
+                cur_names, cur_features = self.calculate_measures(current_X)
+                for i in range(len(cur_names)):
+                    cur_names[i] += f"_{gnm}"
+                columns_names.extend(cur_names)
+                gathered_features.extend(cur_features)
 
         features_df = pd.DataFrame(data=gathered_features, columns=columns_names)
         return features_df if self.return_df else features_df.values
