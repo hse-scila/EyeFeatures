@@ -768,7 +768,7 @@ class RQAMeasures(BaseTransformer):
         self,
         metric: Callable = euclidean,
         rho: float = 1e-1,
-        min_length: float = 1e-1,
+        min_length: int = 1,
         measures: List[str] = ["rec", "det", "lam", "corm"],
         aoi: str = None,
         pk: List[str] = None,
@@ -786,6 +786,8 @@ class RQAMeasures(BaseTransformer):
         assert len(self.measures) > 0, "Error: at least one measure must be passed"
         assert self.aoi is not None, "Error: Provide aoi column"
         assert X_len != 0, "Error: there are no fixations"
+        assert self.rho is not None, "Error: rho must be a float"
+        assert self.min_length is not None, "Error: min_length must be an integer"
 
     @jit(forceobj=True, looplift=True)
     def fit(self, X: pd.DataFrame, y=None):
@@ -856,6 +858,110 @@ class RQAMeasures(BaseTransformer):
                     cur_names[i] += f"_{gnm}"
                 columns_names.extend(cur_names)
                 gathered_features.extend(cur_features)
+
+        features_df = pd.DataFrame(data=gathered_features, columns=columns_names)
+        return features_df if self.return_df else features_df.values
+
+
+class SaccadeUnlikelihood(BaseTransformer):
+    """
+    Calculates cumulative negative log-likelihood of all the saccades in a scanpath with respect to the saccade transition model.
+    Default distribution parameters are derived from Potsdam Sentence Corpus.
+    :param mu_p: mean of the progression distribution
+    :param sigma_p1: left standard deviation of the progression distribution
+    :param sigma_p2: right standard deviation of the progression distribution
+    :param mu_r: mean of the regression distribution
+    :param sigma_r1: left standard deviation of the regression distribution
+    :param sigma_r2: right standard deviation of the regression distribution
+    :param psi: probability of performing a progressive saccade
+    :return: the cumulative Negative Log-Likelihood (NLL) of the saccades
+    """
+
+    def __init__(
+        self,
+        mu_p: float = 1.0,
+        sigma_p1: float = 0.5,
+        sigma_p2: float = 1.0,
+        mu_r: float = 1.0,
+        sigma_r1: float = 0.3,
+        sigma_r2: float = 0.7,
+        psi: float = 0.9,
+        aoi: str = None,
+        pk: List[str] = None,
+        return_df: bool = True,
+    ):
+        super().__init__(pk=pk, return_df=return_df)
+        self.mu_p = mu_p
+        self.sigma_p1 = sigma_p1
+        self.sigma_p2 = sigma_p2
+        self.mu_r = mu_r
+        self.sigma_r1 = sigma_r1
+        self.sigma_r2 = sigma_r2
+        self.psi = psi
+        self.aoi = aoi
+
+    def _check_init(self, X_len: int):
+        assert self.aoi is not None, "Error: Provide aoi column"
+        assert X_len != 0, "Error: there are no fixations"
+
+    @jit(forceobj=True, looplift=True)
+    def fit(self, X: pd.DataFrame, y=None):
+        return self
+
+    @staticmethod
+    @jit(forceobj=True, looplift=True)
+    def nassym(s: float, mu: float, sigma1: float, sigma2: float) -> float:
+        """
+        Calculates assymetric Gaussian PDF at point s.
+        :param s: saccade length
+        :param mu: mean of the distribution
+        :param sigma1: standard deviation for the left part of the distribution (s < mu)
+        :param sigma2: standard deviation for the right part of the distribution (s >= mu)
+        :return: probability density value for the given saccade length s
+        """
+        Z = np.sqrt(np.pi / 2) * (sigma1 + sigma2)  # pdf normalization constant
+        sigma = sigma1 if s < mu else sigma2
+        return np.exp(-((s - mu) ** 2 / (2 * (sigma**2)))) / Z
+
+    @jit(forceobj=True, looplift=True)
+    def calculate_saccade_proba(self, s: float) -> float:
+        """
+        :param s: saccade length
+        :return: The probability of the saccade length s.
+        """
+        progression_proba = self.psi * self.nassym(
+            s, self.mu_p, self.sigma_p1, self.sigma_p2
+        )
+        regression_proba = (1 - self.psi) * self.nassym(
+            s, self.mu_r, self.sigma_r1, self.sigma_r2
+        )
+        return progression_proba + regression_proba
+
+    @jit(forceobj=True, looplift=True)
+    def calculate_nll(self, X: pd.DataFrame) -> List[float]:
+        nll = 0
+        coords = [self.x, self.y]
+        X_sac_len = np.linalg.norm(X[coords].diff().values[1:], axis=1)
+        for s_len in X_sac_len:
+            p_s = self.calculate_saccade_proba(s_len)
+            nll -= np.log(p_s)
+        return nll
+
+    @jit(forceobj=True, looplift=True)
+    def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
+        self._check_init(X_len=X.shape[0])
+
+        columns_names = []
+        gathered_features = []
+
+        if self.pk is None:
+            columns_names.append("sac_nll")
+            gathered_features.append([self.calculate_nll(X)])
+        else:
+            X_splited = _split_dataframe(X, self.pk)
+            for group, current_X in X_splited:
+                columns_names.append(f"sac_nll_{str(group)}")
+                gathered_features.append([self.calculate_nll(current_X)])
 
         features_df = pd.DataFrame(data=gathered_features, columns=columns_names)
         return features_df if self.return_df else features_df.values
