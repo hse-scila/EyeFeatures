@@ -4,8 +4,12 @@ import numpy as np
 import pandas as pd
 from numba import jit
 from numpy.typing import NDArray
+from scipy.cluster.hierarchy import leaves_list, linkage, optimal_leaf_ordering
 from scipy.linalg import sqrtm
 from scipy.optimize import minimize
+from scipy.sparse.csgraph import laplacian
+from scipy.sparse.linalg import eigsh
+from sklearn.manifold import MDS
 from tqdm import tqdm
 
 from eyetracking.utils import Types, _split_dataframe
@@ -158,7 +162,7 @@ def restore_matrix(matrix: NDArray, tol=1e-9):
     return US.dot(evecs.T).T, A_rank
 
 
-def get_sim_matrix(scanpaths: List[NDArray], sim_metric: Callable):
+def get_sim_matrix(scanpaths: List[NDArray], sim_metric: Callable) -> np.ndarray:
     """
     Computes similarity matrix given non-trivial metric.
     :param scanpaths: list of scanpaths, each being 2D-array of shape (2, n).
@@ -200,3 +204,68 @@ def get_dist_matrix(
 
     distances_df = pd.DataFrame(distances, columns=["p", "q", "dist"])
     return distances_df.reset_index().pivot_table(index="p", columns="q", values="dist")
+
+
+def hierarchical_clustering_order(
+    sim_matrix: np.ndarray, metric: str = "euclidean"
+) -> np.ndarray:
+    """
+    Reorder matrix using hierarchical clustering.
+    :param sim_matrix: similarity matrix to reorder
+    :param metric: metric used in building matrix
+    :return: reordered matrix
+    """
+
+    Z = linkage(sim_matrix, method="ward", metric=metric)
+    ordered_leaves = leaves_list(Z)
+    reordered_matrix = sim_matrix[ordered_leaves, :][:, ordered_leaves]
+    return reordered_matrix
+
+
+def optimal_leaf_ordering_clustering(
+    sim_matrix: np.ndarray, metric: str = "euclidean"
+) -> np.ndarray:
+    """
+    Reorder matrix using optimal leaf ordering.
+    :param sim_matrix: similarity matrix to reorder
+    :return: reordered matrix
+    """
+
+    Z = linkage(sim_matrix, method="ward", metric=metric)
+    Z = optimal_leaf_ordering(Z, sim_matrix)
+    ordered_leaves = leaves_list(Z)
+    reordered_matrix = sim_matrix[ordered_leaves, :][:, ordered_leaves]
+    return reordered_matrix
+
+
+def dimensionality_reduction_order(sim_matrix: np.ndarray) -> np.ndarray:
+    """
+    Reorder matrix using Multi-Dimensional Scaling (MDS).
+    :param sim_matrix: similarity matrix to reorder
+    :return: reordered matrix
+    """
+
+    mds = MDS(n_components=2, dissimilarity="precomputed")
+    coords = mds.fit_transform(1 - sim_matrix)
+    # reorder the matrix based on the first MDS component
+    order = np.argsort(coords[:, 0])
+    reordered_matrix = sim_matrix[order, :][:, order]
+    return reordered_matrix
+
+
+def spectral_order(sim_matrix: np.ndarray) -> np.ndarray:
+    """
+    Reorder matrix using spectral reordering.
+    :param sim_matrix: similarity matrix to reorder
+    :return: reordered matrix
+    """
+
+    L = laplacian(sim_matrix, normed=True)
+
+    _, eigenvectors = eigsh(L, k=2, which="SM")
+
+    # reorder based on the second smallest eigenvector (fiedler vector)
+    fiedler_vector = eigenvectors[:, 1]
+    order = np.argsort(fiedler_vector)
+    reordered_matrix = sim_matrix[order, :][:, order]
+    return reordered_matrix
