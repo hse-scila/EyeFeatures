@@ -20,7 +20,7 @@ def get_heatmap(x: NDArray, y: NDArray, k: int):
     """
     assert k > 0, "'k' must be positive"
 
-    if len(x) <= 2:
+    if len(x) <= 2:  # TODO warning
         x, y = np.array([0.2, 0.55, 0.4, 0.25]), np.array([0.25, 0.5, 0.6, 0.7])
 
     scanpath = np.vstack([x, y])
