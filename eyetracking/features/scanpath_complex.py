@@ -269,3 +269,81 @@ def spectral_order(sim_matrix: np.ndarray) -> np.ndarray:
     order = np.argsort(fiedler_vector)
     reordered_matrix = sim_matrix[order, :][:, order]
     return reordered_matrix
+
+
+# ======================== COMPROMISE MATRIX ========================
+
+
+def get_center_matrix(weight_vector: np.ndarray) -> np.ndarray:
+    """
+    Calculates centering matrix Theta.
+    :param weight_vector: vector of weights
+    :return: centering matrix
+    """
+    assert np.sum(weight_vector) > 0, "Sum of weights must be greater than 0"
+    weight_vector = weight_vector.astype(np.float32)
+    weight_vector /= np.sum(weight_vector)
+    E = np.eye(weight_vector.size)
+    Theta = E - np.matmul(
+        np.ones(weight_vector.size)[:, np.newaxis], weight_vector[:, np.newaxis].T
+    )
+    return Theta
+
+
+def get_cross_product_matrix(
+    D: np.ndarray, weight_vector: np.ndarray = None
+) -> np.ndarray:
+    """
+    Calculates cross-product matrix.
+    :param D: distance matrix
+    :param weight_vector: vector of weights
+    :return: cross-product matrix
+    """
+
+    if weight_vector is None:
+        weight_vector = np.ones(D.shape[0])
+
+    Theta = get_center_matrix(weight_vector)
+    return -0.5 * Theta @ D @ Theta.T
+
+
+def compute_rv_coefficient(S1: np.ndarray, S2: np.ndarray) -> float:
+    """
+    Calculate the RV coefficient between two cross-product matrices.
+    :param G1: first cross-product matrix
+    :param G2: second cross-product matrix
+    :return: RV coefficient
+    """
+    numerator = np.trace(S1 @ S2.T)
+    denominator = np.sqrt(np.trace(S1 @ S1.T) * np.trace(S2 @ S2.T))
+    return numerator / denominator
+
+
+def get_compromise_matrix(distance_matrices: List[np.ndarray]) -> np.ndarray:
+    """
+    Compute the compromise matrix from a list of distance matrices.
+    :param distance_matrices: List of distance matrices (each an ndarray)
+    :return: compromise cross-product matrix
+    """
+    n = distance_matrices[0].shape[0]
+    num_matrices = len(distance_matrices)
+
+    # compute the cross-product matrices
+    cross_product_matrices = [get_cross_product_matrix(D) for D in distance_matrices]
+
+    # compute the similarity matrix using RV coefficients
+    similarity_matrix = np.zeros((num_matrices, num_matrices))
+    for i in range(num_matrices):
+        for j in range(i, num_matrices):
+            rv = compute_rv_coefficient(
+                cross_product_matrices[i], cross_product_matrices[j]
+            )
+            similarity_matrix[i, j] = similarity_matrix[j, i] = rv
+
+    # eigen-decomposition of the similarity matrix
+    _, eigvecs = np.linalg.eigh(similarity_matrix)
+    weights = eigvecs[:, -1]  # eigenvector corresponding to the largest eigenvalue
+    # Get the compromise matrix as a weighted sum
+    comp_mat = sum(w * G for w, G in zip(weights, cross_product_matrices))
+
+    return comp_mat
