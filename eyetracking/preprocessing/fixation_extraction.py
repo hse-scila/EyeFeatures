@@ -8,7 +8,7 @@ from numba import jit
 from eyetracking.preprocessing._utils import _get_distance
 from eyetracking.preprocessing.base import BaseFixationPreprocessor
 
-from _utils import _get_MEC
+from eyetracking.preprocessing._utils import _get_MEC
 
 
 # ======== FIXATION PREPROCESSORS ========
