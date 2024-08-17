@@ -503,12 +503,10 @@ class AOIExtractor(BaseEstimator, TransformerMixin):
         )
         # Entropy for selecting the best method
         entropy_transformer = ShannonEntropy(aoi=self.aoi, pk=self.instance_columns)
-        prev_pattern = dict()
         # Extract areas of interest for each instance
         for instance_ids, instance_X in instances:
             min_entropy = np.inf
             fixations_with_aoi = None
-            add_pattern = None
             # Select best aoi extraction
             for method in self.methods:
                 copy_x = None
@@ -540,97 +538,11 @@ class AOIExtractor(BaseEstimator, TransformerMixin):
 
                 cur_fixations = method.transform(
                     to_transform
-                )  # Aoi extraction algorithm
-                # === Correction of the AOI labels ===
-                # Make the new aoi labels
-                if instance_ids == (9,):
-                    print("bruh")
+                )
                 all_areas = np.unique(cur_fixations[self.aoi].values)
                 areas_names = [f"aoi_{i}" for i in range(len(all_areas))]
                 map_areas = dict(zip(all_areas, areas_names))
                 cur_fixations[self.aoi] = cur_fixations[self.aoi].map(map_areas)
-                used = []
-                to_zip = []
-                new_pattern = dict()
-                # Find the sample with the same or less count of areas of interest to match the aoi labels
-                for i in range(len(all_areas), 0, -1):
-                    if prev_pattern.get(i, 0) != 0:
-                        pattern = prev_pattern[i]
-                        # Compare areas
-                        # Beginning with python 3.6, the order of dict.items() corresponds to the order which
-                        # the elements are inserted
-                        for key, value in pattern.items():
-                            # if key not in used:
-                            x_max, y_max, x_min, y_min = (
-                                value[0],
-                                value[1],
-                                value[2],
-                                value[3],
-                            )
-                            intersection = -1
-                            new_name = None
-                            prev_height = -1
-                            prev_width = -1
-                            for cur_area in areas_names:
-                                cur_x_max, cur_y_max, cur_x_min, cur_y_min = (
-                                    cur_fixations[cur_fixations[self.aoi] == cur_area][
-                                        self.x
-                                    ].max(),
-                                    cur_fixations[cur_fixations[self.aoi] == cur_area][
-                                        self.y
-                                    ].max(),
-                                    cur_fixations[cur_fixations[self.aoi] == cur_area][
-                                        self.x
-                                    ].min(),
-                                    cur_fixations[cur_fixations[self.aoi] == cur_area][
-                                        self.y
-                                    ].min(),
-                                )
-                                width = min(x_max, cur_x_max) - max(x_min, cur_x_min)
-                                height = min(y_max, cur_y_max) - max(y_min, cur_y_min)
-                                # Find aoi with the largest intersection
-                                if (
-                                    height > 0
-                                    and width > 0
-                                    and (cur_area not in used)
-                                    and intersection <= width * height
-                                ):
-                                    intersection = width * height
-                                    new_name = cur_area
-                                    # prev_width = x_max - x_min
-                                    # prev_height = y_max - y_min
-                            used.append(new_name)
-                            to_zip.append(key)
-                        len_of_used = len(used)
-                        for j in range(len(areas_names) - len(used)):
-                            used.append(None)
-                            to_zip.append(areas_names[len_of_used + j])
-                        for j in range(len(used)):
-                            if used[j] is None:
-                                for area in areas_names:
-                                    if area not in used:
-                                        used[j] = area
-                        # Match the remaining areas of interest
-                        for j in range(len(used)):
-                            if used[j] is None:
-                                for k in range(len(areas_names)):
-                                    if areas_names[k] not in used:
-                                        used[j] = areas_names[k]
-                                        break
-                        cur_fixations[self.aoi] = cur_fixations[self.aoi].map(
-                            dict(zip(used, to_zip))
-                        )
-                        break
-                # Add new sample
-                for area in areas_names:
-                    cur_x_max, cur_y_max, cur_x_min, cur_y_min = (
-                        cur_fixations[cur_fixations[self.aoi] == area][self.x].max(),
-                        cur_fixations[cur_fixations[self.aoi] == area][self.y].max(),
-                        cur_fixations[cur_fixations[self.aoi] == area][self.x].min(),
-                        cur_fixations[cur_fixations[self.aoi] == area][self.y].min(),
-                    )
-                    new_pattern[area] = [cur_x_max, cur_y_max, cur_x_min, cur_y_min]
-                # === End of the correction ===
                 entropy = entropy_transformer.transform(cur_fixations)[
                     "entropy"
                 ].values[0][0]
@@ -639,17 +551,173 @@ class AOIExtractor(BaseEstimator, TransformerMixin):
                     fixations_with_aoi = cur_fixations
                     fixations_with_aoi[self.x] = copy_x
                     fixations_with_aoi[self.y] = copy_y
-                    add_pattern = new_pattern
                     if self.show_best:
                         fixations_with_aoi["best_method"] = method.__class__.__name__
-            prev_pattern[len(np.unique(fixations_with_aoi[self.aoi].values))] = (
-                add_pattern
-            )
             if fixations is None:
                 fixations = fixations_with_aoi
             else:
                 fixations = pd.concat(
                     [fixations, fixations_with_aoi], ignore_index=True, axis=0
+                )
+
+        return fixations
+
+class AOIMatcher(BaseEstimator, TransformerMixin):
+    """
+    Matches AOI in the dataset.
+    :param x: x coordinate of fixation.
+    :param y: y coordinate of fixation.
+    :param pk: list of column names used to split pd.DataFrame for scaling.
+    :param instance_columns: list of column names used to split pd.DataFrame into the similar instances for aoi extraction.
+    :param aoi: name of AOI column.
+    :return: DataFrame with AOI column
+    """
+    def __init__(self,
+                 x: str,
+                 y: str,
+                 pk: List[str] = None,
+                 instance_columns: List[str] = None,
+                 aoi: str = None):
+        self.x = x
+        self.y = y
+        self.pk = pk
+        self.instance_columns = instance_columns
+        self.aoi = aoi
+
+    def fit(self, X: pd.DataFrame, y=None):
+        return self
+
+    def transform(self, X: pd.DataFrame) -> pd.DataFrame:
+        data_df: pd.DataFrame = X.copy()
+
+        fixations = None
+        instances: List[str, pd.DataFrame] = _split_dataframe(
+            data_df, self.instance_columns, encode=False
+        )
+        prev_pattern = dict()
+        for instance_ids, instance_X in instances:
+            copy_x = None
+            copy_y = None
+            groups: List[str, pd.DataFrame] = _split_dataframe(
+                instance_X, self.pk, encode=False
+            )
+            cur_fixations = None
+            for group_ids, group_X in groups:
+                if copy_x is None:
+                    copy_x = group_X[self.x]
+                    copy_y = group_X[self.y]
+                else:
+                    copy_x = pd.concat(
+                        [copy_x, group_X[self.x]], ignore_index=True, axis=0
+                    )
+                    copy_y = pd.concat(
+                        [copy_y, group_X[self.y]], ignore_index=True, axis=0
+                    )
+                group_X[self.x] -= group_X[self.x].mean()
+                group_X[self.y] -= group_X[self.y].mean()
+                if cur_fixations is None:
+                    cur_fixations = group_X
+                else:
+                    cur_fixations = pd.concat([cur_fixations, group_X], ignore_index=True, axis=0)
+
+            # === Correction of the AOI labels ===
+            # Make the new aoi labels
+            all_areas = np.unique(cur_fixations[self.aoi].values)
+            areas_names = [f"aoi_{i}" for i in range(len(all_areas))]
+            map_areas = dict(zip(all_areas, areas_names))
+            cur_fixations[self.aoi] = cur_fixations[self.aoi].map(map_areas)
+            used = []
+            to_zip = []
+            new_pattern = dict()
+            # Find the sample with the same or less count of areas of interest to match the aoi labels
+            for i in range(len(all_areas), 0, -1):
+                if prev_pattern.get(i, 0) != 0:
+                    pattern = prev_pattern[i]
+                    # Compare areas
+                    # Beginning with python 3.6, the order of dict.items() corresponds to the order which
+                    # the elements are inserted
+                    for key, value in pattern.items():
+                        # if key not in used:
+                        x_max, y_max, x_min, y_min = (
+                            value[0],
+                            value[1],
+                            value[2],
+                            value[3],
+                        )
+                        intersection = -1
+                        new_name = None
+                        prev_height = -1
+                        prev_width = -1
+                        for cur_area in areas_names:
+                            cur_x_max, cur_y_max, cur_x_min, cur_y_min = (
+                                cur_fixations[cur_fixations[self.aoi] == cur_area][
+                                    self.x
+                                ].max(),
+                                cur_fixations[cur_fixations[self.aoi] == cur_area][
+                                    self.y
+                                ].max(),
+                                cur_fixations[cur_fixations[self.aoi] == cur_area][
+                                    self.x
+                                ].min(),
+                                cur_fixations[cur_fixations[self.aoi] == cur_area][
+                                    self.y
+                                ].min(),
+                            )
+                            width = min(x_max, cur_x_max) - max(x_min, cur_x_min)
+                            height = min(y_max, cur_y_max) - max(y_min, cur_y_min)
+                            # Find aoi with the largest intersection
+                            if (
+                                    height > 0
+                                    and width > 0
+                                    and (cur_area not in used)
+                                    and intersection <= width * height
+                            ):
+                                intersection = width * height
+                                new_name = cur_area
+                                # prev_width = x_max - x_min
+                                # prev_height = y_max - y_min
+                        used.append(new_name)
+                        to_zip.append(key)
+                    len_of_used = len(used)
+                    for j in range(len(areas_names) - len(used)):
+                        used.append(None)
+                        to_zip.append(areas_names[len_of_used + j])
+                    for j in range(len(used)):
+                        if used[j] is None:
+                            for area in areas_names:
+                                if area not in used:
+                                    used[j] = area
+                    # Match the remaining areas of interest
+                    for j in range(len(used)):
+                        if used[j] is None:
+                            for k in range(len(areas_names)):
+                                if areas_names[k] not in used:
+                                    used[j] = areas_names[k]
+                                    break
+                    cur_fixations[self.aoi] = cur_fixations[self.aoi].map(
+                        dict(zip(used, to_zip))
+                    )
+                    break
+            # Add new sample
+            for area in areas_names:
+                cur_x_max, cur_y_max, cur_x_min, cur_y_min = (
+                    cur_fixations[cur_fixations[self.aoi] == area][self.x].max(),
+                    cur_fixations[cur_fixations[self.aoi] == area][self.y].max(),
+                    cur_fixations[cur_fixations[self.aoi] == area][self.x].min(),
+                    cur_fixations[cur_fixations[self.aoi] == area][self.y].min(),
+                )
+                new_pattern[area] = [cur_x_max, cur_y_max, cur_x_min, cur_y_min]
+            # === End of the correction ===
+            prev_pattern[len(np.unique(cur_fixations[self.aoi].values))] = (
+                new_pattern
+            )
+            cur_fixations[self.x] = copy_x
+            cur_fixations[self.y] = copy_y
+            if fixations is None:
+                fixations = cur_fixations
+            else:
+                fixations = pd.concat(
+                    [fixations, cur_fixations], ignore_index=True, axis=0
                 )
 
         return fixations

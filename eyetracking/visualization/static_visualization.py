@@ -3,6 +3,8 @@ from numpy.typing import NDArray
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+from PIL import Image
+import io
 import numpy as np
 import pandas as pd
 from scipy.spatial import ConvexHull
@@ -30,7 +32,8 @@ def scanpath_visualization(
     points_color: str = "blue",
     path_color: str = "green",
     points_enumeration: bool = False,
-    regression_color: str = None,
+    add_regressions: bool = False,
+    regression_color: str = "red",
     micro_sac_color: str = None,
     is_vectors: bool = False,
     min_dispersion: float = 1.2,
@@ -45,6 +48,8 @@ def scanpath_visualization(
     axes_limits: tuple = None,
     rule: Tuple[int, ...] = None,
     deviation: Union[int, Tuple[int, ...]] = None,
+    return_ndarray: bool = False,
+    show_plot: bool = True,
 ):
     plt.figure(figsize=fig_size)
     eps = 1e-8
@@ -84,7 +89,7 @@ def scanpath_visualization(
             for i in range(len(data[aoi].unique())):
                 aoi_c[data[aoi].unique()[i]] = get_aoi_cm(i)
         data["color"] = data[aoi].map(aoi_c)
-
+    # print(data["color"])
     if size_column is not None:  # Not used
         size = data[size_column]
         size /= size.max()
@@ -109,7 +114,7 @@ def scanpath_visualization(
             plt.scatter(
                 x=data[x][data["mark"] == markers[i]],
                 y=data[y][data["mark"] == markers[i]],
-                color=data["color"][data["mark"] == markers[i]].values[0],
+                color=data["color"][data["mark"] == markers[i]],
                 marker=markers[i],
                 edgecolors="black",
             )
@@ -171,7 +176,7 @@ def scanpath_visualization(
                     color=c_sac * ls[i],
                     linewidth=path_width,
                 )
-            if regression_color is not None:
+            if add_regressions:
                 mask = _select_regressions(dX, dY, rule, deviation)
                 c_reg = np.array(mpl.colors.to_rgb(regression_color))
                 regX = dX[mask]
@@ -198,7 +203,7 @@ def scanpath_visualization(
                     edgecolor="yellow",
                     linewidth=path_width / 2,
                 )
-            if regression_color is not None:
+            if add_regressions:
                 mask = _select_regressions(dX, dY, rule, deviation)
 
                 c_reg = np.array(mpl.colors.to_rgb(regression_color))
@@ -247,15 +252,25 @@ def scanpath_visualization(
                     color=micro_sac_color,
                     linewidth=path_width,
                 )
-    else:
-        plt.show()
+
+    if not with_axes:
+        plt.axis("off")
+
+    tensor = None
+
+    if return_ndarray:
+        image_buffer = io.BytesIO()
+        plt.savefig(image_buffer, dpi=100, format="png")
+        im = Image.open(image_buffer)
+        tensor = np.array(im)
+        image_buffer.close()
+
     if path_to_img is not None:
-        if not with_axes:
-            plt.axis("off")
         plt.savefig(path_to_img, dpi=100)
         plt.axis("on")
-
-    return
+    if show_plot:
+        plt.show()
+    return tensor
 
 
 def baseline_visualization(
@@ -267,8 +282,10 @@ def baseline_visualization(
     show_legend: bool = False,
     path_to_img: str = None,
     with_axes: bool = False,
+    show_plot: bool = False,
+    return_ndarray: bool = True,
 ):
-    scanpath_visualization(
+    return scanpath_visualization(
         data_,
         x,
         y,
@@ -277,6 +294,8 @@ def baseline_visualization(
         path_to_img=path_to_img,
         with_axes=with_axes,
         path_width=path_width,
+        return_ndarray=return_ndarray,
+        show_plot=show_plot,
     )
 
 
@@ -298,8 +317,11 @@ def aoi_visualization(
     path_to_img: str = None,
     with_axes: bool = False,
     axes_limits: tuple = None,
+    return_ndarray: bool = True,
+    show_plot: bool = True,
+    only_points: bool = True,
 ):
-    scanpath_visualization(
+    return scanpath_visualization(
         data_,
         x,
         y,
@@ -318,7 +340,9 @@ def aoi_visualization(
         axes_limits=axes_limits,
         path_to_img=path_to_img,
         show_hull=True,
-        only_points=True,
+        only_points=only_points,
+        return_ndarray=return_ndarray,
+        show_plot=show_plot,
     )
 
 
@@ -333,12 +357,10 @@ def saccade_visualization(
     time_stamps: str = None,
     img_path: str = None,
     fig_size: tuple[float, float] = (10.0, 10.0),
-    points_width: float = 75,
     path_width: float = 1,
-    points_color: str = None,
     path_color: str = "green",
-    points_enumeration: bool = False,
-    regression_color: str = None,
+    add_regressions: bool = False,
+    regression_color: str = "red",
     micro_sac_color: str = None,
     is_vectors: bool = False,
     min_dispersion: float = 1.2,
@@ -350,8 +372,10 @@ def saccade_visualization(
     axes_limits: tuple = None,
     rule: Tuple[int, ...] = (2,),
     deviation: Union[int, Tuple[int, ...]] = None,
+    return_ndarray: bool = True,
+    show_plot: bool = True,
 ):
-    scanpath_visualization(
+    return scanpath_visualization(
         data_,
         x,
         y,
@@ -362,9 +386,7 @@ def saccade_visualization(
         time_stamps=time_stamps,
         img_path=img_path,
         fig_size=fig_size,
-        points_width=points_width,
         path_width=path_width,
-        points_color=points_color,
         seq_colormap=seq_colormap,
         show_legend=show_legend,
         path_to_img=path_to_img,
@@ -373,10 +395,12 @@ def saccade_visualization(
         rule=rule,
         deviation=deviation,
         path_color=path_color,
-        points_enumeration=points_enumeration,
         regression_color=regression_color,
+        add_regressions=add_regressions,
         micro_sac_color=micro_sac_color,
         is_vectors=is_vectors,
         min_dispersion=min_dispersion,
         max_velocity=max_velocity,
+        return_ndarray=return_ndarray,
+        show_plot=show_plot,
     )
