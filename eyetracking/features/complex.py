@@ -9,6 +9,7 @@ from scipy.stats import gaussian_kde
 from scipy.signal import convolve2d
 
 
+# =========================== HEATMAPS ===========================
 def get_heatmap(x: NDArray, y: NDArray, k: int):
     """
     Get heatmap from scanpath (given coordinates are scaled and sorted in time) using
@@ -49,6 +50,7 @@ def get_heatmaps(data: pd.DataFrame, x: str, y: str, k: int, pk: List[str] = Non
     return heatmaps
 
 
+# =========================== PCA ===========================
 def pca(matrix: NDArray, p: int, cum_sum: float = None):
     """
     PCA compression.
@@ -92,6 +94,7 @@ def pca(matrix: NDArray, p: int, cum_sum: float = None):
     return evecs, projection, row_means
 
 
+# =========================== RQA ===========================
 @jit(forceobj=True, looplift=True)
 def get_rqa(
         data: pd.DataFrame, x: str, y: str, metric: Callable, rho: float
@@ -119,6 +122,7 @@ def get_rqa(
     return rqa_matrix
 
 
+# =========================== MTF ===========================
 def get_mtf(
         data: pd.DataFrame, x: str, y: str,
         n_bins: int = 20,
@@ -267,6 +271,7 @@ def _gaussian_kernel(size, sigma) -> np.array:
     return kernel
 
 
+# =========================== GASF/GADF ===========================
 def get_gaf(
         data: pd.DataFrame, x: str, y: str, t: str = None,
         field_type: Literal["difference", "sum"] = "difference",
@@ -349,11 +354,11 @@ def _rescale(a: np.array) -> np.array:
 def _minmax(a: np.array) -> np.array:
     min_, max_ = a.min(), a.max()
     if min_ == max_:
-        return a if min_ == 0.0 else np.ones(a.shape)
+        return a if min_ == 0.0 else np.ones(a.shape, dtype=a.dtype)
     return (a - min_) / (max_ - min_)
 
 
-def _car2pol(x, f_x):
+def _car2pol(x: np.array, f_x: np.array) -> Tuple[np.array, np.array]:
     rho = np.sqrt(x ** 2 + f_x ** 2)
     phi = np.arctan2(f_x, x)
     return rho, phi
@@ -363,3 +368,84 @@ def _encode_car(x: np.array, t: np.array) -> Tuple[np.array, np.array]:
     rho = t
     phi = np.cos(_rescale(x))
     return rho, phi
+
+
+# =========================== HILBERT CURVE ===========================
+@jit(forceobj=True, looplift=True)
+def get_hilbert_curve_enc(data: pd.DataFrame, x: str, y: str, scale: bool = True, p: int = 4) -> np.array:
+    """
+    Map scanpath to values on Hilbert curve and encode to single feature vector.
+    :param data: dataframe containing fixation coordinates.
+    :param x: x-coordinate column name.
+    :param y: y-coordinate column name.
+    :param scale: whether to scale the scanpath to [0, 1] before mapping to Hilbert curve. If false, then
+    :param p: order of Hilbert curve, unit square is divided into (2^p)x(2^p) smaller squares.
+              Higher value of p indicates better locality preservation.
+    :return: scanpath encoding in 2^p-dimensional feature space using 1D Hilbert curve.
+    """
+    n = 2 ** p
+    mapping = get_hilbert_curve(data=data, x=x, y=y, scale=scale, p=p)  # get Hilbert curve mapping
+    mapping = np.unique(mapping)                                        # leave only unique values
+    vec = np.zeros((n * n,))
+    for i in prange(n * n):
+        vec[i] = (i in mapping)                                         # activate mapped values
+    return vec
+
+
+@jit(forceobj=True, looplift=True)
+def get_hilbert_curve(data: pd.DataFrame, x: str, y: str, scale: bool = True, p: int = 4) -> np.array:
+    """
+    Map scanpath to points on 1D Hilbert curve.
+    :param data: dataframe containing fixation coordinates.
+    :param x: x-coordinate column name.
+    :param y: y-coordinate column name.
+    :param scale: whether to scale the scanpath to [0, 1] before mapping to Hilbert curve. If false, then
+    :param p: order of Hilbert curve, unit square is divided into (2^p)x(2^p) smaller squares.
+              Higher value of p indicates better locality preservation.
+    :return: scanpath mapping to 1D Hilbert curve.
+    """
+    x, y = data[x].values, data[y].values
+    n_fixations = len(x)
+
+    if scale:
+        x, y = _minmax(x), _minmax(y)                     # map x, y to [0, 1]  TODO: better approach than minmax?
+    else:
+        assert 0 <= x <= 1, "Either scale 'x' to be between 0 and 1 or add 'scale'=True."
+        assert 0 <= y <= 1, "Either scale 'y' to be between 0 and 1 or add 'scale'=True."
+    x, y = x * (2 ** p), y * (2 ** p)                      # map x, y to [0, 2^p]
+    x, y = np.array(x, dtype=int), np.array(y, dtype=int)  # map [0, 2^p] to {0, 1, .., 2^p}
+
+    h = np.zeros((n_fixations,))
+    for i in prange(n_fixations):
+        h[i] = xy2h(x[i], y[i], p=p)
+    return h
+
+
+def xy2h(x: int, y: int, p: int) -> int:
+    """
+    Mapping of 2D space to 1D using Hilbert curve.
+    :param x: x-coordinate of a point, 0 <= x < 2^p.
+    :param y: y-coordinate of a point, 0 <= y < 2^p.
+    :param p: order of Hilbert curve, unit square is divided into (2^p)x(2^p) smaller squares.
+              Higher value of p indicates better locality preservation.
+    :return: corresponding point on 1D Hilbert curve.
+
+    Algorithm: https://people.math.sc.edu/Burkardt/py_src/hilbert_curve/hilbert_curve.py.
+    """
+    n = 2 ** p
+
+    s = n // 2
+    d = 0
+
+    while s > 0:
+        rx = (x & s) > 0
+        ry = (y & s) > 0
+        d += s * s * ((3 * rx) ^ ry)   # adding length on Hilbert curve
+        if ry == 0:                    # rotation of quadrant
+            if rx == 1:
+                x = n - 1 - x
+                y = n - 1 - y
+            x, y = y, x
+        s = s // 2
+    return d
+
