@@ -51,6 +51,50 @@ def scanpath_visualization(
     return_ndarray: bool = False,
     show_plot: bool = True,
 ):
+    """
+    Function for scanpath visualization and aoi visualization.
+    :param data_: DataFrame with fixations.
+    :param x: x coordinate of fixation.
+    :param y: y coordinate of fixation.
+    :param duration: duration of fixation.
+    :param dispersion: dispersion of fixation.
+    :param size_column: label of the column, which is responsible for the size of the fixations(points on plot).
+    It can be duration, dispersion, etc.
+    :param shape_column: label of the column, which is responsible for the shape of the fixations(points on plot).
+    :param time_stamps: time stamps of fixations.
+    :param aoi: AOI of fixations.
+    :param img_path: path to the background image.
+    :param fig_size: size of plot.
+    :param points_width: width of points.
+    :param path_width: width of path.
+    :param points_color: color of points.
+    :param path_color: color of path.
+    :param points_enumeration: whether to enumerate points.
+    :param add_regressions: whether to add regressions.
+    :param regression_color: color of regressions.
+    :param micro_sac_color: color of microsaccades.
+    :param is_vectors: whether to visualize saccades as vectors
+    :param min_dispersion: minimum dispersion.
+    :param max_velocity: maximum velocity.
+    :param aoi_c: colormap for AOI.
+    :param only_points: whether to only show points.
+    :param seq_colormap: whether to show sequentially-colored saccades.
+    :param show_hull: whether to show hull of AOI.
+    :param show_legend: whether to show legend.
+    :param path_to_img: path to save the plot image.
+    :param with_axes: whether to show axes.
+    :param axes_limits: limits of axes.
+    :param rule: must be either 1) tuple of quadrants direction to classify
+            regressions, 1st quadrant being upper-right square of plane and counting
+            anti-clockwise or 2) tuple of angles in degrees (0 <= angle <= 360).
+    :param deviation: if None, then `rule` is interpreted as quadrants. Otherwise,
+            `rule` is interpreted as angles. If integer, then is a +-deviation for all angles.
+            If tuple of integers, then must be of the same length as `rule`, each value being
+            a corresponding deviation for each angle. Angle = 0 is positive x-axis direction,
+            rotating anti-clockwise.
+    :param return_ndarray: whether to return numpy array of the plot image(returns RGBA array).
+    :param show_plot: whether to show plot.
+    """
     plt.figure(figsize=fig_size)
     eps = 1e-8
     marks = ("o", "^", "s", "*", "p")

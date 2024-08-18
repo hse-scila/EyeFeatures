@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 from numba import jit
 from scipy.ndimage import maximum_filter, prewitt, sobel
-from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.base import BaseEstimator, TransformerMixin, ClusterMixin
 
 from eyetracking.features.measures import ShannonEntropy
 from eyetracking.preprocessing.base import BaseAOIPreprocessor
@@ -536,9 +536,13 @@ class AOIExtractor(BaseEstimator, TransformerMixin):
                             [to_transform, group_X], ignore_index=True, axis=0
                         )
 
-                cur_fixations = method.transform(
-                    to_transform
-                )
+                if isinstance(method, ClusterMixin):
+                    cur_aoi = method.fit_predict(to_transform[[self.x, self.y]])
+                    cur_fixations = pd.concat(
+                        [to_transform, pd.Series(cur_aoi, name=self.aoi)], axis=1
+                    )
+                else:
+                    cur_fixations = method.transform(to_transform)
                 all_areas = np.unique(cur_fixations[self.aoi].values)
                 areas_names = [f"aoi_{i}" for i in range(len(all_areas))]
                 map_areas = dict(zip(all_areas, areas_names))
@@ -562,27 +566,37 @@ class AOIExtractor(BaseEstimator, TransformerMixin):
 
         return fixations
 
+
 class AOIMatcher(BaseEstimator, TransformerMixin):
     """
     Matches AOI in the dataset.
     :param x: x coordinate of fixation.
     :param y: y coordinate of fixation.
     :param pk: list of column names used to split pd.DataFrame for scaling.
-    :param instance_columns: list of column names used to split pd.DataFrame into the similar instances for aoi extraction.
+    :param instance_columns: list of column names used to split pd.DataFrame
+                             into the similar instances for aoi extraction.
     :param aoi: name of AOI column.
+    :param n_aoi: count of aoi in the group
+    {0: any number the areas of interest,
+     all integer number that greater than 0: count of the areas of interest}.
     :return: DataFrame with AOI column
     """
-    def __init__(self,
-                 x: str,
-                 y: str,
-                 pk: List[str] = None,
-                 instance_columns: List[str] = None,
-                 aoi: str = None):
+
+    def __init__(
+        self,
+        x: str,
+        y: str,
+        pk: List[str] = None,
+        instance_columns: List[str] = None,
+        aoi: str = None,
+        n_aoi: int = 0,
+    ):
         self.x = x
         self.y = y
         self.pk = pk
         self.instance_columns = instance_columns
         self.aoi = aoi
+        self.n_aoi = n_aoi
 
     def fit(self, X: pd.DataFrame, y=None):
         return self
@@ -618,10 +632,61 @@ class AOIMatcher(BaseEstimator, TransformerMixin):
                 if cur_fixations is None:
                     cur_fixations = group_X
                 else:
-                    cur_fixations = pd.concat([cur_fixations, group_X], ignore_index=True, axis=0)
+                    cur_fixations = pd.concat(
+                        [cur_fixations, group_X], ignore_index=True, axis=0
+                    )
 
             # === Correction of the AOI labels ===
             # Make the new aoi labels
+            all_areas = np.unique(cur_fixations[self.aoi].values)
+            if (self.n_aoi > 0) and (len(all_areas) > self.n_aoi):
+                centers = []
+                for i in range(len(all_areas)):
+                    x = cur_fixations[(cur_fixations[self.aoi] == all_areas[i])][
+                        self.x
+                    ].mean()
+                    y = cur_fixations[(cur_fixations[self.aoi] == all_areas[i])][
+                        self.y
+                    ].mean()
+                    count = (
+                        cur_fixations[(cur_fixations[self.aoi] == all_areas[i])]
+                        .count()
+                        .values[0]
+                    )
+                    centers.append([all_areas[i], count, x, y, True])
+                count_of_aoi = len(all_areas)
+                while count_of_aoi > self.n_aoi:
+                    min_dist = np.inf
+                    points_to_merge = []
+                    for i in range(len(centers)):
+                        for j in range(i + 1, len(centers)):
+                            dist = np.linalg.norm(
+                                np.array(centers[i][2:]) - np.array(centers[j][2:])
+                            )
+                            if (dist < min_dist) and centers[j][-1]:
+                                min_dist = dist
+                                points_to_merge = [centers[i], centers[j]]
+                    cur_fixations.loc[
+                        cur_fixations[self.aoi] == points_to_merge[1][0],
+                        cur_fixations.columns == self.aoi,
+                    ] = points_to_merge[0][0]
+                    for i in range(len(centers)):
+                        if centers[i][0] == points_to_merge[0][0]:
+                            centers[i][2] = (
+                                (points_to_merge[0][2] * points_to_merge[0][1])
+                                + (points_to_merge[1][2] * points_to_merge[1][1])
+                            ) / (points_to_merge[0][1] + points_to_merge[1][1])
+                            centers[i][3] = (
+                                (points_to_merge[0][3] * points_to_merge[0][1])
+                                + (points_to_merge[1][3] * points_to_merge[1][1])
+                            ) / (points_to_merge[0][1] + points_to_merge[1][1])
+                            centers[i][1] = (
+                                points_to_merge[0][1] + points_to_merge[1][1]
+                            )
+                        if centers[i][0] == points_to_merge[1][0]:
+                            centers[i][-1] = False
+                    count_of_aoi -= 1
+
             all_areas = np.unique(cur_fixations[self.aoi].values)
             areas_names = [f"aoi_{i}" for i in range(len(all_areas))]
             map_areas = dict(zip(all_areas, areas_names))
@@ -667,10 +732,10 @@ class AOIMatcher(BaseEstimator, TransformerMixin):
                             height = min(y_max, cur_y_max) - max(y_min, cur_y_min)
                             # Find aoi with the largest intersection
                             if (
-                                    height > 0
-                                    and width > 0
-                                    and (cur_area not in used)
-                                    and intersection <= width * height
+                                height > 0
+                                and width > 0
+                                and (cur_area not in used)
+                                and intersection <= width * height
                             ):
                                 intersection = width * height
                                 new_name = cur_area
@@ -708,9 +773,7 @@ class AOIMatcher(BaseEstimator, TransformerMixin):
                 )
                 new_pattern[area] = [cur_x_max, cur_y_max, cur_x_min, cur_y_min]
             # === End of the correction ===
-            prev_pattern[len(np.unique(cur_fixations[self.aoi].values))] = (
-                new_pattern
-            )
+            prev_pattern[len(np.unique(cur_fixations[self.aoi].values))] = new_pattern
             cur_fixations[self.x] = copy_x
             cur_fixations[self.y] = copy_y
             if fixations is None:
