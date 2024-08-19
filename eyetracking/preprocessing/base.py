@@ -1,15 +1,15 @@
 from abc import abstractmethod, ABC
-from typing import Any, List, Union, Dict
+from typing import Any, List, Union, Tuple
 
 import numpy as np
 import pandas as pd
-from numba import jit
+from numba import jit, prange
 from numpy.typing import NDArray
 from scipy.stats import gaussian_kde
 from sklearn.base import BaseEstimator, TransformerMixin
 
 from eyetracking.preprocessing._utils import _get_distance
-from eyetracking.utils import _split_dataframe
+from eyetracking.utils import _split_dataframe, _get_angle3
 
 
 class BasePreprocessor(BaseEstimator, TransformerMixin):
@@ -50,7 +50,7 @@ class BasePreprocessor(BaseEstimator, TransformerMixin):
             for group_ids, group_X in groups:
                 cur_fixations = self._preprocess(group_X)
 
-                for i in range(len(self.pk)):
+                for i in prange(len(self.pk)):
                     cur_fixations.insert(loc=i, column=self.pk[i], value=group_ids[i])
 
                 if fixations is None:
@@ -77,9 +77,9 @@ class BaseFixationPreprocessor(BasePreprocessor, ABC):
         :returns: array of same size, ones are replaced with fixation_id.
         """
         n = len(is_fixation)
-        fixation_id = 1
+        fixation_id = 0
         prev_is_fixation = False
-        for i in range(n):
+        for i in prange(n):
             if is_fixation[i] == 0:
                 prev_is_fixation = False
                 continue
@@ -94,9 +94,53 @@ class BaseFixationPreprocessor(BasePreprocessor, ABC):
     @staticmethod
     def _get_distances(points: NDArray, distance):
         dist = np.zeros(len(points) - 1)
-        for i in range(len(points) - 1):
+        for i in prange(len(points) - 1):
             dist[i] = _get_distance(points[i, :], points[i + 1, :], distance=distance)
         return dist
+
+    def _compute_feats(
+        self,
+        fixations_df: pd.DataFrame,
+        feats: Tuple[str, ...]
+    ) -> pd.DataFrame:
+        """
+        Method computes list of required features.
+        """
+        n = len(fixations_df)
+
+        # fixation duration
+        if "duration" in feats:
+            fixations_df["duration"] = fixations_df.end_time - fixations_df.start_time
+
+        # saccade preceding the fixation
+        if "saccade_duration" in feats:
+            sd = fixations_df.start_time.values - fixations_df.end_time.shift(1).values
+            sd[0] = 0                                                           # no preceding saccade
+            fixations_df["saccade_duration"] = sd
+
+        # saccade preceding the fixation
+        if "saccade_length" in feats:
+            start_points = fixations_df[[self.x, self.y]].values
+            end_points = fixations_df[[self.x, self.y]].shift(1).values
+            sl = _get_distance(
+                end_points, start_points,
+                distance=self.distance                                          # initialized by child class
+            )
+            sl[0] = 0
+            fixations_df["saccade_length"] = sl
+
+        if "saccade_angle" in feats:
+            xx, yy = fixations_df[self.x].values, fixations_df[self.y].values
+            sa = np.zeros(shape=(n,))
+            for i in prange(1, n - 1):
+                sa[i] = _get_angle3(                                            # angle between preceding and
+                    x0=xx[i],     y0=yy[i],                                     # succeeding saccades
+                    x1=xx[i - 1], y1=yy[i - 1],
+                    x2=xx[i + 1], y2=yy[i + 1]
+                )
+            fixations_df["saccade_angle"] = sa
+
+        return fixations_df
 
 
 class BaseAOIPreprocessor(BasePreprocessor, ABC):
@@ -132,8 +176,8 @@ class BaseAOIPreprocessor(BasePreprocessor, ABC):
         Finds the local max coordinates of a fixation density matrix.
         :param loc_max_matrix: matrix with maxima.
         """
-        for i in range(loc_max_matrix.shape[0]):  # TODO vectorize with numpy?
-            for j in range(loc_max_matrix.shape[1]):
+        for i in prange(loc_max_matrix.shape[0]):  # TODO vectorize with numpy?
+            for j in prange(loc_max_matrix.shape[1]):
                 if i == 0 and j != 0:
                     if loc_max_matrix[i][j - 1] == loc_max_matrix[i][j]:
                         loc_max_matrix[i][j - 1] = 0

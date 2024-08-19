@@ -5,10 +5,8 @@ import pandas as pd
 import scipy
 from numba import jit
 
-from eyetracking.preprocessing._utils import _get_distance
+from eyetracking.preprocessing._utils import _get_distance, _get_MEC
 from eyetracking.preprocessing.base import BaseFixationPreprocessor
-
-from eyetracking.preprocessing._utils import _get_MEC
 
 
 # ======== FIXATION PREPROCESSORS ========
@@ -99,7 +97,10 @@ class IVT(BaseFixationPreprocessor):
 
         fixations_df["diameters"] = diameters
         fixations_df["centers"] = centers
-        fixations_df["duration"] = fixations_df.end_time - fixations_df.start_time
+
+        # default features
+        feats = ("duration", "saccade_duration", "saccade_length", "saccade_angle")
+        fixations_df = self._compute_feats(fixations_df, feats)
 
         return fixations_df
 
@@ -254,7 +255,9 @@ class IDT(BaseFixationPreprocessor):
             }
         )
 
-        fixations_df["duration"] = fixations_df.end_time - fixations_df.start_time
+        # default features
+        feats = ("duration", "saccade_duration", "saccade_length", "saccade_angle")
+        fixations_df = self._compute_feats(fixations_df, feats)
 
         return fixations_df
 
@@ -400,7 +403,9 @@ class IHMM(BaseFixationPreprocessor):
             }
         )
 
-        fixations_df["duration"] = fixations_df.end_time - fixations_df.start_time
+        # default features
+        feats = ("duration", "saccade_duration", "saccade_length", "saccade_angle")
+        fixations_df = self._compute_feats(fixations_df, feats)
 
         return fixations_df
 
