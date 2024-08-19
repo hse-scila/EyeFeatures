@@ -352,9 +352,27 @@ class IHMM(BaseFixationPreprocessor):
             "saccade": {"fixation": self.sac2fix, "saccade": 1 - self.sac2fix},
         }
 
+        # fixations have lower velocities than saccades
         if self.distrib_params == "auto":
-            m, s = vel.mean(), vel.std()
-            dp = {"fixation": {"loc": m, "scale": s}, "saccade": {"loc": m, "scale": s}}
+            # TODO commented approach does not work
+            # quantiles = np.quantile(vel, q=[0.15, 0.35, 0.55, 0.85])
+            # fixation_mean = quantiles[0]                                   # 20th quantile as fixation mean estimate
+            # fixation_std = vel[vel <= quantiles[1]].std()                  # [0, 40]'s std as fixation std estimate
+            #
+            # dp = {
+            #     "fixation": {
+            #         "loc": fixation_mean,
+            #         "scale": fixation_std
+            #     },
+            #     "saccade": {
+            #         "loc": vel.mean(),
+            #         "scale": vel.std()
+            #     }
+            # }
+            dp = {
+                'fixation': {'loc': 0.002, 'scale': 0.001},
+                'saccade': {'loc': 0.03, 'scale': 0.005}
+            }
         else:
             dp = self.distrib_params
 
@@ -362,7 +380,7 @@ class IHMM(BaseFixationPreprocessor):
         sac_vel_distr = self._get_distribution(self.sac_distrib, dp["saccade"])
 
         emission_probs = {
-            "fixation": lambda velocity: fix_vel_distr.cdf(velocity),
+            "fixation": lambda velocity: 1 - fix_vel_distr.cdf(velocity),
             "saccade": lambda velocity: sac_vel_distr.cdf(velocity),
         }
 
@@ -419,26 +437,26 @@ class IHMM(BaseFixationPreprocessor):
         ep ~ emission_probs
         observations ~ velocities
         """
-        prev_probs = None
+        prev_probs_nlog = None
         best_path = []
         if len(observations) == 0:
             return None
 
         for i, o_i in enumerate(observations):
-            cur_probs = {}
+            cur_probs_nlog = {}
 
             for j, q in enumerate(states):
                 if i == 0:
-                    q_prob_max = -np.log(sp[q])
+                    q_prob_nlog_max = -np.log(max(sp[q], self.eps))
                 else:
-                    q_prob_max = min(
-                        prev_probs[q_] - np.log(tp[q_][q]) for q_ in states
+                    q_prob_nlog_max = max(
+                        [prev_probs_nlog[q_] - np.log(tp[q_][q]) for q_ in states]
                     )
 
-                cur_probs[q] = -np.log(max(ep[q](o_i), self.eps)) + q_prob_max
+                cur_probs_nlog[q] = -np.log(max(ep[q](o_i), self.eps)) + q_prob_nlog_max
 
-            best_path.append(min(cur_probs, key=cur_probs.get))
-            prev_probs = cur_probs
+            best_path.append(max(cur_probs_nlog.keys(), key=cur_probs_nlog.get))
+            prev_probs_nlog = cur_probs_nlog
 
-        best_path_prob = max(np.exp(-cur_probs[q]) for q in states)
+        best_path_prob = max(np.exp(-prev_probs_nlog[q]) for q in states)
         return best_path_prob, np.array(best_path)
