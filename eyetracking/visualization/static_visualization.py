@@ -311,7 +311,6 @@ def scanpath_visualization(
         im = Image.open(image_buffer).convert("RGB")
         if is_gray:
             im = ImageOps.grayscale(im)
-        im.save("static.png", "PNG")
         arr = np.array(im)
         image_buffer.close()
 
