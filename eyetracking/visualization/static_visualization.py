@@ -1,14 +1,15 @@
-from typing import Dict, Tuple, Union
+from typing import Dict, Tuple, Union, List
 from numpy.typing import NDArray
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-from PIL import Image
+from PIL import Image, ImageOps
 import io
 import numpy as np
 import pandas as pd
 from scipy.spatial import ConvexHull
-from eyetracking.utils import _select_regressions
+from eyetracking.utils import _select_regressions, _split_dataframe
+from sklearn.base import BaseEstimator, TransformerMixin
 
 
 def _cmap_generation(n: int):
@@ -50,6 +51,7 @@ def scanpath_visualization(
     deviation: Union[int, Tuple[int, ...]] = None,
     return_ndarray: bool = False,
     show_plot: bool = True,
+    is_gray: bool = False,
 ):
     """
     Function for scanpath visualization and aoi visualization.
@@ -93,7 +95,8 @@ def scanpath_visualization(
             a corresponding deviation for each angle. Angle = 0 is positive x-axis direction,
             rotating anti-clockwise.
     :param return_ndarray: whether to return numpy array of the plot image(returns RGBA array).
-    :param show_plot: whether to show plot.
+    :param show_plot: whether to show the plot.
+    :param is_gray: whether to use the gray scale.
     """
     plt.figure(figsize=fig_size)
     eps = 1e-8
@@ -300,21 +303,138 @@ def scanpath_visualization(
     if not with_axes:
         plt.axis("off")
 
-    tensor = None
+    arr = None
 
     if return_ndarray:
         image_buffer = io.BytesIO()
         plt.savefig(image_buffer, dpi=100, format="png")
-        im = Image.open(image_buffer)
-        tensor = np.array(im)
+        im = Image.open(image_buffer).convert("RGB")
+        if is_gray:
+            im = ImageOps.grayscale(im)
+        im.save("static.png", "PNG")
+        arr = np.array(im)
         image_buffer.close()
 
     if path_to_img is not None:
         plt.savefig(path_to_img, dpi=100)
         plt.axis("on")
-    if show_plot:
-        plt.show()
-    return tensor
+    if not show_plot:
+        plt.close()
+    return arr
+
+
+class Visualization(BaseEstimator, TransformerMixin):
+
+    def __init__(
+        self,
+        x: str,
+        y: str,
+        duration: str = None,
+        dispersion: str = None,
+        size_column: str = None,
+        shape_column: str = None,
+        time_stamps: str = None,
+        aoi: str = None,
+        img_path: str = None,
+        fig_size: tuple[float, float] = (10.0, 10.0),
+        points_width: float = 75,
+        path_width: float = 0.004,
+        points_color: str = "blue",
+        path_color: str = "green",
+        points_enumeration: bool = False,
+        add_regressions: bool = False,
+        regression_color: str = "red",
+        micro_sac_color: str = None,
+        is_vectors: bool = False,
+        min_dispersion: float = 1.2,
+        max_velocity: float = 4.7,
+        aoi_c: Dict[str, str] = None,
+        only_points: bool = False,
+        seq_colormap: bool = False,
+        show_hull: bool = False,
+        show_legend: bool = False,
+        path_to_img: str = None,
+        with_axes: bool = False,
+        axes_limits: tuple = None,
+        rule: Tuple[int, ...] = None,
+        deviation: Union[int, Tuple[int, ...]] = None,
+        is_gray: bool = False,
+    ):
+        self.x = x
+        self.y = y
+        self.duration = duration
+        self.dispersion = dispersion
+        self.size_column = size_column
+        self.shape_column = shape_column
+        self.time_stamps = time_stamps
+        self.aoi = aoi
+        self.img_path = img_path
+        self.fig_size = fig_size
+        self.points_width = points_width
+        self.points_color = points_color
+        self.path_color = path_color
+        self.add_regressions = add_regressions
+        self.regression_color = regression_color
+        self.micro_sac_color = micro_sac_color
+        self.is_vectors = is_vectors
+        self.min_dispersion = min_dispersion
+        self.max_velocity = max_velocity
+        self.show_legend = show_legend
+        self.path_to_img = path_to_img
+        self.path_width = path_width
+        self.points_enumeration = points_enumeration
+        self.show_hull = show_hull
+        self.aoi_c = aoi_c
+        self.only_points = only_points
+        self.seq_colormap = seq_colormap
+        self.with_axes = with_axes
+        self.axes_limits = axes_limits
+        self.rule = rule
+        self.deviation = deviation
+        self.return_ndarray = True
+        self.show_plot = False
+        self.is_gray = is_gray
+
+    def fit(self, X: pd.DataFrame, y=None):
+        return self
+
+    def transform(self, X: pd.DataFrame) -> np.ndarray:
+        return scanpath_visualization(data_=X, **self.__dict__)
+
+
+def get_visualizations(
+    data: pd.DataFrame,
+    patterns: List[Visualization],
+    pk: List[str] = None,
+):
+    """
+    Gets visualizations.
+    :param data: Dataframe with fixations
+    :param patterns: List of Visualizations
+    :param pk: list of column names used to split pd.DataFrame.
+    :return: ndarray [n, m, fig, fig, c]
+    {
+     n   : instances
+     m   : patterns
+     fig : fig size
+     c   : (3 - RGB image; 1 - gray scaled image)
+     }
+    """
+    arr = []
+    if pk is None:
+        res = []
+        for pattern in patterns:
+            res.append(pattern.transform(data))
+        arr.append(res)
+    else:
+        groups: List[str, pd.DataFrame] = _split_dataframe(data, pk, encode=False)
+        for group_ids, group_X in groups:
+            cur_data = data[pd.DataFrame(data[pk] == group_ids).all(axis=1)]
+            res = []
+            for pattern in patterns:
+                res.append(pattern.transform(cur_data))
+            arr.append(res)
+    return np.array(arr)
 
 
 def baseline_visualization(
