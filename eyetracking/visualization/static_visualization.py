@@ -10,6 +10,7 @@ import pandas as pd
 from scipy.spatial import ConvexHull
 from eyetracking.utils import _select_regressions, _split_dataframe
 from sklearn.base import BaseEstimator, TransformerMixin
+from tqdm import tqdm
 
 
 def _cmap_generation(n: int):
@@ -52,6 +53,7 @@ def scanpath_visualization(
     return_ndarray: bool = False,
     show_plot: bool = True,
     is_gray: bool = False,
+    dpi=100,
 ):
     """
     Function for scanpath visualization and aoi visualization.
@@ -307,7 +309,7 @@ def scanpath_visualization(
 
     if return_ndarray:
         image_buffer = io.BytesIO()
-        plt.savefig(image_buffer, dpi=100, format="png")
+        plt.savefig(image_buffer, dpi=dpi, format="png")
         im = Image.open(image_buffer).convert("RGB")
         if is_gray:
             im = ImageOps.grayscale(im)
@@ -315,7 +317,7 @@ def scanpath_visualization(
         image_buffer.close()
 
     if path_to_img is not None:
-        plt.savefig(path_to_img, dpi=100)
+        plt.savefig(path_to_img, dpi=dpi)
         plt.axis("on")
     if not show_plot:
         plt.close()
@@ -403,7 +405,10 @@ class Visualization(BaseEstimator, TransformerMixin):
 
 def get_visualizations(
     data: pd.DataFrame,
-    patterns: List[Visualization],
+    x: str,
+    y: str,
+    shape: tuple[int, int],
+    pattern: str,
     pk: List[str] = None,
 ):
     """
@@ -422,25 +427,42 @@ def get_visualizations(
     arr = []
     if pk is None:
         res = []
-        for pattern in patterns:
-            res.append(pattern.transform(data))
+        # for pattern in patterns:
+        #     res.append(pattern.transform(data))
+        if pattern == "baseline":
+            res = baseline_visualization(data, x, y, shape)
+        elif pattern == "aoi":
+            res = aoi_visualization(data, x, y, shape, aoi="AOI")
+        elif pattern == "saccades":
+            res = saccade_visualization(data, x, y, shape)
+        else:
+            raise ValueError(f"Unsupported pattern: {pattern}")
         arr.append(res)
     else:
         groups: List[str, pd.DataFrame] = _split_dataframe(data, pk, encode=False)
-        for group_ids, group_X in groups:
+        for group_ids, group_X in tqdm(groups):
             cur_data = data[pd.DataFrame(data[pk] == group_ids).all(axis=1)]
-            res = []
-            for pattern in patterns:
-                res.append(pattern.transform(cur_data))
+            if pattern == "baseline":
+                res = baseline_visualization(cur_data, x, y, shape, show_plot=False)
+            elif pattern == "aoi":
+                res = aoi_visualization(
+                    cur_data, x, y, shape, aoi="AOI", show_plot=False
+                )
+            elif pattern == "saccades":
+                res = saccade_visualization(cur_data, x, y, shape, show_plot=False)
+            else:
+                raise ValueError(f"Unsupported pattern: {pattern}")
             arr.append(res)
-    return np.array(arr)
+    arr = np.transpose(np.array(arr), (0, 3, 1, 2))
+    print(arr.shape)
+    return arr
 
 
 def baseline_visualization(
     data_: pd.DataFrame,
     x: str,
     y: str,
-    fig_size: tuple[float, float] = (10.0, 10.0),
+    shape: tuple[int, int] = (10, 10),
     path_width: float = 1,
     show_legend: bool = False,
     path_to_img: str = None,
@@ -452,13 +474,14 @@ def baseline_visualization(
         data_,
         x,
         y,
-        fig_size=fig_size,
+        fig_size=shape,
         show_legend=show_legend,
         path_to_img=path_to_img,
         with_axes=with_axes,
         path_width=path_width,
         return_ndarray=return_ndarray,
         show_plot=show_plot,
+        dpi=1,
     )
 
 
@@ -466,11 +489,11 @@ def aoi_visualization(
     data_: pd.DataFrame,
     x: str,
     y: str,
-    aoi: str,
+    shape: tuple[int, int] = (10, 10),
+    aoi: str = "AOI",
     size_column: str = None,
     shape_column: str = None,
     img_path: str = None,
-    fig_size: tuple[float, float] = (10.0, 10.0),
     points_width: float = 75,
     path_width: float = 1,
     points_color: str = None,
@@ -492,7 +515,7 @@ def aoi_visualization(
         shape_column=shape_column,
         aoi=aoi,
         img_path=img_path,
-        fig_size=fig_size,
+        fig_size=shape,
         points_width=points_width,
         path_width=path_width,
         points_color=points_color,
@@ -506,6 +529,7 @@ def aoi_visualization(
         only_points=only_points,
         return_ndarray=return_ndarray,
         show_plot=show_plot,
+        dpi=1,
     )
 
 
@@ -513,13 +537,13 @@ def saccade_visualization(
     data_: pd.DataFrame,
     x: str,
     y: str,
+    shape: tuple[int, int] = (10, 10),
     size_column: str = None,
     shape_column: str = None,
     duration: str = None,
     dispersion: str = None,
     time_stamps: str = None,
     img_path: str = None,
-    fig_size: tuple[float, float] = (10.0, 10.0),
     path_width: float = 1,
     path_color: str = "green",
     add_regressions: bool = False,
@@ -548,7 +572,7 @@ def saccade_visualization(
         dispersion=dispersion,
         time_stamps=time_stamps,
         img_path=img_path,
-        fig_size=fig_size,
+        fig_size=shape,
         path_width=path_width,
         seq_colormap=seq_colormap,
         show_legend=show_legend,
@@ -566,4 +590,5 @@ def saccade_visualization(
         max_velocity=max_velocity,
         return_ndarray=return_ndarray,
         show_plot=show_plot,
+        dpi=1,
     )
