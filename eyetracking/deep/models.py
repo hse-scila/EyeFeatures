@@ -3,7 +3,7 @@ import torch
 import torchmetrics
 from sklearn.model_selection import train_test_split
 from torch import nn
-from typing import Union, List, Tuple, Dict
+from typing import Union, List, Tuple, Dict, Optional, Callable
 from tqdm import tqdm
 import pandas as pd
 from scipy.stats import gaussian_kde
@@ -11,16 +11,25 @@ from numpy.typing import NDArray
 import numpy as np
 import warnings
 from torch.nn import functional as F
-import torchmetrics
-import pytorch_lightning as pl
-from typing import Union, Callable, Optional
 from torch_geometric.nn import GCNConv, GINConv
 from torch_geometric.nn import global_mean_pool
 from eyetracking.features.complex import get_heatmaps
-#from utils import get_heatmaps
 
 
 class VGGBlock(nn.Module):
+    """
+    A VGG-style convolutional block consisting of a convolution layer, batch normalization, and ReLU activation.
+
+    Parameters:
+    - in_channels (int): Number of input channels.
+    - out_channels (int): Number of output channels.
+    - kernel_size (int, optional): Size of the convolution kernel. Default is 3.
+    - padding (int, optional): Padding for the convolution layer. Default is 1.
+    - stride (int, optional): Stride for the convolution layer. Default is 1.
+    
+    Returns:
+    - x (Tensor): Output tensor after applying the convolution, batch normalization, and ReLU activation.
+    """
     def __init__(self, 
                  in_channels: int, 
                  out_channels: int, 
@@ -32,14 +41,27 @@ class VGGBlock(nn.Module):
         self.bn = nn.BatchNorm2d(out_channels)
         self.relu = nn.ReLU(inplace=True)
         
-    def forward(self, x):
-        x = self.conv(x)
+    def forward(self, images: torch.Tensor) -> torch.Tensor:
+        x = self.conv(images)
         x = self.bn(x)
         x = self.relu(x)
         return x
     
 
 class ResnetBlock(nn.Module):
+    """
+    A ResNet-style residual block consisting of two convolution layers with skip connections.
+
+    Parameters:
+    - in_channels (int): Number of input channels.
+    - out_channels (int): Number of output channels.
+    - kernel_size (int, optional): Size of the convolution kernel. Default is 3.
+    - padding (int, optional): Padding for the convolution layers. Default is 1.
+    - stride (int, optional): Stride for the convolution layers. Default is 1.
+    
+    Returns:
+    - out (Tensor): Output tensor after applying residual connection and ReLU activation.
+    """
     def __init__(self,
                  in_channels: int, 
                  out_channels: int, 
@@ -53,19 +75,35 @@ class ResnetBlock(nn.Module):
         self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=kernel_size, padding=padding)
         self.bn2 = nn.BatchNorm2d(out_channels)
         
-    def forward(self, x):
-        identity = x
-        out = self.conv1(x)
+    def forward(self, images: torch.Tensor) -> torch.Tensor:
+        identity = images
+        out = self.conv1(images)
         out = self.bn1(out)
         out = self.relu(out)
         out = self.conv2(out)
         out = self.bn2(out)
         out += identity
         out = self.relu(out)
-        
         return out
-    
+
+
 class InceptionBlock(nn.Module):
+    """
+    An Inception-style block consisting of multiple convolution branches operating on different scales.
+
+    Parameters:
+    - in_channels (int): Number of input channels.
+    - ch1x1 (int): Number of output channels for the 1x1 convolution branch.
+    - ch3x3_reduce (int): Number of output channels for the 1x1 convolution before the 3x3 convolution.
+    - ch3x3 (int): Number of output channels for the 3x3 convolution branch.
+    - ch5x5_reduce (int): Number of output channels for the 1x1 convolution before the 5x5 convolution.
+    - ch5x5 (int): Number of output channels for the 5x5 convolution branch.
+    - pool_proj (int): Number of output channels for the 1x1 convolution after the max pooling branch.
+    
+    Returns:
+    - outputs (Tensor): Concatenated output tensor from all branches.
+    """
+
     def __init__(self, in_channels: int, 
                  ch1x1: int, 
                  ch3x3_reduce: int, 
@@ -90,40 +128,60 @@ class InceptionBlock(nn.Module):
             nn.Conv2d(in_channels, pool_proj, kernel_size=1)
         )
         
-    def forward(self, x):
-        branch1x1 = self.branch1x1(x)
-        branch3x3 = self.branch3x3(x)
-        branch5x5 = self.branch5x5(x)
-        branch_pool = self.branch_pool(x)
+    def forward(self, images: torch.Tensor) -> torch.Tensor:
+        branch1x1 = self.branch1x1(images)
+        branch3x3 = self.branch3x3(images)
+        branch5x5 = self.branch5x5(images)
+        branch_pool = self.branch_pool(images)
         outputs = [branch1x1, branch3x3, branch5x5, branch_pool]
         return torch.cat(outputs, 1)
-    
+
 
 class DepthwiseSeparableConv(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, padding=1):
+    """
+    Depthwise separable convolution, which consists of a depthwise convolution followed by a pointwise convolution.
+    
+    Parameters:
+    - in_channels (int): Number of input channels.
+    - out_channels (int): Number of output channels.
+    - kernel_size (int, optional): Size of the convolution kernel. Default is 3.
+    - stride (int, optional): Stride for the convolution layers. Default is 1.
+    - padding (int, optional): Padding for the convolution layers. Default is 1.
+    
+    Returns:
+    - x (Tensor): Output tensor after applying depthwise and pointwise convolutions, batch normalization, and ReLU activation.
+    """
+    def __init__(self, in_channels: int, out_channels: int, kernel_size: int = 3, stride: int = 1, padding: int = 1):
         super(DepthwiseSeparableConv, self).__init__()
         self.depthwise = nn.Conv2d(in_channels, in_channels, kernel_size=kernel_size, stride=stride, padding=padding, groups=in_channels, bias=False)
         self.pointwise = nn.Conv2d(in_channels, out_channels, kernel_size=1, bias=False)
         self.bn = nn.BatchNorm2d(out_channels)
         self.relu = nn.ReLU(inplace=True)
     
-    def forward(self, x):
-        x = self.depthwise(x)
+    def forward(self, images: torch.Tensor) -> torch.Tensor:
+        x = self.depthwise(images)
         x = self.pointwise(x)
         x = self.bn(x)
         x = self.relu(x)
         return x
-    
-_blocks = {'VGG_block': VGGBlock,
-           'Resnet_block': ResnetBlock,
-           'Inception_block': InceptionBlock,
-           'DepthwiseConvBlock': DepthwiseSeparableConv}
-    
+
 
 def create_simple_CNN(
         config: Dict[int, Dict[str, Union[str, Dict]]],
         in_channels: int,
-        shape: Tuple[int, int] = None):
+        shape: Optional[Tuple[int, int]] = None) -> Union[nn.Sequential, Tuple[nn.Sequential, Tuple[int, int]]]:
+    """
+    Creates a simple CNN based on the provided configuration.
+
+    Parameters:
+    - config (Dict): Configuration dictionary where each key represents a layer/block and its corresponding parameters.
+    - in_channels (int): Number of input channels for the first layer.
+    - shape (Tuple[int, int], optional): Input shape for the CNN. If provided, checks that the final output shape is valid.
+
+    Returns:
+    - cnn (nn.Sequential): Sequential CNN model.
+    - shape (Tuple[int, int], optional): Final output shape, if provided.
+    """
     
     modules = list()
 
@@ -166,15 +224,28 @@ def create_simple_CNN(
 
 
 class SimpleRNN(nn.Module):
+    """
+    A simple recurrent neural network (RNN) module that supports RNN, LSTM, and GRU architectures.
+
+    Parameters:
+    - rnn_type (str): Type of RNN ('RNN', 'LSTM', or 'GRU').
+    - input_size (int): Number of input features.
+    - hidden_size (int): Number of hidden units.
+    - num_layers (int, optional): Number of RNN layers. Default is 1.
+    - bidirectional (bool, optional): Whether the RNN is bidirectional. Default is False.
+    - pre_rnn_linear_size (Optional[int], optional): Size of the optional linear layer before the RNN.
+
+    Returns:
+    - hidden (Tensor): Output tensor from the RNN (last hidden state or concatenated hidden state for bidirectional RNN).
+    """
     def __init__(
         self, 
-        rnn_type, 
-        input_size, 
-        hidden_size, 
-        output_size, 
-        num_layers=1, 
-        bidirectional=False, 
-        pre_rnn_linear_size=None
+        rnn_type: str, 
+        input_size: int, 
+        hidden_size: int, 
+        num_layers: int = 1, 
+        bidirectional: bool = False, 
+        pre_rnn_linear_size: Optional[int] = None
     ):
         super(SimpleRNN, self).__init__()
         self.hidden_size = hidden_size
@@ -201,11 +272,9 @@ class SimpleRNN(nn.Module):
                               batch_first=True, bidirectional=bidirectional)
         else:
             raise ValueError(f"Unsupported rnn_type: {rnn_type}. Choose from 'RNN', 'LSTM', 'GRU'.")
-        
-        self.fc = nn.Linear(hidden_size * 2 if bidirectional else hidden_size, output_size)
     
-    def forward(self, x, lengths):
-        # Apply the optional linear layer before the RNN
+    def forward(self, sequences: torch.Tensor, lengths: torch.Tensor) -> torch.Tensor:
+        x = sequences
         if self.pre_rnn_linear is not None:
             x = self.pre_rnn_linear(x)
 
@@ -231,151 +300,251 @@ class SimpleRNN(nn.Module):
             else:  # For RNN and GRU
                 hidden = hidden[-1]
         
-        # Pass the last hidden state through the fully connected layer
-        output = self.fc(hidden)
-        return output
+        return hidden
 
 
 class VitNet(nn.Module):
+    """
+    A vision-and-text network that fuses CNN and RNN-based representations using concatenation or addition.
+
+    Parameters:
+    - CNN (nn.Module): CNN backbone for processing image data.
+    - RNN (nn.Module): RNN backbone for processing sequence data.
+    - fusion_mode (str, optional): Fusion mode ('concat' or 'add'). Default is 'concat'.
+    - activation (Optional[nn.Module], optional): Activation function applied after fusion. Default is None.
+    - embed_dim (int, optional): Embedding dimension for the projected features. Default is 32.
+
+    Returns:
+    - x (Tensor): Fused feature representation of images and sequences.
+    """
+    
     def __init__(self, 
-                 CNN, 
-                 RNN, 
-                 input_dim: int, 
-                 projected_dim: int,  # dimensionality of the projected sequence representation
-                 fusion_mode = 'concat',
-                 activation = None, 
-                 cross_attention = False, 
-                 cross_attention_fusion_mode = 'concat',
-                 embed_dim = 128,
-                 return_attention_weights = False,
-                 ):
+                 CNN: nn.Module, 
+                 RNN: nn.Module, 
+                 fusion_mode: str = 'concat', 
+                 activation: Optional[nn.Module] = None, 
+                 embed_dim: int = 32):
         super(VitNet, self).__init__()
-        self.sequence_projection = nn.Linear(input_dim, projected_dim)
         self.CNN = CNN
         self.RNN = RNN
         self.fusion_mode = fusion_mode
         self.activation = activation
-        self.image_proj = nn.Linear(self.CNN.output_dim, embed_dim)
-        self.rnn_proj = nn.Linear(self.RNN.hidden_dim, embed_dim)
-        self.cross_attention = cross_attention
-        if self.cross_attention:
-            self.padding_idx = self.RNN.padding_idx
-            self.cross_attention_layer = nn.MultiheadAttention(self.RNN.hidden_size)
-            self.cross_attention_fusion_mode = cross_attention_fusion_mode
-            self.return_attention_weights = return_attention_weights
-            
-    
-    def forward(self, images, sequences, sequences_length):
-        
-        x_1 = self.image_proj(self.CNN(images))
+        self.image_proj = nn.LazyLinear(embed_dim)
+        self.rnn_proj = nn.LazyLinear(embed_dim)
+        self.flat = nn.Flatten()
 
-        projected_sequences = self.input_projection(sequences)
-        packed_input = nn.utils.rnn.pack_padded_sequence(projected_sequences, sequences_length, batch_first=True, enforce_sorted=False)
-        packed_output, x_2 = self.rnn(packed_input)
-        all_hidden, _ = nn.utils.rnn.pad_packed_sequence(packed_output, batch_first=True, padding_value=0)
-        
+    def forward(self, images: torch.Tensor, sequences: torch.Tensor, lengths: torch.Tensor) -> torch.Tensor:
+        x_1 = self.image_proj(self.flat(self.CNN(images)))
+
+        projected_sequences = self.rnn_proj(sequences)
+        packed_input = nn.utils.rnn.pack_padded_sequence(projected_sequences, lengths, batch_first=True, enforce_sorted=False)
+        packed_output, x_2 = self.RNN(packed_input)
+        _, _ = nn.utils.rnn.pad_packed_sequence(packed_output, batch_first=True, padding_value=0)
+
         if self.fusion_mode == 'add':
             x = x_1 + x_2
         elif self.fusion_mode == 'concat':
             x = torch.cat([x_1, x_2], axis=1)
-        elif self.fusion_mode == 'attention_concat':
-            x = x_1
 
         if self.activation is not None:
             x = self.activation(x)
 
-        if self.cross_attention != False:
-            query = self.image_proj(x_1).unsqueeze(0)  # (1, batch_size, embed_dim)
-            key = self.rnn_proj(all_hidden).transpose(0, 1)
-            key_padding_mask = (sequences[:, :, 0] == self.padding_idx)
-            context_vector, attention_weights = self.cross_attention(query, key, key, key_padding_mask=key_padding_mask)
-            output = self.fc(context_vector.squeeze(0))
-            if self.cross_attention_fusion_mode == 'concat':
-                x = torch.cat([x, output], dim=1)
-            else:
-                x = output
-            if self.return_attention_weights:
-                return x, attention_weights
+        return x
+
+
+class VitNetWithCrossAttention(VitNet):
+    """
+    A vision-and-text network extending VitNet by adding cross-attention between image and sequence representations.
+
+    Parameters:
+    - CNN (nn.Module): CNN backbone for processing image data.
+    - RNN (nn.Module): RNN backbone for processing sequence data.
+    - cross_attention_fusion_mode (str, optional): Fusion mode after cross-attention ('concat' or 'add'). Default is 'concat'.
+    - activation (Optional[nn.Module], optional): Activation function applied after fusion. Default is None.
+    - embed_dim (int, optional): Embedding dimension for the projected features. Default is 128.
+    - return_attention_weights (bool, optional): Whether to return attention weights. Default is False.
+
+    Returns:
+    - x (Tensor): Output after fusion and cross-attention.
+    - attention_weights (Optional[Tensor]): Attention weights if return_attention_weights is True.
+    """
+    
+    def __init__(self, 
+                 CNN: nn.Module, 
+                 RNN: nn.Module, 
+                 input_dim: int, 
+                 projected_dim: int, 
+                 cross_attention_fusion_mode: str = 'concat', 
+                 activation: Optional[nn.Module] = None, 
+                 embed_dim: int = 128, 
+                 return_attention_weights: bool = False):
+        super(VitNetWithCrossAttention, self).__init__(CNN, RNN, fusion_mode='concat', activation=activation, embed_dim=embed_dim)
+        self.cross_attention_layer = nn.MultiheadAttention(embed_dim, num_heads=8)
+        self.cross_attention_fusion_mode = cross_attention_fusion_mode
+        self.return_attention_weights = return_attention_weights
+        self.padding_idx = RNN.padding_idx
+
+    def forward(self, images: torch.Tensor, sequences: torch.Tensor, lengths: torch.Tensor) -> Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
+        # First, run the parent class's forward method to get the basic fusion output
+        x = super().forward(images, sequences, lengths)
+
+        # Cross-attention mechanism
+        x_1 = self.image_proj(self.CNN(images))
+        projected_sequences = self.rnn_proj(sequences)
+        packed_input = nn.utils.rnn.pack_padded_sequence(projected_sequences, lengths, batch_first=True, enforce_sorted=False)
+        packed_output, _ = self.RNN(packed_input)
+        all_hidden, _ = nn.utils.rnn.pad_packed_sequence(packed_output, batch_first=True, padding_value=0)
+
+        query = self.image_proj(x_1).unsqueeze(0)  # (1, batch_size, embed_dim)
+        key = self.rnn_proj(all_hidden).transpose(0, 1)
+        key_padding_mask = (sequences[:, :, 0] == self.padding_idx)
+        context_vector, attention_weights = self.cross_attention_layer(query, key, key, key_padding_mask=key_padding_mask)
+
+        output = context_vector.squeeze(0)
+        if self.cross_attention_fusion_mode == 'concat':
+            x = torch.cat([x, output], dim=1)
+        else:
+            x = output
+
+        if self.activation is not None:
+            x = self.activation(x)
+
+        if self.return_attention_weights:
+            return x, attention_weights
+
         return x
     
 
-class GCN(torch.nn.Module):
-    def __init__(self, num_nodes, feature_dim, embedding_dim, layer_sizes, out_channels, use_embeddings=True):
+class GCN(nn.Module):
+    """
+    A graph convolutional network (GCN) with optional learnable node embeddings.
+
+    Parameters:
+    - num_nodes (int): Number of nodes in the graph.
+    - feature_dim (int): Dimensionality of node features.
+    - embedding_dim (int): Dimensionality of the learnable node embeddings.
+    - layer_sizes (List[int]): List of hidden layer sizes for each GCN layer.
+    - out_channels (int): Number of output channels.
+    - use_embeddings (bool, optional): Whether to use learnable embeddings. Default is True.
+
+    Returns:
+    - x (Tensor): Output tensor after graph convolutions and global mean pooling.
+    """
+    def __init__(self, num_nodes: int, feature_dim: int, embedding_dim: int, layer_sizes: List[int], out_channels: int, use_embeddings: bool = True):
         super(GCN, self).__init__()
         self.use_embeddings = use_embeddings
         if use_embeddings:
-            self.embeddings = torch.nn.Embedding(num_nodes, embedding_dim)  # Learnable embeddings
+            self.embeddings = nn.Embedding(num_nodes, embedding_dim)  # Learnable embeddings
 
         in_channels = feature_dim + (embedding_dim if use_embeddings else 0)
-        self.convs = torch.nn.ModuleList()  # List of GCN layers
+        self.convs = nn.ModuleList()  # List of GCN layers
         for hidden_channels in layer_sizes:
             self.convs.append(GCNConv(in_channels, hidden_channels))
             in_channels = hidden_channels  # Update in_channels for next layer
 
-
-    def forward(self, data):
+    def forward(self, graphs: torch.Tensor) -> torch.Tensor:
         if self.use_embeddings:
             # Combine node features and learnable embeddings
-            node_embeddings = self.embeddings.weight[data.mapping]  # Retrieve embeddings for each node
-            x = torch.cat([data.x, node_embeddings], dim=1)
+            node_embeddings = self.embeddings.weight[graphs.mapping]  # Retrieve embeddings for each node
+            x = torch.cat([graphs.x, node_embeddings], dim=1)
         else:
             # Use only node features
-            x = data.x
+            x = graphs.x
 
         # Apply each GCN layer with optional edge weights
         for conv in self.convs:
-            x = conv(x, data.edge_index, edge_weight=data.edge_attr)
+            x = conv(x, graphs.edge_index, edge_weight=graphs.edge_attr)
             x = F.relu(x)
 
         # Global pooling (mean pooling)
-        x = global_mean_pool(x, data.batch)
-        
-        
-        return x 
+        x = global_mean_pool(x, graphs.batch)
+        return x
     
 
-class GIN(torch.nn.Module):
-    def __init__(self, num_common_nodes, feature_dim, embedding_dim, layer_sizes, out_channels):
+class GIN(nn.Module):
+    """
+    A graph isomorphism network (GIN) with shared embeddings for nodes across graphs.
+
+    Parameters:
+    - num_common_nodes (int): Number of shared nodes across graphs.
+    - feature_dim (int): Dimensionality of node features.
+    - embedding_dim (int): Dimensionality of the shared node embeddings.
+    - layer_sizes (List[int]): List of hidden layer sizes for each GIN layer.
+    - out_channels (int): Number of output channels.
+    - use_embeddings (bool, optional): Whether to use learnable embeddings. Default is True
+
+    Returns:
+    - x (Tensor): Output tensor after GIN layers and global mean pooling.
+    """
+     
+    def __init__(self, 
+                 num_common_nodes: int, 
+                 feature_dim: int,
+                 embedding_dim: int,
+                 layer_sizes: List[int], 
+                 out_channels: int,
+                 use_embeddings: bool):
         super(GIN, self).__init__()
         # Shared embeddings across graphs
-        self.embeddings = torch.nn.Embedding(num_common_nodes, embedding_dim)
+        self.use_embeddings = 
+        self.embeddings = nn.Embedding(num_common_nodes, embedding_dim)
 
         # Determine the input dimension for the first GIN layer
         in_channels = feature_dim + embedding_dim
         
-        self.convs = torch.nn.ModuleList()  # List of GIN layers
+        self.convs = nn.ModuleList()  # List of GIN layers
         for hidden_channels in layer_sizes:
-            nn = nn.Sequential(nn.Linear(in_channels, hidden_channels), 
-                               nn.ReLU(), nn.Linear(hidden_channels, hidden_channels))
-            self.convs.append(GINConv(nn))
+            nn_layer = nn.Sequential(nn.Linear(in_channels, hidden_channels), 
+                                     nn.ReLU(), nn.Linear(hidden_channels, hidden_channels))
+            self.convs.append(GINConv(nn_layer))
             in_channels = hidden_channels  # Update in_channels for next layer
 
-
-    def forward(self, data):
+    def forward(self, graphs: torch.Tensor) -> torch.Tensor:
         # Retrieve the shared embeddings using the common index
-        shared_embeddings = self.embeddings(data.common_index)
-
-        # Concatenate node features with the shared embeddings
-        x = torch.cat([data.x, shared_embeddings], dim=1)
+        if self.use_embeddings:
+            # Combine node features and learnable embeddings
+            node_embeddings = self.embeddings.weight[graphs.mapping]  # Retrieve embeddings for each node
+            x = torch.cat([graphs.x, node_embeddings], dim=1)
+        else:
+            # Use only node features
+            x = graphs.x
 
         # Apply each GIN layer
         for conv in self.convs:
-            x = conv(x, data.edge_index)
+            x = conv(x, graphs.edge_index)
             x = F.relu(x)
 
         # Global pooling (mean pooling)
-        x = global_mean_pool(x, data.batch)
-        
+        x = global_mean_pool(x, graphs.batch)
         return x
 
 class BaseModel(pl.LightningModule):
+    """
+    A base PyTorch Lightning module for neural networks with optional custom optimizer and scheduler.
+
+    Parameters:
+    - backbone (Union[nn.ModuleList, nn.Module]): The feature extraction backbone model.
+    - output_size (int): Size of the final output layer.
+    - hidden_layers (Tuple, optional): Tuple of hidden layer sizes. Default is empty.
+    - activation (nn.Module, optional): Activation function to apply between layers. Default is ReLU.
+    - learning_rate (float, optional): Learning rate for the optimizer. Default is 1e-3.
+    - optimizer_class (Callable, optional): Optimizer class to use. Default is AdamW.
+    - optimizer_params (Optional[dict], optional): Additional parameters for the optimizer. Default is None.
+    - scheduler_class (Optional[Callable], optional): Scheduler class to use. Default is None.
+    - scheduler_params (Optional[dict], optional): Additional parameters for the scheduler. Default is None.
+    - loss_fn (Optional[Callable], optional): Loss function to use. Default is None.
+
+    Returns:
+    - x (Tensor): Output after the forward pass through the network.
+    """
+
     def __init__(
         self,
         backbone: Union[nn.ModuleList, nn.Module],
-        output_size,
-        hidden_layers=(),
-        activation=nn.ReLU(),
-        learning_rate=1e-3,
+        output_size: int,
+        hidden_layers: Tuple = (),
+        activation: nn.Module = nn.ReLU(),
+        learning_rate: float = 1e-3,
         optimizer_class: Callable = torch.optim.AdamW,
         optimizer_params: Optional[dict] = None,
         scheduler_class: Optional[Callable] = None,
@@ -404,14 +573,20 @@ class BaseModel(pl.LightningModule):
         self.scheduler_class = scheduler_class
         self.scheduler_params = scheduler_params if scheduler_params is not None else {}
 
-    def forward(self, x):
-        x = self.backbone(x)
-        x = self.flat(x)
+        self.flat = nn.Flatten()
+
+    def forward(self, x: Dict[str, torch.Tensor]) -> torch.Tensor:
+        if isinstance(self.backbone, nn.Sequential):
+            x = self.backbone(*x.values())
+        else:
+            x = self.backbone(**x)
+        if len(x.size()) == 4:
+            x = self.flat(x)
         for layer in self.head:
             x = layer(x)
         return x
 
-    def configure_optimizers(self):
+    def configure_optimizers(self) -> Union[torch.optim.Optimizer, Tuple[torch.optim.Optimizer, List]]:
         optimizer = self.optimizer_class(self.parameters(), lr=self.LR, **self.optimizer_params)
 
         if self.scheduler_class is not None:
@@ -420,29 +595,46 @@ class BaseModel(pl.LightningModule):
         else:
             return optimizer
 
-    def training_step(self, batch, batch_idx):
-        x, y = batch["x"], batch["y"]
-        out = self(x)
+    def training_step(self, batch: Dict[str, torch.Tensor], batch_idx: int) -> torch.Tensor:
+        y = batch.pop("y")
+        out = self(batch)
         loss = self.loss_fn(out, y)
         self.log("train_loss", loss, prog_bar=True)
         return loss
 
-    def validation_step(self, batch, batch_idx):
-        x, y = batch["x"], batch["y"]
-        out = self(x)
+    def validation_step(self, batch: Dict[str, torch.Tensor], batch_idx: int) -> None:
+        y = batch.pop("y")
+        out = self(batch)
         loss = self.loss_fn(out, y)
-        self.log("valid_loss", loss)
-        return loss
-    
+        self.log("valid_loss", loss, on_step=True, on_epoch=True)
+
 
 class Classifier(BaseModel):
+    """
+    A classification model built on top of the BaseModel, with additional accuracy, precision, recall, and F1-score tracking.
+
+    Parameters:
+    - backbone (Union[nn.ModuleList, nn.Module]): The feature extraction backbone model.
+    - n_classes (int): Number of output classes.
+    - classifier_hidden_layers (Tuple, optional): Tuple of hidden layer sizes for the classifier. Default is empty.
+    - classifier_activation (nn.Module, optional): Activation function to use in the classifier. Default is ReLU.
+    - learning_rate (float, optional): Learning rate for the optimizer. Default is 1e-3.
+    - optimizer_class (Callable, optional): Optimizer class to use. Default is AdamW.
+    - optimizer_params (Optional[dict], optional): Additional parameters for the optimizer. Default is None.
+    - scheduler_class (Optional[Callable], optional): Scheduler class to use. Default is None.
+    - scheduler_params (Optional[dict], optional): Additional parameters for the scheduler. Default is None.
+
+    Returns:
+    - logits (Tensor): Output logits after the forward pass through the classifier.
+    """
+
     def __init__(
         self,
         backbone: Union[nn.ModuleList, nn.Module],
-        n_classes,
-        classifier_hidden_layers=(),
-        classifier_activation=nn.ReLU(),
-        learning_rate=1e-3,
+        n_classes: int,
+        classifier_hidden_layers: Tuple = (),
+        classifier_activation: nn.Module = nn.ReLU(),
+        learning_rate: float = 1e-3,
         optimizer_class: Callable = torch.optim.AdamW,
         optimizer_params: Optional[dict] = None,
         scheduler_class: Optional[Callable] = None,
@@ -462,29 +654,107 @@ class Classifier(BaseModel):
         )
 
         self.accuracy = torchmetrics.Accuracy(
-            task="binary" if n_classes == 2 else "multiclass"
+            task="binary" if n_classes == 2 else "multiclass",
+            num_classes=n_classes
         )
+
+        self.precision = torchmetrics.Precision(
+            task="binary" if n_classes == 2 else "multiclass",
+            num_classes=n_classes,
+            average=None  # Per-class precision
+        )
+
+        self.recall = torchmetrics.Recall(
+            task="binary" if n_classes == 2 else "multiclass",
+            num_classes=n_classes,
+            average=None  # Per-class recall
+        )
+
+        self.f1 = torchmetrics.F1Score(
+            task="binary" if n_classes == 2 else "multiclass",
+            num_classes=n_classes,
+            average=None  # Per-class F1-score
+        )
+
+        # For macro average metrics
+        self.macro_precision = torchmetrics.Precision(
+            task="binary" if n_classes == 2 else "multiclass",
+            num_classes=n_classes,
+            average="macro"  # Macro-average precision
+        )
+
+        self.macro_recall = torchmetrics.Recall(
+            task="binary" if n_classes == 2 else "multiclass",
+            num_classes=n_classes,
+            average="macro"  # Macro-average recall
+        )
+
+        self.macro_f1 = torchmetrics.F1Score(
+            task="binary" if n_classes == 2 else "multiclass",
+            num_classes=n_classes,
+            average="macro"  # Macro-average F1-score
+        )
+
         self.prob = nn.Softmax(dim=1)
 
-    def validation_step(self, batch, batch_idx):
-        x, y = batch["x"], batch["y"]
-        out = self(x)
+    def validation_step(self, batch: Dict[str, torch.Tensor], batch_idx: int) -> None:
+        y = batch.pop("y")  # Assuming that "y" is the ground truth labels
+        out = self(batch)  # Forward pass
         loss = self.loss_fn(out, y)
         out = self.prob(out)
         logits = torch.argmax(out, dim=1)
+
+        # Calculate metrics
         accu = self.accuracy(logits, y)
-        self.log("valid_loss", loss)
-        self.log("val_acc_step", accu)
+        precision = self.precision(logits, y)
+        recall = self.recall(logits, y)
+        f1 = self.f1(logits, y)
+
+        macro_precision = self.macro_precision(logits, y)
+        macro_recall = self.macro_recall(logits, y)
+        macro_f1 = self.macro_f1(logits, y)
+
+        # Log loss and accuracy
+        self.log("valid_loss", loss, on_step=True, on_epoch=True)
+        self.log("val_acc_step", accu, on_step=False, on_epoch=True)
+
+        # Log precision, recall, and F1-score for each class
+        for i in range(len(precision)):
+            self.log(f"val_precision_class_{i}", precision[i], on_step=False, on_epoch=True)
+            self.log(f"val_recall_class_{i}", recall[i], on_step=False, on_epoch=True)
+            self.log(f"val_f1_class_{i}", f1[i], on_step=False, on_epoch=True)
+
+        # Log macro averages
+        self.log("val_macro_precision", macro_precision, on_step=False, on_epoch=True)
+        self.log("val_macro_recall", macro_recall, on_step=False, on_epoch=True)
+        self.log("val_macro_f1", macro_f1, on_step=False, on_epoch=True)
 
 
 class Regressor(BaseModel):
+    """
+    A regression model built on top of the BaseModel, using mean squared error loss.
+
+    Parameters:
+    - backbone (Union[nn.ModuleList, nn.Module]): The feature extraction backbone model.
+    - output_dim (int): Dimensionality of the regression output.
+    - regressor_hidden_layers (Tuple, optional): Tuple of hidden layer sizes for the regressor. Default is empty.
+    - regressor_activation (nn.Module, optional): Activation function to use in the regressor. Default is ReLU.
+    - learning_rate (float, optional): Learning rate for the optimizer. Default is 1e-3.
+    - optimizer_class (Callable, optional): Optimizer class to use. Default is AdamW.
+    - optimizer_params (Optional[dict], optional): Additional parameters for the optimizer. Default is None.
+    - scheduler_class (Optional[Callable], optional): Scheduler class to use. Default is None.
+    - scheduler_params (Optional[dict], optional): Additional parameters for the scheduler. Default is None.
+
+    Returns:
+    - output (Tensor): Regression output after the forward pass.
+    """
     def __init__(
         self,
         backbone: Union[nn.ModuleList, nn.Module],
-        output_dim,
-        regressor_hidden_layers=(),
-        regressor_activation=nn.ReLU(),
-        learning_rate=1e-3,
+        output_dim: int,
+        regressor_hidden_layers: Tuple = (),
+        regressor_activation: nn.Module = nn.ReLU(),
+        learning_rate: float = 1e-3,
         optimizer_class: Callable = torch.optim.AdamW,
         optimizer_params: Optional[dict] = None,
         scheduler_class: Optional[Callable] = None,
