@@ -53,7 +53,7 @@ def scanpath_visualization(
     return_ndarray: bool = False,
     show_plot: bool = True,
     is_gray: bool = False,
-    dpi=100,
+    dpi: float = 100.0,
 ):
     """
     Function for scanpath visualization and aoi visualization.
@@ -313,7 +313,7 @@ def scanpath_visualization(
         im = Image.open(image_buffer).convert("RGB")
         if is_gray:
             im = ImageOps.grayscale(im)
-        arr = np.array(im)
+        arr = np.array(im) / 255
         image_buffer.close()
 
     if path_to_img is not None:
@@ -409,6 +409,7 @@ def get_visualizations(
     y: str,
     shape: tuple[int, int],
     pattern: str,
+    dpi: float = 100.0,
     pk: List[str] = None,
 ):
     """
@@ -443,13 +444,17 @@ def get_visualizations(
         for group_ids, group_X in tqdm(groups):
             cur_data = data[pd.DataFrame(data[pk] == group_ids).all(axis=1)]
             if pattern == "baseline":
-                res = baseline_visualization(cur_data, x, y, shape, show_plot=False)
+                res = baseline_visualization(
+                    cur_data, x, y, shape, show_plot=False, dpi=dpi
+                )
             elif pattern == "aoi":
                 res = aoi_visualization(
-                    cur_data, x, y, shape, aoi="AOI", show_plot=False
+                    cur_data, x, y, shape, aoi="AOI", show_plot=False, dpi=dpi
                 )
             elif pattern == "saccades":
-                res = saccade_visualization(cur_data, x, y, shape, show_plot=False)
+                res = saccade_visualization(
+                    cur_data, x, y, shape, show_plot=False, dpi=dpi
+                )
             else:
                 raise ValueError(f"Unsupported pattern: {pattern}")
             arr.append(res)
@@ -469,6 +474,7 @@ def baseline_visualization(
     with_axes: bool = False,
     show_plot: bool = False,
     return_ndarray: bool = True,
+    dpi: float = 100.0,
 ):
     return scanpath_visualization(
         data_,
@@ -481,7 +487,7 @@ def baseline_visualization(
         path_width=path_width,
         return_ndarray=return_ndarray,
         show_plot=show_plot,
-        dpi=1,
+        dpi=dpi,
     )
 
 
@@ -506,6 +512,7 @@ def aoi_visualization(
     return_ndarray: bool = True,
     show_plot: bool = True,
     only_points: bool = True,
+    dpi: float = 100.0,
 ):
     return scanpath_visualization(
         data_,
@@ -529,7 +536,7 @@ def aoi_visualization(
         only_points=only_points,
         return_ndarray=return_ndarray,
         show_plot=show_plot,
-        dpi=1,
+        dpi=dpi,
     )
 
 
@@ -561,6 +568,7 @@ def saccade_visualization(
     deviation: Union[int, Tuple[int, ...]] = None,
     return_ndarray: bool = True,
     show_plot: bool = True,
+    dpi: float = 100.0,
 ):
     return scanpath_visualization(
         data_,
@@ -590,5 +598,5 @@ def saccade_visualization(
         max_velocity=max_velocity,
         return_ndarray=return_ndarray,
         show_plot=show_plot,
-        dpi=1,
+        dpi=dpi,
     )

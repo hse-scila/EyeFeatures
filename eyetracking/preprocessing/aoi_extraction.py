@@ -78,9 +78,6 @@ class ShapeBased(BaseAOIPreprocessor):
                     axis=1,
                 )
                 X.loc[X["length"] <= shape[2], self.aoi] = f"aoi_{ind}"
-                # X.loc[
-                #     np.linalg.norm(np.array(X[self.x], X[self.y]) - np.array(shape[1])) <= shape[
-                #         2], self.aoi] = f"aoi_{ind}"
             elif shape[0] == "e":  # Ellipse
                 X.loc[
                     (
