@@ -63,7 +63,7 @@ def get_heatmaps(data: pd.DataFrame, x: str, y: str, shape: Tuple[int, int], pk:
         hshape = (len(groups), shape[0], shape[1])
 
         heatmaps = np.zeros(hshape)
-        for i, _, group_X in enumerate(groups):
+        for i, (_, group_X) in enumerate(groups):
             x_path, y_path = group_X[x], group_X[y]
             heatmaps[i, :, :] = get_heatmap(x_path, y_path, shape, check=False)
 
