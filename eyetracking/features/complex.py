@@ -8,44 +8,64 @@ from typing import Union, Literal, Tuple
 from scipy.stats import gaussian_kde
 from scipy.signal import convolve2d
 
+from eyetracking.utils import _split_dataframe, _rec2square, _square2rec
+
 
 # =========================== HEATMAPS ===========================
-def get_heatmap(x: NDArray, y: NDArray, k: int):
+def _check_shape(shape: Tuple[int, int]):
+    assert isinstance(shape, tuple), f"'shape' must be tuple, hot {type(shape)}."
+    assert len(shape) == 2, f"'shape' must be of length 2, got {len(shape)}."
+    for k in shape:
+        assert isinstance(k, int), f"Values in 'shape' must be integers, got '{type(k)}'."
+        assert k > 0, f"Integers in 'shape' must be positive, got '{k}'."
+
+
+def get_heatmap(x: NDArray, y: NDArray, shape: Tuple[int, int], check: bool = True):
     """
     Get heatmap from scanpath (given coordinates are scaled and sorted in time) using
     Gaussian KDE.
-    :param x: x coordinates of scanpath
-    :param y: y coordinates of scanpath
-    :param k: size of heatmap
-    :return: heatmap matrix
+    :param x: x coordinates of scanpath.
+    :param y: y coordinates of scanpath.
+    :param shape: if tuple with single integer, then square matrix is returned, otherwise k must be (height, width)
+                  tuple and rectangular matrix is returned.
+    :param check: whether to check 'shape' for correct typing.
+    :return: heatmap matrix.
     """
-    assert k > 0, "'k' must be positive"
+    if check:
+        _check_shape(shape)
 
     if len(x) <= 2:  # TODO warning
-        x, y = np.array([0.2, 0.55, 0.4, 0.25]), np.array([0.25, 0.5, 0.6, 0.7])
+        # in case of small number of samples, KDE cannot be applied and
+        # default kernel estimate is returned instead
+        x, y = np.array([0.25, 0.50, 0.75]), np.array([0.50, 0.50, 0.50])
 
     scanpath = np.vstack([x, y])
     kernel = gaussian_kde(scanpath)
-    interval = np.linspace(0, 1, k)
-    x, y = np.meshgrid(interval, interval)
+    interval_x, interval_y = np.linspace(0, 1, shape[1]), np.linspace(0, 1, shape[0])
+    x, y = np.meshgrid(interval_x, interval_y)
 
     positions = np.vstack([y.ravel(), x.ravel()])
     return np.reshape(kernel(positions), x.shape)
 
 
-def get_heatmaps(data: pd.DataFrame, x: str, y: str, k: int, pk: List[str] = None):
+def get_heatmaps(data: pd.DataFrame, x: str, y: str, shape: Tuple[int, int], pk: List[str] = None):
+    """
+    Convenience wrapper for get_heatmap function.
+    """
+    _check_shape(shape)
+
     if pk is None:
         x_path, y_path = data[x].values, data[y].values
-        heatmap = get_heatmap(x_path, y_path, k)
+        heatmap = get_heatmap(x_path, y_path, shape)
         heatmaps = heatmap[np.newaxis, :, :]
     else:
-        groups = data[pk].drop_duplicates().values
-        heatmaps = np.zeros((len(groups), k, k))
+        groups: List[str, pd.DataFrame] = _split_dataframe(data, pk)
+        hshape = (len(groups), shape[0], shape[1])
 
-        for i, group in enumerate(groups):
-            cur_X = data[pd.DataFrame(data[pk] == group).all(axis=1)]
-            x_path, y_path = cur_X[x], cur_X[y]
-            heatmaps[i, :, :] = get_heatmap(x_path, y_path, k)
+        heatmaps = np.zeros(hshape)
+        for i, _, group_X in enumerate(groups):
+            x_path, y_path = group_X[x], group_X[y]
+            heatmaps[i, :, :] = get_heatmap(x_path, y_path, shape, check=False)
 
     return heatmaps
 
@@ -125,7 +145,7 @@ def get_rqa(
 # =========================== MTF ===========================
 def get_mtf(
         data: pd.DataFrame, x: str, y: str,
-        n_bins: int = 20,
+        n_bins: int = 10,
         output_size: Union[int, float] = 1.0,
         shrink_strategy: Literal["max", "mean", "normal"] = "normal",
         flatten: bool = False
@@ -207,8 +227,8 @@ def _shrink_matrix(mat: np.array, height: int, width: int,
                    strategy: Literal["max", "mean", "normal"] = "normal"
                    ) -> np.array:
     """
-    Shrinks matrix to be output_size x output_size.
-    :param img: 2d matrix (image channel).
+    Shrinks matrix to be close to output_size x output_size.
+    :param mat: 2d matrix (image channel).
     :param height: height of shrunk matrix.
     :param width: width of shrunk matrix.
     :param strategy: strategy to use while shrinking.
@@ -226,15 +246,10 @@ def _shrink_matrix(mat: np.array, height: int, width: int,
         dh, dw = ih - oh + 1, iw - ow + 1
         if strategy == 'mean':
             kernel = np.ones((dh, dw)) / (dh * dw)
-        else:  # 'normal'
+        else:        # 'normal'
             m = max(dh, dw)
             kernel = _gaussian_kernel(m, sigma=5)
-            if dh > dw:
-                d = dw % 2
-                kernel = kernel[dh // 2 - dw // 2:dh // 2 + dw // 2 + d, :dw]
-            else:
-                d = dh % 2
-                kernel = kernel[:dh, dw // 2 - dh //2:dw // 2 + dh // 2 + d]
+            kernel = _rec2square(kernel)
 
         shrunk_mat = convolve2d(mat, kernel, mode='valid')
 
@@ -413,7 +428,8 @@ def get_hilbert_curve(data: pd.DataFrame, x: str, y: str, scale: bool = True, p:
         assert 0 <= x <= 1, "Either scale 'x' to be between 0 and 1 or add 'scale'=True."
         assert 0 <= y <= 1, "Either scale 'y' to be between 0 and 1 or add 'scale'=True."
     x, y = x * (2 ** p), y * (2 ** p)                      # map x, y to [0, 2^p]
-    x, y = np.array(x, dtype=int), np.array(y, dtype=int)  # map [0, 2^p] to {0, 1, .., 2^p}
+    x, y = np.array(np.round(x), dtype=int),\
+           np.array(np.round(y), dtype=int)                # map [0, 2^p] to {0, 1, .., 2^p}
 
     h = np.zeros((n_fixations,))
     for i in prange(n_fixations):
@@ -449,3 +465,49 @@ def xy2h(x: int, y: int, p: int) -> int:
         s = s // 2
     return d
 
+
+if __name__ == "__main__":
+    import pandas as pd
+    import numpy as np
+    import matplotlib.pyplot as plt
+
+    from eyetracking.preprocessing.fixation_extraction import IDT
+
+    from os.path import join
+
+    DATA_PATH = join('..', 'test_data')
+
+
+    def remove_points(df, x_min, x_max, y_min, y_max):
+        df = df[df['norm_pos_x'] <= x_max]
+        df = df[df['norm_pos_x'] >= x_min]
+        df = df[df['norm_pos_y'] >= y_min]
+        df = df[df['norm_pos_y'] <= y_max]
+        return df
+
+
+    data = pd.concat([pd.read_excel(join(DATA_PATH, 'itog_gaze_1.xlsx')),
+                      pd.read_excel(join(DATA_PATH, 'itog_gaze_2.xlsx'))], axis=0)
+
+    data.drop(['world_index', 'confidence', 'base_data'], axis=1, inplace=True)
+    data = remove_points(data, -1, 1, -1, 1)
+
+    x = 'norm_pos_x'
+    y = 'norm_pos_y'
+    t = 'gaze_timestamp'
+
+    idt = IDT(x=x, y=y, t=t, pk=['Participant', 'tekst'], min_duration=0.01, max_dispersion=0.05,
+              distance="euc")
+    idt_data = idt.transform(data)
+
+    heatmaps = get_heatmaps(idt_data, x, y, shape=(100, 100))
+    plt.imshow(heatmaps[0])
+    plt.show()
+
+    heatmaps = get_heatmaps(idt_data, x, y, shape=(100, 50))
+    plt.imshow(heatmaps[0])
+    plt.show()
+
+    heatmaps = get_heatmaps(idt_data, x, y, shape=(50, 100))
+    plt.imshow(heatmaps[0])
+    plt.show()

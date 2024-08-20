@@ -389,8 +389,7 @@ class SaccadeFeatures(StatsTransformer):
             assert self.x is not None, self._err_no_col(feat, "x")
             assert self.y is not None, self._err_no_col(feat, "y")
             if feat in ("speed", "acceleration"):
-                assert self.t is not None
-                self._err_no_col(feat, "t")
+                assert self.t is not None, self._err_no_col(feat, "t")
 
     def _calc_feats(
         self, X: pd.DataFrame, features: List[str], transition_mask: NDArray

@@ -142,3 +142,44 @@ def _select_regressions(
                     break
 
     return mask.astype(bool)
+
+
+# =========================== MATRIX TOOLS ===========================
+def _rec2square(mat: np.array) -> np.array:
+    """
+    Given rectangular matrix, cuts it into shape (n,n) evenly from longest side,
+    where n = min(height, width).
+    """
+    assert len(mat.shape) == 2
+    h, w = mat.shape
+
+    if h > w:
+        return _cut_matrix(mat, n=w, axis=0)
+    else:
+        return _cut_matrix(mat, n=h, axis=1)
+
+
+def _square2rec(mat: np.array, h: int, w: int) -> np.array:
+    """
+    Given square matrix of size NxN, cut from it rectangle of shape (h,w) evenly from all sides.
+    """
+    mat = _cut_matrix(mat, n=h, axis=0)  # cut height
+    mat = _cut_matrix(mat, n=w, axis=1)  # cut width
+    return mat
+
+
+def _cut_matrix(mat: np.array, n: int, axis: int) -> np.array:
+    """
+    Given matrix of shape (h,w), cut it evenly along given axis to size n.
+    """
+    assert len(mat.shape) == 2
+    assert axis < 2
+    assert mat.shape[axis] >= n
+
+    h, w = mat.shape
+    d = n % 2
+    if axis == 0:
+        mat = mat[h // 2 - n // 2:h // 2 + n // 2 + d, :]
+    else:
+        mat = mat[:, w // 2 - n // 2: w // 2 + n // 2 + d]
+    return mat

@@ -9,7 +9,7 @@ from scipy.stats import gaussian_kde
 from sklearn.base import BaseEstimator, TransformerMixin
 
 from eyetracking.preprocessing._utils import _get_distance
-from eyetracking.utils import _split_dataframe, _get_angle3
+from eyetracking.utils import _split_dataframe, _get_angle, _get_angle3
 
 
 class BasePreprocessor(BaseEstimator, TransformerMixin):
@@ -129,16 +129,27 @@ class BaseFixationPreprocessor(BasePreprocessor, ABC):
             sl[0] = 0
             fixations_df["saccade_length"] = sl
 
+        # angle between x-axis and saccade preceding the fixation,
+        # assuming that saccade moves from (0, 0) to current fixation
         if "saccade_angle" in feats:
-            xx, yy = fixations_df[self.x].values, fixations_df[self.y].values
+            dx: pd.Series = fixations_df[self.x].diff().values
+            dy: pd.Series = fixations_df[self.y].diff().values
             sa = np.zeros(shape=(n,))
+            for i in prange(1, n):
+                sa[i] = _get_angle(dx[i], dy[i], degrees=True)
+            fixations_df["saccade_angle"] = sa
+
+        # angle between preceding and succeeding saccades
+        if "saccade2_angle" in feats:
+            xx, yy = fixations_df[self.x].values, fixations_df[self.y].values
+            sa2 = np.zeros(shape=(n,))
             for i in prange(1, n - 1):
-                sa[i] = _get_angle3(                                            # angle between preceding and
-                    x0=xx[i],     y0=yy[i],                                     # succeeding saccades
+                sa2[i] = _get_angle3(
+                    x0=xx[i],     y0=yy[i],
                     x1=xx[i - 1], y1=yy[i - 1],
                     x2=xx[i + 1], y2=yy[i + 1]
                 )
-            fixations_df["saccade_angle"] = sa
+            fixations_df["saccade2_angle"] = sa2
 
         return fixations_df
 
