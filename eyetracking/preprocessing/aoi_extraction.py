@@ -13,6 +13,122 @@ from eyetracking.utils import _split_dataframe
 
 
 # ======== AOI PREPROCESSORS ========
+
+
+class ShapeBased(BaseAOIPreprocessor):
+    """
+    Defines AOI using the specified shapes
+    :param x: x coordinate of fixation.
+    :param y: y coordinate of fixation.
+    :param aoi_name: name of AOI column.
+    :param pk: list of column names used to split pd.DataFrame.
+    :param shapes: list of shapes. It should be a list of tuple lists. Parameters for shape:
+    {
+    0: 'r', 'c', 'e': rectangle, circle, ellipse
+    For the rectangle:
+    1: coordinates of the lower left corner of the rectangle.
+    2: coordinates of the upper right corner of the rectangle.
+    For the circle:
+    1: coordinates of the center of the circle.
+    2: radius of the circle.
+    For the ellipse:
+    ((x - x')*cos(alpha) + (y - y')*sin(alpha))**2 / a**2 + (-(x - x')*sin(alpha) + (y - y')*cos(alpha))**2 / b**2 = c
+    1: coordinates of the center of the ellipse (x', y').
+    2: "a" in the ellipse equation
+    3: "b" in the ellipse equation
+    4: "c" in the ellipse equation
+    5: angle of inclination of th ellipse in radians (alpha)
+    }
+    """
+
+    def __init__(
+        self,
+        x: str = None,
+        y: str = None,
+        shapes: List = None,
+        aoi_name: str = "AOI",
+        pk: List[str] = None,
+    ):
+        super().__init__(x=x, y=y, t=None, aoi=aoi_name, pk=None)
+        self.shapes = shapes
+        self.instance = pk
+
+    def _check_params(self):
+        m = "ShapeBased"
+        assert self.x is not None, self._err_no_field(m, "x")
+        assert self.y is not None, self._err_no_field(m, "y")
+        assert self.shapes is not None, self._err_no_field(m, "shapes")
+
+    def _is_inside_of_fig(self, X: pd.DataFrame, shape_id):
+        ind = 0
+        for shape in self.shapes[shape_id]:
+            if shape[0] == "r":  # Rectangle
+                X.loc[
+                    (X[self.x] <= shape[2][0])
+                    & (X[self.x] >= shape[1][0])
+                    & (X[self.y] <= shape[2][1])
+                    & (X[self.y] >= shape[1][1]),
+                    self.aoi,
+                ] = f"aoi_{ind}"
+            elif shape[0] == "c":  # Circle
+                X["length"] = X.apply(
+                    lambda z: np.linalg.norm(
+                        np.array((z[self.x], z[self.y])) - np.array(shape[1])
+                    ),
+                    axis=1,
+                )
+                X.loc[X["length"] <= shape[2], self.aoi] = f"aoi_{ind}"
+                # X.loc[
+                #     np.linalg.norm(np.array(X[self.x], X[self.y]) - np.array(shape[1])) <= shape[
+                #         2], self.aoi] = f"aoi_{ind}"
+            elif shape[0] == "e":  # Ellipse
+                X.loc[
+                    (
+                        (X[self.x] - shape[1][0]) * np.cos(shape[5])
+                        + (X[self.y] - shape[1][1]) * np.sin(shape[5])
+                    )
+                    ** 2
+                    / (shape[2] ** 2)
+                    + (
+                        -(X[self.x] - shape[1][0]) * np.sin(shape[5])
+                        + (X[self.y] - shape[1][1]) * np.cos(shape[5])
+                    )
+                    / (shape[3] ** 2)
+                    <= shape[4],
+                    self.aoi,
+                ] = f"aoi_{ind}"
+            ind += 1
+        return X[self.aoi]
+
+    def _preprocess(self, X: pd.DataFrame) -> pd.DataFrame:
+        assert X.shape[0] != 0, "Error: there are no points"
+
+        # if self.instance is not None:
+        #     X.drop(columns=self.instance, inplace=True)
+        X[self.aoi] = None
+        to_concat = []
+        flag = False
+        if len(self.shapes) != 1:
+            flag = True
+        shape_id = 0
+        if self.instance is None:
+            X[self.aoi] = self._is_inside_of_fig(X, shape_id)
+            fixations = X
+        else:
+            instances: List[str, pd.DataFrame] = _split_dataframe(
+                X, self.instance, encode=False
+            )
+            assert (not flag) or len(instances) == len(self.shapes), "Not enough shapes"
+            for instance_ids, instance_X in instances:
+                instance_X[self.aoi] = self._is_inside_of_fig(instance_X, shape_id)
+                to_concat.append(instance_X)
+                if flag:
+                    shape_id += 1
+            fixations = pd.concat(to_concat, axis=0)
+
+        return fixations
+
+
 class ThresholdBased(BaseAOIPreprocessor):
     """
     Defines the AOI for each fixation using density maximum and Kmeans. Finds local maximum, pre-threshold it, and uses
@@ -501,6 +617,7 @@ class AOIExtractor(BaseEstimator, TransformerMixin):
         instances: List[str, pd.DataFrame] = _split_dataframe(
             data_df, self.instance_columns, encode=False
         )
+        shapes_id = 0  # For ShapeBased
         # Entropy for selecting the best method
         entropy_transformer = ShannonEntropy(aoi=self.aoi, pk=self.instance_columns)
         # Extract areas of interest for each instance
@@ -541,9 +658,25 @@ class AOIExtractor(BaseEstimator, TransformerMixin):
                     cur_fixations = pd.concat(
                         [to_transform, pd.Series(cur_aoi, name=self.aoi)], axis=1
                     )
+                elif isinstance(method, ShapeBased):
+                    save_shapes = method.shapes
+                    assert (len(save_shapes) == 1) or (
+                        len(save_shapes) != len(instances)
+                    ), "Not enough shapes"
+                    method.shapes = [
+                        save_shapes[shapes_id],
+                    ]
+                    method.instance = None
+                    cur_fixations = method.transform(to_transform)
+                    method.shapes = save_shapes
+                    if len(save_shapes) != 1:
+                        shapes_id += 1
                 else:
                     cur_fixations = method.transform(to_transform)
-                all_areas = np.unique(cur_fixations[self.aoi].values)
+
+                all_areas = np.unique(
+                    [el for el in cur_fixations[self.aoi].values if not el is None]
+                )
                 areas_names = [f"aoi_{i}" for i in range(len(all_areas))]
                 map_areas = dict(zip(all_areas, areas_names))
                 cur_fixations[self.aoi] = cur_fixations[self.aoi].map(map_areas)
