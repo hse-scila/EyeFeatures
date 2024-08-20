@@ -9,12 +9,30 @@ from torch_geometric.data import Data
 from torch.utils.data import DataLoader, Dataset
 import warnings
 from eyetracking.features.complex import get_heatmaps
+from eyetracking.visualization.static_visualization import get_visualizations
 from skmultilearn.model_selection import IterativeStratification
+from functools import partial 
+from eyetracking.preprocessing.base import BaseFixationPreprocessor
+from eyetracking.utils import _split_dataframe
+from tqdm import tqdm
+from copy import copy
 
-def iterative_split(df: pd.pd.DataFrame, y: ArrayLike, test_size: float, stratify_columns: List[str]):
+def iterative_split(df: pd.DataFrame, y: ArrayLike, test_size: float, stratify_columns: List[str]):
     """Custom iterative train test split which
     'maintains balanced representation with respect
     to order-th label combinations.'
+    
+    Parameters:
+    - df (pd.DataFrame): Input dataframe to split.
+    - y (ArrayLike): Labels corresponding to the dataframe.
+    - test_size (float): Proportion of the dataset to include in the test split.
+    - stratify_columns (List[str]): List of column names to stratify by.
+
+    Returns:
+    - X_train (pd.DataFrame): Training split of the dataframe.
+    - X_test (pd.DataFrame): Test split of the dataframe.
+    - y_train (ArrayLike): Training labels.
+    - y_test (ArrayLike): Test labels.
 
     From https://madewithml.com/courses/mlops/splitting/#stratified-split
     """
@@ -30,33 +48,68 @@ def iterative_split(df: pd.pd.DataFrame, y: ArrayLike, test_size: float, stratif
     return X_train, X_test, y_train, y_test
 
 
-def coord_to_grid(coords, xlim, ylim, shape):
-    """Maps coordinates to grid indices."""
+def _coord_to_grid(coords, xlim, ylim, shape):
+    """
+    Maps 2D coordinates to grid indices based on the grid resolution.
+
+    Parameters:
+    - coords (np.array): Array of coordinates to map.
+    - xlim (Tuple): The x-axis limits (x_min, x_max).
+    - ylim (Tuple): The y-axis limits (y_min, y_max).
+    - shape (Tuple): The shape of the grid (rows, cols).
+
+    Returns:
+    - i, j (np.array): The grid indices corresponding to the coordinates.
+    """
+     
     i = (((coords[:, 0] - xlim[0]) / (xlim[1] - xlim[0]))*shape[0]).astype(int)
-    j = (((coords[:, 0] - ylim[0]) / (ylim[1] - ylim[0]))*shape[1]).astype(int)
+    j = (((coords[:, 1] - ylim[0]) / (ylim[1] - ylim[0]))*shape[1]).astype(int)
     return i, j
 
-def cell_index(i, j, shape):
-    """Maps grid indices to a 1D index."""
+def _cell_index(i, j, shape):
+    """
+    Maps grid indices (i, j) to a 1D cell index based on the grid shape.
+    
+    Parameters:
+    - i (int): Row index in the grid.
+    - j (int): Column index in the grid.
+    - shape (Tuple): The shape of the grid (rows, cols).
+
+    Returns:
+    - index (int): The 1D cell index.
+    """
+     
     return i * shape[1] + j
 
-def calculate_cell_center(i, j, xlim, ylim, shape):
-    """Calculates the center of a grid cell."""
+def _calculate_cell_center(i, j, xlim, ylim, shape):
+    """
+    Calculates the center coordinates of a grid cell.
+
+    Parameters:
+    - i (int): Row index of the cell.
+    - j (int): Column index of the cell.
+    - xlim (Tuple): Limits of the x-axis (x_min, x_max).
+    - ylim (Tuple): Limits of the y-axis (y_min, y_max).
+    - shape (Tuple): Shape of the grid (rows, cols).
+
+    Returns:
+    - x_center, y_center (float): Center coordinates of the grid cell.
+    """
     cell_width = (xlim[1] - xlim[0]) / shape[0]
     cell_height = (ylim[1] - ylim[0]) / shape[1]
     x_center = xlim[0] + (i + 0.5) * cell_width
     y_center = ylim[0] + (j + 0.5) * cell_height
     return x_center, y_center
 
-def calculate_length_vectorized(coords):
+def _calculate_length_vectorized(coords):
     """
-    Calculate the Euclidean distance (length) between consecutive points in a 2D space.
-    
+    Calculates the Euclidean distance between consecutive points in 2D space.
+
     Parameters:
-    - coords: A NumPy array of shape (n, 2), where each row represents the (x, y) coordinates of a point.
-    
+    - coords (np.array): Array of coordinates with shape (n, 2).
+
     Returns:
-    - lengths: A NumPy array of shape (n-1,), where each element is the Euclidean distance between consecutive points.
+    - lengths (np.array): Euclidean distances between consecutive points.
     """
     # Calculate the difference between consecutive points
     dx = coords[1:, 0] - coords[:-1, 0]
@@ -67,39 +120,8 @@ def calculate_length_vectorized(coords):
     
     return lengths
 
-def coord_to_grid(coords, xlim, ylim, shape):
-    """Maps coordinates to grid indices."""
-    x_min, x_max = xlim
-    y_min, y_max = ylim
-    x_res, y_res = shape
-    i = ((coords[:, 0] - x_min) / (x_max - x_min) * x_res).astype(int)
-    j = ((coords[:, 1] - y_min) / (y_max - y_min) * y_res).astype(int)
-    return i, j
-
-def cell_index(i, j, shape):
-    """Maps grid indices to a 1D index."""
-    x_res, y_res = shape
-    return i * y_res + j
-
-def calculate_cell_center(i, j, xlim, ylim, shape):
-    """Calculates the center of a grid cell."""
-    x_min, x_max = xlim
-    y_min, y_max = ylim
-    x_res, y_res = shape
-    cell_width = (x_max - x_min) / x_res
-    cell_height = (y_max - y_min) / y_res
-    x_center = x_min + (i + 0.5) * cell_width
-    y_center = y_min + (j + 0.5) * cell_height
-    return x_center, y_center
-
-def calculate_length_vectorized(coords):
-    """Calculate the Euclidean distance between consecutive points in a 2D space."""
-    dx = coords[1:, 0] - coords[:-1, 0]
-    dy = coords[1:, 1] - coords[:-1, 1]
-    lengths = np.sqrt(dx**2 + dy**2)
-    return lengths
-
-def create_edge_list_and_cumulative_features(df, x_col, y_col, duration_col, xlim, ylim, shape, directed=True):
+def create_edge_list_and_cumulative_features(df, add_duration, x_col, y_col, 
+                                             xlim, ylim, shape, directed=True):
     """
     Creates an edge list and computes cumulative node features (total duration, total saccade lengths, and cell center coordinates).
     These features are normalized by their respective maximum values. Also computes edge features based on the sum of edge lengths.
@@ -126,9 +148,9 @@ def create_edge_list_and_cumulative_features(df, x_col, y_col, duration_col, xli
     """
     
     coords = df[[x_col, y_col]].values
-    i, j = coord_to_grid(coords, xlim, ylim, shape)
-    grid_indices = cell_index(i, j, shape)
-    
+    i, j = _coord_to_grid(coords, xlim, ylim, shape)
+    grid_indices = _cell_index(i, j, shape)
+    #print(grid_indices)
     unique_nodes = np.unique(grid_indices)
     node_mapping = {node: idx for idx, node in enumerate(unique_nodes)}
     num_nodes = len(unique_nodes)
@@ -144,7 +166,7 @@ def create_edge_list_and_cumulative_features(df, x_col, y_col, duration_col, xli
 
     # Create edge list and calculate cumulative features
     edge_list = []
-    lengths = calculate_length_vectorized(coords)
+    lengths = _calculate_length_vectorized(coords)
     
     for k in range(len(df) - 1):
         src_node = node_mapping[grid_indices[k]]
@@ -152,8 +174,8 @@ def create_edge_list_and_cumulative_features(df, x_col, y_col, duration_col, xli
         
         # Handle self-loops: Only update duration
         if src_node == dst_node:
-            if duration_col:
-                total_durations[src_node] += df[duration_col].iloc[k]
+            if add_duration:
+                total_durations[src_node] += df['duration'].iloc[k]
             continue  # Skip the rest of the loop, don't add an edge
         
         # Add edge if not a self-loop
@@ -174,7 +196,7 @@ def create_edge_list_and_cumulative_features(df, x_col, y_col, duration_col, xli
         
         # Calculate the center coordinates of the cell
         i_node, j_node = i[k], j[k]
-        x_center, y_center = calculate_cell_center(i_node, j_node, xlim, ylim, shape)
+        x_center, y_center = _calculate_cell_center(i_node, j_node, xlim, ylim, shape)
         cell_centers[src_node] = [x_center, y_center]
     
     # Normalize cumulative features by their respective maximum values
@@ -199,7 +221,8 @@ def create_edge_list_and_cumulative_features(df, x_col, y_col, duration_col, xli
     
     return edge_list, edge_features, node_mapping, cumulative_node_features
 
-def create_graph_data_from_dataframe(df, y, x_col, y_col, duration_col, xlim, ylim, shape, directed=True):
+def create_graph_data_from_dataframe(df, y, x_col, y_col, add_duration,
+                                     xlim, ylim, shape, directed=True):
     """
     Converts a DataFrame into a PyTorch Geometric Data object for GCN training.
     Includes cumulative node features (total duration, total saccade length to/from node, and cell center coordinates).
@@ -221,7 +244,7 @@ def create_graph_data_from_dataframe(df, y, x_col, y_col, duration_col, xlim, yl
     
     # Get edge list and cumulative features
     edge_list, edge_features, node_mapping, cumulative_node_features = create_edge_list_and_cumulative_features(
-        df, x_col, y_col, duration_col, xlim, ylim, shape, directed
+        df, add_duration, x_col, y_col, xlim, ylim, shape, directed
     )
     
     # Combine cumulative features into a feature matrix
@@ -246,26 +269,52 @@ def create_graph_data_from_dataframe(df, y, x_col, y_col, duration_col, xlim, yl
 
 
 _representations = {
-    'heatmap': get_heatmaps
-}
+    'heatmap': get_heatmaps,
+    'baseline_visualization' : partial(get_visualizations, pattern='baseline'),
+    'aoi_visualization' : partial(get_visualizations, pattern='aoi'),
+    'saccade_visualization' : partial(get_visualizations, pattern='saccades')
+ }
 
 class Dataset2D(Dataset):
+
+    """
+    Custom dataset for 2D image-based representations derived from gaze data.
+
+    Parameters:
+    - X (pd.DataFrame): Input data.
+    - y (ArrayLike): Labels for the data.
+    - pk (List[str]): List of primary keys for grouping.
+    - shape (Union[Tuple[int], int]): Shape of the images.
+    - representations (List[str]): List of representation types.
+    - upload_to_cuda (bool): If True, upload the data to the GPU. Default: False.
+    - transforms (Optional): Transformations to apply to the data.
+    """
     def __init__(self, 
-                 X: pd.DataFrame, 
-                 y: ArrayLike, 
+                 X: pd.DataFrame,
+                 x: str,
+                 y: str,  
+                 Y: ArrayLike, 
                  pk:List[str], 
                  shape: Union[Tuple[int], int],
                  representations: List[str], 
+                 upload_to_cuda: bool = False,
                  transforms=None):
 
         self.pmk = pk
-        self.X = torch.cat((_representations[i](X, pk=pk, shape=shape, 
-                return_tensors=True)[:,None, :, :] for i in representations),
-                dim=1
-                )
+        self.X = torch.cat([torch.tensor(_representations[i](X, x, y, 
+                            pk=pk, shape=shape), dtype=torch.float32) for i in representations], dim=1)
         self.channels_dim = self.X.shape[1]
         print(f'Number of channels = {self.channels_dim}.')
-        self.y = y
+        if not isinstance(Y, pd.Series):
+            Y = Y.set_index(pk).squeeze(axis=0)
+        self.y = Y.sort_index().values
+        if np.issubdtype(self.y.dtype, np.integer):
+            self.y = torch.tensor(self.y, dtype=torch.long)
+        else:
+            self.y = torch.tensor(self.y, dtype=torch.float)
+        if upload_to_cuda:
+            self.X = self.X.cuda()
+            self.y = self.y.cuda()
         self.transforms = transforms
 
     def __len__(self):
@@ -275,142 +324,256 @@ class Dataset2D(Dataset):
 
         if self.transforms is None:
             X = self.X[idx, :, :, :]
-            label = self.y.iloc[idx]
+            label = self.y[idx]
 
         return {
-            "x": torch.tensor(X, dtype=torch.float),
-            "y": torch.tensor(label, dtype=torch.long),
+            "images": X,
+            "y": label, #
         }
+    
+    def collate_fn(self, batch):
+        images = torch.stack([x["images"] for x in batch])
+        y = torch.tensor([x['y'] for x in batch])
+        return {"images" : images,
+                'y': y}
+        return batch
         
-get_features = ''
+def _get_features(X, features, x, y, t, pk):
+    preprocessor = BaseFixationPreprocessor(x, y, t, pk)
+    features_to_get = copy(features)
+    for i in features:
+        if i in X.columns:
+            features_to_get.remove(i)
+    output = []
+    groups = _split_dataframe(X, pk)
+    for group_id, group_X in tqdm(groups):
+        cur_X = preprocessor._compute_feats(group_X, features_to_get)
+        output.append(cur_X[[x,y]+features].values)
+    
+    return output
 
 class DatasetTimeSeries(Dataset):
+
+    """
+    Custom dataset for time-series data.
+
+    Parameters:
+    - X (pd.DataFrame): Input time-series data.
+    - y (ArrayLike): Labels for the data.
+    - pk (List[str]): Primary keys for grouping.
+    - shape (Union[Tuple[int], int]): Shape of the data samples.
+    - features (List[str]): List of features to extract.
+    - upload_to_cuda (bool): If True, upload the data to the GPU. Default: False.
+    - transforms (Optional): Transformations to apply to the data.
+    """
     def __init__(self, 
                  X: pd.DataFrame, 
-                 y: ArrayLike, 
+                 Y: ArrayLike, 
+                 x: str,
+                 y: str,
                  pk:List[str], 
-                 shape: Union[Tuple[int], int],
                  features: List[str], 
                  transforms=None):
 
         self.pmk = pk
-        self.X = get_features(self.features)
-        self.channels_dim = self.X.shape[1]
-        print(f'Number of channels = {self.channels_dim}.')
-        self.y = y
+        self.X = _get_features(X, features, x, y, t=None, pk=pk)
+        if not isinstance(Y, pd.Series):
+            Y = Y.set_index(pk).squeeze(axis=0)
+        self.Y = Y.sort_index().values
+        if np.issubdtype(self.Y.dtype, np.integer):
+            self.Y = torch.tensor(self.Y, dtype=torch.long)
+        else:
+            self.Y = torch.tensor(self.Y, dtype=torch.float)
+        
+        self.n_features = 2+len(features)
         self.transforms = transforms
 
     def __len__(self):
-        return self.X.shape[0]
+        return len(self.X)
 
     def __getitem__(self, idx: int):
 
         if self.transforms is None:
-            X = self.X[idx, :, :,]
-            label = self.y.iloc[idx]
+            X = self.X[idx]
+            label = self.Y[idx]
 
         return {
-            "x": torch.tensor(X, dtype=torch.float),
-            "y": torch.tensor(label, dtype=torch.long),
+            "sequences": torch.tensor(X, dtype=torch.float),
+            "y": label,
         }
     
     def collate_fn(self, batch):
-        lengths = [sequence.shape[0] for sequence in batch['x']]
+        lengths = [x["sequences"].shape[0] for x in batch]
         max_len = max(lengths)
-        padded_batch = [torch.cat(sequence, torch.zeros(len(self.features),
-                                                        max_len - sequence.shape[0]), axis=0) for sequence in batch]
-        return torch.stack(padded_batch), torch.tensor(lengths)
+        padded_batch = [torch.cat([x["sequences"], torch.zeros(max_len - x["sequences"].shape[0], 
+                                                        self.n_features)], axis=0) for x in batch]
+        
+        y = torch.tensor([x['y'] for x in batch])
+        return {"sequences": torch.stack(padded_batch),
+                 "lengths" : torch.tensor(lengths), 
+                 'y': y}
+    
+class TimeSeries_2D_Dataset(Dataset):
+
+    """
+    Composite dataset that combines image and time-series data.
+
+    Parameters:
+    - image_dataset (Dataset): Dataset containing image data.
+    - sequence_dataset (Dataset): Dataset containing sequence data.
+    """
+    def __init__(self, image_dataset, sequence_dataset):
+        # Ensure both datasets have the same length
+        assert len(image_dataset) == len(sequence_dataset), "Datasets must be of the same length"
+        
+        self.image_dataset = image_dataset
+        self.sequence_dataset = sequence_dataset
+        
+    def __len__(self):
+        # The length of the composite dataset is the same as either individual dataset
+        return len(self.image_dataset)
+    
+    def __getitem__(self, idx):
+        # Fetch the data from both datasets using the same index
+        image = self.image_dataset.X[idx, :, :, :]
+        sequence = self.sequence_dataset.X[idx]
+        y = self.image_dataset.y[idx]
+        
+        return {
+            'images': image,
+            'sequences': torch.tensor(sequence),
+            'y': y
+        }
+    def collate_fn(self, batch):
+        lengths = [x["sequences"].shape[0] for x in batch]
+        max_len = max(lengths)
+        padded_batch = [torch.cat([x["sequences"], torch.zeros(max_len - x["sequences"].shape[0], 
+                                                        self.n_features)], axis=0) for x in batch]
+        
+        y = torch.tensor([x['y'] for x in batch])
+
+        return {"sequences": torch.stack(padded_batch),
+                "lengths" : torch.tensor(lengths),
+                "images":batch['images'], 
+                'y': y}
+    
     
 
 class GridGraphDataset(Dataset):
+
+    """
+    Custom dataset for generating grid-based graph representations from spatial coordinates.
+
+    Parameters:
+    - X (pd.DataFrame): Input dataframe.
+    - y (ArrayLike): Labels for the data.
+    - pk (List[str]): Primary keys for grouping.
+    - features (List[str]): List of features to extract.
+    - x_col, y_col (str): Column names for x and y coordinates.
+    - duration_col (str): Column name for time durations.
+    - xlim (Tuple): Limits of the x-axis.
+    - ylim (Tuple): Limits of the y-axis.
+    - shape (Tuple): Shape of the grid.
+    - directed (bool): Whether the graph is directed.
+    - transforms (Optional): Transformations to apply to the data.
+    """
     def __init__(self,
                  X: pd.DataFrame, 
-                 y: ArrayLike, 
+                 Y: ArrayLike, 
+                 x: str, 
+                 y: str,
+                 add_duration: bool,
                  pk:List[str],
-                 features: List[str], 
-                 x_col, y_col, duration_col, xlim, ylim, shape, directed=True,
+                 xlim: Tuple[float, float] = (0,1), 
+                 ylim: Tuple[float, float] = (0,1),
+                 shape : Tuple[int, int] = (10,10),
+                 directed=True,
                  transforms=None):
         super(GridGraphDataset, self).__init__()
-        self.y = y
         self.transform = transforms
         self.pk = pk
-        self.X = self.X
         self.directed = directed
-        self.X = self.get_graphs(x_col, y_col, duration_col, xlim, ylim, shape)
+        if not isinstance(Y, pd.Series):
+            Y = Y.set_index(pk).sort_index().squeeze(axis=0)
+        Y = Y.values
+        self.X = self.get_graphs(X, Y, x, y, add_duration, xlim, ylim, shape)
 
-    def get_graphs(self, x_col, y_col, duration_col, xlim, ylim, shape):
-        groups = self.X[self.pk].drop_duplicates().values
+    def get_graphs(self, X, Y, x_col, y_col, add_duration, xlim, ylim, shape):
+        groups = _split_dataframe(X, pk=self.pk)
         graphs = []
-        for i, group in enumerate(groups):
-            cur_X = self.X[pd.DataFrame(self.X[self.pk] == group).all(axis=1)]
-            graphs.append(create_graph_data_from_dataframe(cur_X, self.y[i], x_col, y_col, duration_col, 
+        for i, (group_id, cur_X) in tqdm(enumerate(groups), desc='Getting graphs...'):
+            graphs.append(create_graph_data_from_dataframe(cur_X, Y[i], x_col, y_col, add_duration,
                                                            xlim, ylim, shape, directed=self.directed))
 
         return graphs
 
-    def len(self):
+    def __len__(self):
         return len(self.X)
 
-    def get(self, idx):
+    def __getitem__(self, idx):
         return self.X[idx]
+    
+    def collate_fn(self, batch):
+        return batch
 
 
-class DatasetLightning(pl.LightningDataModule):
+class DatasetLightningBase(pl.LightningDataModule):
+    """
+    Base PyTorch Lightning DataModule for managing datasets and dataloaders.
+
+    Parameters:
+    - X (pd.DataFrame): Input data.
+    - y (ArrayLike): Labels for the data.
+    - pk (List[str]): Primary keys for grouping.
+    - test_size (int): Test size for the train-validation split.
+    - batch_size (int): Batch size for the dataloaders.
+    - split_type (str): Type of train-validation split.
+    """
     def __init__(self,  
-                 label_name, 
                  X: pd.DataFrame, 
-                 y:ArrayLike, 
-                 pk:List[str], 
-                 shape: Union[Tuple[int], int],
-                 representations: List[str],  
+                 Y: ArrayLike, 
+                 x: str,
+                 y:str,
+                 pk: List[str], 
                  test_size: int, 
-                 batch_size: int,
-                 split_type = 'unique'):
+                 batch_size: int, 
+                 split_type: str = 'simple'):
         super().__init__()
-
-        self.batch_size = batch_size
-        self.shape = shape
         self.X = X
+        self.Y = Y
+
+        self.x = x
         self.y = y
-        self.label_name = label_name
         self.pk = pk
-        self.representations = representations
         self.test_size = test_size
+        self.batch_size = batch_size
         self.split_type = split_type
 
     def setup(self, stage=None):
-
         X_train, y_train, X_val, y_val = self.split_train_val()
-        self.train_dataset = Dataset2D(X_train, y_train, pk=self.pk, 
-                                       shape=self.shape, representations=self.representations)
-        self.validation_dataset = Dataset2D(X_val, y_val, pk=self.pk, 
-                                       shape=self.shape, representations=self.representations)
+        self.create_train_val_datasets(X_train, y_train, X_val, y_val)
 
     def train_dataloader(self):
-
-        train_loader = DataLoader(
-            self.train_dataset, batch_size=self.batch_size, shuffle=True
+        return DataLoader(
+            self.train_dataset, batch_size=self.batch_size, 
+            shuffle=True, collate_fn=self.train_dataset.collate_fn
         )
-
-        return train_loader
 
     def val_dataloader(self):
-
-        valid_loader = DataLoader(
-            self.validation_dataset, batch_size=self.batch_size, shuffle=False
+        return DataLoader(
+            self.val_dataset, batch_size=self.batch_size, 
+            shuffle=False, collate_fn=self.val_dataset.collate_fn
         )
 
-        return valid_loader
-
     def split_train_val(self):
-
         pk = self.pk
         groups = self.X[self.pk].drop_duplicates()
-        if len(self.pk) == 1 or self.split_type=='simple':
+        if len(self.pk) == 1 or self.split_type == 'simple':
             if self.split_type != 'simple':
-                warnings.warn('Ignoring split type. Split type cannot != "simple" if there is single primary key.')
+                warnings.warn('''Ignoring split type. 
+                              Split type cannot != "simple" if there is single primary key.''')
             groups_train, groups_val = train_test_split(groups, test_size=self.test_size)
-        elif self.split_type =='all_categories_unique':
+        elif self.split_type == 'all_categories_unique':
             groups_train, groups_val = groups.copy(), groups.copy()
             for i in self.pk:
                 gr = groups[i].drop_duplicates().sort_values().sample(frac=1-self.test_size).astype(str)
@@ -419,38 +582,107 @@ class DatasetLightning(pl.LightningDataModule):
         elif self.split_type == 'all_categories_repetetive':
             groups_train, groups_val = iterative_split(groups, self.test_size, self.pk)
         elif self.split_type == 'first_category_repetetive':
-            groups_train, groups_val = train_test_split(groups, test_size=self.test_size, stratify = groups.iloc[:,0])
+            groups_train, groups_val = train_test_split(groups, 
+                                                        test_size=self.test_size, 
+                                                        stratify=groups.iloc[:, 0])
         elif self.split_type == 'first_category_unique':
-            groups_train, groups_val = train_test_split(groups.iloc[:,0].drop_duplicates(), test_size=self.test_size)
-            pk = groups.iloc[:,0]
+            groups_train, groups_val = train_test_split(groups.iloc[:, 0].drop_duplicates(), 
+                                                        test_size=self.test_size)
+            pk = groups.iloc[:, 0]
         else:
             raise ValueError(f'''Invalid split type: {self.split_type}. 
-                             Supported split types are: simple, first_category_unique, first_category_repetetive,
+                             Supported split types are: simple, first_category_unique,
+                             first_category_repetetive, 
                              all_categories_unique, all_categories_repetetive.''')
 
-        X_train = pd.concat(
-            [
-                self.X[pd.DataFrame(self.X[pk] == gr).all(axis=1)]
-                for gr in groups_train
-            ]
-        )
-        y_train = pd.concat(
-            [
-                self.y[pd.DataFrame(self.y[pk] == gr).all(axis=1)][self.label_name]
-                for gr in groups_train
-            ]
-        )
-        X_val = pd.concat(
-            [
-                self.X[pd.DataFrame(self.X[pk] == gr).all(axis=1)]
-                for gr in groups_val
-            ]
-        )
-        y_val = pd.concat(
-            [
-                self.y[pd.DataFrame(self.y[pk] == gr).all(axis=1)][self.label_name]
-                for gr in groups_val
-            ]
-        )
+        X_train = self.X.merge(groups_train, on=pk)
+        y_train = self.Y.merge(groups_train, on=pk)
+        X_val = self.X.merge(groups_val, on=pk)
+        y_val = self.Y.merge(groups_val, on=pk)
 
         return X_train, y_train, X_val, y_val
+
+    def create_train_val_datasets(self, X_train, y_train, X_val, y_val):
+        raise NotImplementedError("This method should be implemented by subclasses")
+    
+    
+class DatasetLightning2D(DatasetLightningBase):
+    """
+    PyTorch Lightning DataModule for 2D datasets and dataloaders.
+    """
+
+    def __init__(self,  
+                 X: pd.DataFrame, 
+                 Y: ArrayLike, 
+                 x: str,
+                 y: str,
+                 pk: List[str], 
+                 shape: Union[Tuple[int], int],
+                 representations: List[str],  
+                 test_size: int, 
+                 batch_size: int, 
+                 split_type: str = 'simple'):
+        super().__init__(X, Y, x, y, pk, test_size, batch_size, split_type)
+        self.shape = shape
+        self.representations = representations
+
+    def create_train_val_datasets(self, X_train, y_train, X_val, y_val):
+        self.train_dataset = Dataset2D(X_train, self.x, self.y, y_train,
+                                        pk=self.pk, shape=self.shape, representations=self.representations)
+        self.val_dataset = Dataset2D(X_val, self.x, self.y, y_val, 
+                                     pk=self.pk, shape=self.shape, representations=self.representations)
+
+
+class DatasetLightningTimeSeries(DatasetLightningBase):
+    """
+    PyTorch Lightning DataModule for Time Series datasets and dataloaders.
+    """
+
+    def __init__(self,  
+                X: pd.DataFrame, 
+                 Y: ArrayLike, 
+                 x: str,
+                 y: str,
+                 pk: List[str], 
+                 features: List[str],  
+                 test_size: int, 
+                 batch_size: int, 
+                 split_type: str = 'simple'):
+        super().__init__(X, Y, x, y, pk, test_size, batch_size, split_type)
+        self.features = features
+
+    def create_train_val_datasets(self, X_train, y_train, X_val, y_val):
+        self.train_dataset = DatasetTimeSeries(X_train, self.x, self.y, 
+                                               y_train, pk=self.pk, features=self.features)
+        self.val_dataset = DatasetTimeSeries(X_val, self.x, self.y,
+                                              y_val, pk=self.pk, features=self.features)
+
+
+class DatasetLightningTimeSeries2D(DatasetLightningBase):
+    """
+    PyTorch Lightning DataModule for Time Series 2D datasets and dataloaders.
+    """
+
+    def __init__(self,  
+                 X: pd.DataFrame, 
+                 Y: ArrayLike, 
+                 x: str,
+                 y: str,
+                 pk: List[str], 
+                 shape: Union[Tuple[int], int],
+                 representations: List[str],
+                 features: List[str],  
+                 test_size: int, 
+                 batch_size: int, 
+                 split_type: str = 'simple'):
+        super().__init__(X, Y, x, y, pk, test_size, batch_size, split_type)
+        self.shape = shape
+        self.representations = representations
+        self.features = features
+
+    def create_train_val_datasets(self, X_train, y_train, X_val, y_val):
+        data2D = Dataset2D(X_train, self.x, self.y, y_train, pk=self.pk, 
+                           shape=self.shape, representations=self.representations)
+        dataTime = DatasetTimeSeries(X_train, self.x, self.y, 
+                                     y_train, pk=self.pk, features=self.features)
+        self.train_dataset = TimeSeries_2D_Dataset(data2D, dataTime)
