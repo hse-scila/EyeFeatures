@@ -102,7 +102,7 @@ class ShapeBased(BaseAOIPreprocessor):
 
         # if self.instance is not None:
         #     X.drop(columns=self.instance, inplace=True)
-        X[self.aoi] = None
+        # X[self.aoi] = None
         to_concat = []
         flag = False
         if len(self.shapes) != 1:
@@ -331,6 +331,7 @@ class GradientBased(BaseAOIPreprocessor):
             self.threshold >= 0
         ), "Error: threshold must be greater than zero or equal to zero"
 
+    # @jit(forceobj=True, looplift=True)
     def _preprocess(self, X: pd.DataFrame) -> pd.DataFrame:
         assert X.shape[0] != 0, "Error: there are no points"
         if self.pk is not None:
@@ -417,7 +418,7 @@ class GradientBased(BaseAOIPreprocessor):
                                 max_magnitude = window_magnitude[1 + j][1 + k]
                             # If the point in the window (except for the center) doesn't have aoi, then add it to queue
                             elif (
-                                aoi_matrix[x_coord + j][y_coord + k] == 0
+                                aoi_matrix[x_coord + j][y_coord + k] == 0 and (x_coord + j, y_coord + k) not in queue_of_centers[ind]
                             ):  # and magnitude[1+j][1+k] >= gradient_eps:
                                 queue_of_centers[ind].append((x_coord + j, y_coord + k))
                 aoi_matrix[x_coord][y_coord] = aoi_to_add
@@ -592,7 +593,8 @@ class AOIExtractor(BaseEstimator, TransformerMixin):
                 method.threshold = self.threshold
             # method.pk = self.pk
             method.aoi = self.aoi
-            method.fit(X)
+            if not isinstance(method, ClusterMixin):
+                method.fit(X)
         return self
 
     # @jit(forceobj=True, looplift=True)
@@ -612,7 +614,7 @@ class AOIExtractor(BaseEstimator, TransformerMixin):
 
         fixations = None
         instances: List[str, pd.DataFrame] = _split_dataframe(
-            data_df, self.instance_columns, encode=False
+            X, self.instance_columns, encode=False
         )
         shapes_id = 0  # For ShapeBased
         # Entropy for selecting the best method

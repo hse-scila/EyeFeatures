@@ -171,7 +171,7 @@ class BaseAOIPreprocessor(BasePreprocessor, ABC):
         :return: density for each point in [x_min, x_max] x [y_min, y_max] area
         """
         df = data[[self.x, self.y]]
-        assert df.shape[0] != 0, "Error: there are no points"
+        assert df.shape[0] > 2, "Not enough points"
         kde = gaussian_kde(df.values.T)
         X, Y = np.mgrid[
             df[self.x].min() : df[self.x].max() : 100j,
