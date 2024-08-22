@@ -681,7 +681,7 @@ class AOIExtractor(BaseEstimator, TransformerMixin):
                 cur_fixations[self.aoi] = cur_fixations[self.aoi].map(map_areas)
                 entropy = entropy_transformer.transform(cur_fixations)[
                     "entropy"
-                ].values[0][0]
+                ].values[0]
                 if min_entropy > entropy:
                     min_entropy = entropy
                     fixations_with_aoi = cur_fixations
