@@ -644,7 +644,7 @@ def _transform_fixation(x, y, duration, t_bin):
         raise ValueError(
             "Fixations domain must be from unit square (i.e. in [0, 1] x [0, 1])"
         )
-    character = chr(97 + int(100 * x) // 5) + chr(65 + int(100 * y) // 5)
+    character = chr(97 + int(99 * x) // 5) + chr(65 + int(99 * y) // 5)
     return character * int(duration // t_bin)
 
 
@@ -759,8 +759,8 @@ def calc_scan_match_dist(
 
     dist = np.nan
     if len(p) * len(q) > 0:
-        p_x, p_y, p_dur = p.columns
-        q_x, q_y, q_dur = q.columns
+        p_x, p_y, _ = p.columns
+        q_x, q_y, _ = q.columns
         p_filtered = p.query(f"0 <= {p_x} <= 1 and 0 <= {p_y} <= 1")
         q_filtered = q.query(f"0 <= {q_x} <= 1 and 0 <= {q_y} <= 1")
         p_transformed = _transform_path(path=p_filtered, t_bin=t_bin)

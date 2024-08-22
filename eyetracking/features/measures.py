@@ -158,8 +158,10 @@ class ShannonEntropy(BaseTransformer):
         self._check_init(X_len=X.shape[0])
 
         features_names = ["entropy"]
+        group_names = []
 
         if self.pk is None:
+            group_names.append("all")
             X_splited = _split_dataframe(X, [self.aoi])
             all_fix = X.shape[0]
             aoi_probability = []
@@ -175,6 +177,7 @@ class ShannonEntropy(BaseTransformer):
             X_splited = _split_dataframe(X, self.pk)
             gathered_features = []
             for group, current_X in X_splited:
+                group_names.append(group)
                 all_fix = current_X.shape[0]
                 aoi_probability = []
                 X_aoi = _split_dataframe(current_X, [self.aoi])
@@ -185,9 +188,11 @@ class ShannonEntropy(BaseTransformer):
                 for p in aoi_probability:
                     entropy -= p * np.log2(p)
 
-                gathered_features.append([[entropy]])
+                gathered_features.append([entropy])
 
-        features_df = pd.DataFrame(data=gathered_features, columns=features_names)
+        features_df = pd.DataFrame(
+            data=gathered_features, columns=features_names, index=group_names
+        )
         return features_df if self.return_df else features_df.values
 
 
@@ -202,7 +207,6 @@ class SpectralEntropy(BaseTransformer):
         self.aoi = aoi
 
     def _check_init(self, X_len: int):
-        assert self.aoi is not None, "Error: Provide aoi column"
         assert X_len != 0, "Error: there are no fixations"
 
     @jit(forceobj=True, looplift=True)
@@ -221,19 +225,22 @@ class SpectralEntropy(BaseTransformer):
     def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
         self._check_init(X_len=X.shape[0])
 
-        columns_names = []
+        columns_names = ["spec_entropy"]
         gathered_features = []
+        group_names = []
 
         if self.pk is None:
-            columns_names.append("spec_ent")
+            group_names.append("all")
             gathered_features.append([self.spectral_entropy(X)])
         else:
             X_splited = _split_dataframe(X, self.pk)
             for group, current_X in X_splited:
-                columns_names.append(f"spec_ent_{str(group)}")
+                group_names.append(group)
                 gathered_features.append([self.spectral_entropy(current_X)])
 
-        features_df = pd.DataFrame(data=gathered_features, columns=columns_names)
+        features_df = pd.DataFrame(
+            data=gathered_features, columns=columns_names, index=group_names
+        )
         return features_df if self.return_df else features_df.values
 
 
@@ -258,7 +265,6 @@ class FuzzyEntropy(BaseTransformer):
         self.eps = 1e-7
 
     def _check_init(self, X_len: int):
-        assert self.aoi is not None, "Error: Provide aoi column"
         assert X_len != 0, "Error: there are no fixations"
 
     @jit(forceobj=True, looplift=True)
@@ -286,19 +292,22 @@ class FuzzyEntropy(BaseTransformer):
     def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
         self._check_init(X_len=X.shape[0])
 
-        columns_names = []
+        columns_names = ["fuzzy_entropy"]
         gathered_features = []
+        group_names = []
 
         if self.pk is None:
-            columns_names.append("fuzzy_ent")
+            group_names.append("all")
             gathered_features.append([self.fuzzy_entropy(X)])
         else:
             X_splited = _split_dataframe(X, self.pk)
             for group, current_X in X_splited:
-                columns_names.append(f"fuzzy_ent_{str(group)}")
-                gathered_features.append([self.fuzzy_entropy(X)])
+                group_names.append(group)
+                gathered_features.append([self.fuzzy_entropy(current_X)])
 
-        features_df = pd.DataFrame(data=gathered_features, columns=columns_names)
+        features_df = pd.DataFrame(
+            data=gathered_features, columns=columns_names, index=group_names
+        )
         return features_df if self.return_df else features_df.values
 
 
@@ -312,18 +321,19 @@ class SampleEntropy(BaseTransformer):
         self,
         m: int = 2,
         r: float = 0.2,
+        x: str = None,
+        y: str = None,
         aoi: str = None,
         pk: List[str] = None,
         return_df: bool = True,
     ):
-        super().__init__(pk=pk, return_df=return_df)
+        super().__init__(x=x, y=y, pk=pk, return_df=return_df)
         self.m = m
         self.r = r
         self.aoi = aoi
         self.eps = 1e-7
 
     def _check_init(self, X_len: int):
-        assert self.aoi is not None, "Error: Provide aoi column"
         assert X_len != 0, "Error: there are no fixations"
 
     @jit(forceobj=True, looplift=True)
@@ -347,29 +357,38 @@ class SampleEntropy(BaseTransformer):
     def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
         self._check_init(X_len=X.shape[0])
 
-        columns_names = []
+        columns_names = ["sample_entropy"]
         gathered_features = []
+        group_names = []
 
         if self.pk is None:
-            columns_names.append("sample_ent")
+            group_names.append("all")
             gathered_features.append([self.sample_entropy(X)])
         else:
             X_splited = _split_dataframe(X, self.pk)
             for group, current_X in X_splited:
-                columns_names.append(f"sample_ent_{str(group)}")
-                gathered_features.append([self.sample_entropy(X)])
+                group_names.append(group)
+                gathered_features.append([self.sample_entropy(current_X)])
 
-        features_df = pd.DataFrame(data=gathered_features, columns=columns_names)
+        features_df = pd.DataFrame(
+            data=gathered_features, columns=columns_names, index=group_names
+        )
         return features_df if self.return_df else features_df.values
 
 
 class IncrementalEntropy(BaseTransformer):
-    def __init__(self, aoi: str = None, pk: List[str] = None, return_df: bool = True):
-        super().__init__(pk=pk, return_df=return_df)
+    def __init__(
+        self,
+        x: str = None,
+        y: str = None,
+        aoi: str = None,
+        pk: List[str] = None,
+        return_df: bool = True,
+    ):
+        super().__init__(x=x, y=y, pk=pk, return_df=return_df)
         self.aoi = aoi
 
     def _check_init(self, X_len: int):
-        assert self.aoi is not None, "Error: Provide aoi column"
         assert X_len != 0, "Error: there are no fixations"
 
     @jit(forceobj=True, looplift=True)
@@ -393,19 +412,22 @@ class IncrementalEntropy(BaseTransformer):
     def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
         self._check_init(X_len=X.shape[0])
 
-        columns_names = []
+        columns_names = ["increment_entropy"]
         gathered_features = []
+        group_names = []
 
         if self.pk is None:
-            columns_names.append("inc_ent")
+            group_names.append("all")
             gathered_features.append([self.incremental_entropy(X)])
         else:
             X_splited = _split_dataframe(X, self.pk)
             for group, current_X in X_splited:
-                columns_names.append(f"inc_ent_{str(group)}")
-                gathered_features.append([self.incremental_entropy(X)])
+                group_names.append(group)
+                gathered_features.append([self.incremental_entropy(current_X)])
 
-        features_df = pd.DataFrame(data=gathered_features, columns=columns_names)
+        features_df = pd.DataFrame(
+            data=gathered_features, columns=columns_names, index=group_names
+        )
         return features_df if self.return_df else features_df.values
 
 
@@ -417,16 +439,17 @@ class GriddedDistributionEntropy(BaseTransformer):
     def __init__(
         self,
         grid_size: int = 10,
+        x: str = None,
+        y: str = None,
         aoi: str = None,
         pk: List[str] = None,
         return_df: bool = True,
     ):
-        super().__init__(pk=pk, return_df=return_df)
+        super().__init__(x=x, y=y, pk=pk, return_df=return_df)
         self.grid_size = grid_size
         self.aoi = aoi
 
     def _check_init(self, X_len: int):
-        assert self.aoi is not None, "Error: Provide aoi column"
         assert X_len != 0, "Error: there are no fixations"
 
     @jit(forceobj=True, looplift=True)
@@ -446,19 +469,22 @@ class GriddedDistributionEntropy(BaseTransformer):
     def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
         self._check_init(X_len=X.shape[0])
 
-        columns_names = []
+        columns_names = ["grid_entropy"]
         gathered_features = []
+        group_names = []
 
         if self.pk is None:
-            columns_names.append("grid_ent")
+            group_names.append("all")
             gathered_features.append([self.gridded_distribution_entropy(X)])
         else:
             X_splited = _split_dataframe(X, self.pk)
             for group, current_X in X_splited:
-                columns_names.append(f"grid_ent_{str(group)}")
-                gathered_features.append([self.gridded_distribution_entropy(X)])
+                group_names.append(group)
+                gathered_features.append([self.gridded_distribution_entropy(current_X)])
 
-        features_df = pd.DataFrame(data=gathered_features, columns=columns_names)
+        features_df = pd.DataFrame(
+            data=gathered_features, columns=columns_names, index=group_names
+        )
         return features_df if self.return_df else features_df.values
 
 
@@ -472,17 +498,18 @@ class PhaseEntropy(BaseTransformer):
         self,
         m: int = 2,
         tau: int = 1,
+        x: str = None,
+        y: str = None,
         aoi: str = None,
         pk: List[str] = None,
         return_df: bool = True,
     ):
-        super().__init__(pk=pk, return_df=return_df)
+        super().__init__(x=x, y=y, pk=pk, return_df=return_df)
         self.m = m
         self.tau = tau
         self.aoi = aoi
 
     def _check_init(self, X_len: int):
-        assert self.aoi is not None, "Error: Provide aoi column"
         assert X_len != 0, "Error: there are no fixations"
 
     @jit(forceobj=True, looplift=True)
@@ -509,19 +536,22 @@ class PhaseEntropy(BaseTransformer):
     def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
         self._check_init(X_len=X.shape[0])
 
-        columns_names = []
+        columns_names = ["phase_entropy"]
         gathered_features = []
+        group_names = []
 
         if self.pk is None:
-            columns_names.append("phase_ent")
+            group_names.append("all")
             gathered_features.append([self.phase_entropy(X)])
         else:
             X_splited = _split_dataframe(X, self.pk)
             for group, current_X in X_splited:
-                columns_names.append(f"phase_ent_{str(group)}")
-                gathered_features.append([self.phase_entropy(X)])
+                group_names.append(group)
+                gathered_features.append([self.phase_entropy(current_X)])
 
-        features_df = pd.DataFrame(data=gathered_features, columns=columns_names)
+        features_df = pd.DataFrame(
+            data=gathered_features, columns=columns_names, index=group_names
+        )
         return features_df if self.return_df else features_df.values
 
 
@@ -537,18 +567,19 @@ class LyapunovExponent(BaseTransformer):
         m: int = 2,
         tau: int = 1,
         T: int = 1,
+        x: str = None,
+        y: str = None,
         aoi: str = None,
         pk: List[str] = None,
         return_df: bool = True,
     ):
-        super().__init__(pk=pk, return_df=return_df)
+        super().__init__(x=x, y=y, pk=pk, return_df=return_df)
         self.m = m
         self.tau = tau
         self.T = T
         self.aoi = aoi
 
     def _check_init(self, X_len: int):
-        assert self.aoi is not None, "Error: Provide aoi column"
         assert X_len != 0, "Error: there are no fixations"
 
     @jit(forceobj=True, looplift=True)
@@ -593,19 +624,22 @@ class LyapunovExponent(BaseTransformer):
     def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
         self._check_init(X_len=X.shape[0])
 
-        columns_names = []
+        columns_names = ["lyap_exp"]
         gathered_features = []
+        group_names = []
 
         if self.pk is None:
-            columns_names.append("lyap_exp")
+            group_names.append("all")
             gathered_features.append([self.largest_lyapunov_exponent(X)])
         else:
             X_splited = _split_dataframe(X, self.pk)
             for group, current_X in X_splited:
-                columns_names.append(f"lyap_exp_{str(group)}")
-                gathered_features.append([self.largest_lyapunov_exponent(X)])
+                group_names.append(group)
+                gathered_features.append([self.largest_lyapunov_exponent(current_X)])
 
-        features_df = pd.DataFrame(data=gathered_features, columns=columns_names)
+        features_df = pd.DataFrame(
+            data=gathered_features, columns=columns_names, index=group_names
+        )
         return features_df if self.return_df else features_df.values
 
 
@@ -619,17 +653,18 @@ class FractalDimension(BaseTransformer):
         self,
         m: int = 2,
         tau: int = 1,
+        x: str = None,
+        y: str = None,
         aoi: str = None,
         pk: List[str] = None,
         return_df: bool = True,
     ):
-        super().__init__(pk=pk, return_df=return_df)
+        super().__init__(x=x, y=y, pk=pk, return_df=return_df)
         self.m = m
         self.tau = tau
         self.aoi = aoi
 
     def _check_init(self, X_len: int):
-        assert self.aoi is not None, "Error: Provide aoi column"
         assert X_len != 0, "Error: there are no fixations"
 
     @jit(forceobj=True, looplift=True)
@@ -667,19 +702,22 @@ class FractalDimension(BaseTransformer):
     def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
         self._check_init(X_len=X.shape[0])
 
-        columns_names = []
+        columns_names = ["fractal_dim"]
         gathered_features = []
+        group_names = []
 
         if self.pk is None:
-            columns_names.append("fractal_dim")
+            group_names.append("all")
             gathered_features.append([self.box_counting_dimension(X)])
         else:
             X_splited = _split_dataframe(X, self.pk)
             for group, current_X in X_splited:
-                columns_names.append(f"fractal_dim_{str(group)}")
+                group_names.append(group)
                 gathered_features.append([self.box_counting_dimension(current_X)])
 
-        features_df = pd.DataFrame(data=gathered_features, columns=columns_names)
+        features_df = pd.DataFrame(
+            data=gathered_features, columns=columns_names, index=group_names
+        )
         return features_df if self.return_df else features_df.values
 
 
@@ -695,11 +733,13 @@ class CorrelationDimension(BaseTransformer):
         m: int = 2,
         tau: int = 1,
         r: float = 0.5,
+        x: str = None,
+        y: str = None,
         aoi: str = None,
         pk: List[str] = None,
         return_df: bool = True,
     ):
-        super().__init__(pk=pk, return_df=return_df)
+        super().__init__(x=x, y=y, pk=pk, return_df=return_df)
         self.m = m
         self.tau = tau
         self.r = r
@@ -707,7 +747,6 @@ class CorrelationDimension(BaseTransformer):
         self.eps = 1e-7
 
     def _check_init(self, X_len: int):
-        assert self.aoi is not None, "Error: Provide aoi column"
         assert X_len != 0, "Error: there are no fixations"
 
     @jit(forceobj=True, looplift=True)
@@ -739,19 +778,22 @@ class CorrelationDimension(BaseTransformer):
     def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
         self._check_init(X_len=X.shape[0])
 
-        columns_names = []
+        columns_names = ["corr_dim"]
         gathered_features = []
+        group_names = []
 
         if self.pk is None:
-            columns_names.append("corr_dim")
+            group_names.append("all")
             gathered_features.append([self.correlation_dimension(X)])
         else:
             X_splited = _split_dataframe(X, self.pk)
             for group, current_X in X_splited:
-                columns_names.append(f"corr_dim_{str(group)}")
+                group_names.append(group)
                 gathered_features.append([self.correlation_dimension(current_X)])
 
-        features_df = pd.DataFrame(data=gathered_features, columns=columns_names)
+        features_df = pd.DataFrame(
+            data=gathered_features, columns=columns_names, index=group_names
+        )
         return features_df if self.return_df else features_df.values
 
 
@@ -770,11 +812,13 @@ class RQAMeasures(BaseTransformer):
         rho: float = 1e-1,
         min_length: int = 1,
         measures: List[str] = ["rec", "det", "lam", "corm"],
+        x: str = None,
+        y: str = None,
         aoi: str = None,
         pk: List[str] = None,
         return_df: bool = True,
     ):
-        super().__init__(pk=pk, return_df=return_df)
+        super().__init__(x=x, y=y, pk=pk, return_df=return_df)
         self.metric = metric
         self.rho = rho
         self.min_length = min_length
@@ -784,7 +828,6 @@ class RQAMeasures(BaseTransformer):
 
     def _check_init(self, X_len: int):
         assert len(self.measures) > 0, "Error: at least one measure must be passed"
-        assert self.aoi is not None, "Error: Provide aoi column"
         assert X_len != 0, "Error: there are no fixations"
         assert self.rho is not None, "Error: rho must be a float"
         assert self.min_length is not None, "Error: min_length must be an integer"
@@ -844,22 +887,25 @@ class RQAMeasures(BaseTransformer):
 
         columns_names = []
         gathered_features = []
+        group_names = []
 
         if self.pk is None:
+            group_names.append("all")
             cur_names, cur_features = self.calculate_measures(X)
             columns_names.extend(cur_names)
             gathered_features.extend(cur_features)
         else:
             X_splited = _split_dataframe(X, self.pk)
             for group, current_X in X_splited:
-                gnm = str(group)
+                group_names.append(group)
                 cur_names, cur_features = self.calculate_measures(current_X)
-                for i in range(len(cur_names)):
-                    cur_names[i] += f"_{gnm}"
-                columns_names.extend(cur_names)
-                gathered_features.extend(cur_features)
+                if len(columns_names) == 0:
+                    columns_names.extend(cur_names)
+                gathered_features.extend([cur_features])
 
-        features_df = pd.DataFrame(data=gathered_features, columns=columns_names)
+        features_df = pd.DataFrame(
+            data=gathered_features, columns=columns_names, index=group_names
+        )
         return features_df if self.return_df else features_df.values
 
 
@@ -886,11 +932,13 @@ class SaccadeUnlikelihood(BaseTransformer):
         sigma_r1: float = 0.3,
         sigma_r2: float = 0.7,
         psi: float = 0.9,
+        x: str = None,
+        y: str = None,
         aoi: str = None,
         pk: List[str] = None,
         return_df: bool = True,
     ):
-        super().__init__(pk=pk, return_df=return_df)
+        super().__init__(x=x, y=y, pk=pk, return_df=return_df)
         self.mu_p = mu_p
         self.sigma_p1 = sigma_p1
         self.sigma_p2 = sigma_p2
@@ -901,7 +949,6 @@ class SaccadeUnlikelihood(BaseTransformer):
         self.aoi = aoi
 
     def _check_init(self, X_len: int):
-        assert self.aoi is not None, "Error: Provide aoi column"
         assert X_len != 0, "Error: there are no fixations"
 
     @jit(forceobj=True, looplift=True)
@@ -951,17 +998,20 @@ class SaccadeUnlikelihood(BaseTransformer):
     def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
         self._check_init(X_len=X.shape[0])
 
-        columns_names = []
+        columns_names = ["saccade_nll"]
         gathered_features = []
+        group_names = []
 
         if self.pk is None:
-            columns_names.append("sac_nll")
+            group_names.append("all")
             gathered_features.append([self.calculate_nll(X)])
         else:
             X_splited = _split_dataframe(X, self.pk)
             for group, current_X in X_splited:
-                columns_names.append(f"sac_nll_{str(group)}")
+                group_names.append(group)
                 gathered_features.append([self.calculate_nll(current_X)])
 
-        features_df = pd.DataFrame(data=gathered_features, columns=columns_names)
+        features_df = pd.DataFrame(
+            data=gathered_features, columns=columns_names, index=group_names
+        )
         return features_df if self.return_df else features_df.values

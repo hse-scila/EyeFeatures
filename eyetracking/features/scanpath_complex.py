@@ -310,8 +310,8 @@ def get_cross_product_matrix(
 def compute_rv_coefficient(S1: np.ndarray, S2: np.ndarray) -> float:
     """
     Calculate the RV coefficient between two cross-product matrices.
-    :param G1: first cross-product matrix
-    :param G2: second cross-product matrix
+    :param S1: first cross-product matrix
+    :param S2: second cross-product matrix
     :return: RV coefficient
     """
     numerator = np.trace(S1 @ S2.T)
@@ -325,7 +325,7 @@ def get_compromise_matrix(distance_matrices: List[np.ndarray]) -> np.ndarray:
     :param distance_matrices: List of distance matrices (each an ndarray)
     :return: compromise cross-product matrix
     """
-    n = distance_matrices[0].shape[0]
+    assert len(distance_matrices) > 0, "At least one distance matrix is required"
     num_matrices = len(distance_matrices)
 
     # compute the cross-product matrices
