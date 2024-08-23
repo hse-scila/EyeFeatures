@@ -3,7 +3,7 @@ import torch
 import torchmetrics
 from sklearn.model_selection import train_test_split
 from torch import nn
-from typing import Union, List, Tuple, Dict, Optional, Callable
+from typing import Union, List, Tuple, Dict
 from tqdm import tqdm
 import pandas as pd
 from scipy.stats import gaussian_kde
@@ -11,9 +11,14 @@ from numpy.typing import NDArray
 import numpy as np
 import warnings
 from torch.nn import functional as F
+import torchmetrics
+import pytorch_lightning as pl
+from typing import Union, Callable, Optional
 from torch_geometric.nn import GCNConv, GINConv
 from torch_geometric.nn import global_mean_pool
 from eyetracking.features.complex import get_heatmaps
+#from ..features.complex import get_heatmaps
+#from utils import get_heatmaps
 
 
 class VGGBlock(nn.Module):
@@ -41,7 +46,7 @@ class VGGBlock(nn.Module):
         self.bn = nn.BatchNorm2d(out_channels)
         self.relu = nn.ReLU(inplace=True)
         
-    def forward(self, images: torch.Tensor) -> torch.Tensor:
+    def forward(self, images):
         x = self.conv(images)
         x = self.bn(x)
         x = self.relu(x)
@@ -49,6 +54,7 @@ class VGGBlock(nn.Module):
     
 
 class ResnetBlock(nn.Module):
+    
     """
     A ResNet-style residual block consisting of two convolution layers with skip connections.
 
@@ -75,7 +81,7 @@ class ResnetBlock(nn.Module):
         self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=kernel_size, padding=padding)
         self.bn2 = nn.BatchNorm2d(out_channels)
         
-    def forward(self, images: torch.Tensor) -> torch.Tensor:
+    def forward(self, images):
         identity = images
         out = self.conv1(images)
         out = self.bn1(out)
@@ -84,10 +90,11 @@ class ResnetBlock(nn.Module):
         out = self.bn2(out)
         out += identity
         out = self.relu(out)
+        
         return out
-
-
+    
 class InceptionBlock(nn.Module):
+
     """
     An Inception-style block consisting of multiple convolution branches operating on different scales.
 
@@ -128,16 +135,17 @@ class InceptionBlock(nn.Module):
             nn.Conv2d(in_channels, pool_proj, kernel_size=1)
         )
         
-    def forward(self, images: torch.Tensor) -> torch.Tensor:
+    def forward(self, images):
         branch1x1 = self.branch1x1(images)
         branch3x3 = self.branch3x3(images)
         branch5x5 = self.branch5x5(images)
         branch_pool = self.branch_pool(images)
         outputs = [branch1x1, branch3x3, branch5x5, branch_pool]
         return torch.cat(outputs, 1)
-
+    
 
 class DepthwiseSeparableConv(nn.Module):
+
     """
     Depthwise separable convolution, which consists of a depthwise convolution followed by a pointwise convolution.
     
@@ -151,25 +159,31 @@ class DepthwiseSeparableConv(nn.Module):
     Returns:
     - x (Tensor): Output tensor after applying depthwise and pointwise convolutions, batch normalization, and ReLU activation.
     """
-    def __init__(self, in_channels: int, out_channels: int, kernel_size: int = 3, stride: int = 1, padding: int = 1):
+    def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, padding=1):
         super(DepthwiseSeparableConv, self).__init__()
         self.depthwise = nn.Conv2d(in_channels, in_channels, kernel_size=kernel_size, stride=stride, padding=padding, groups=in_channels, bias=False)
         self.pointwise = nn.Conv2d(in_channels, out_channels, kernel_size=1, bias=False)
         self.bn = nn.BatchNorm2d(out_channels)
         self.relu = nn.ReLU(inplace=True)
     
-    def forward(self, images: torch.Tensor) -> torch.Tensor:
+    def forward(self, images):
         x = self.depthwise(images)
         x = self.pointwise(x)
         x = self.bn(x)
         x = self.relu(x)
         return x
-
+    
+_blocks = {'VGG_block': VGGBlock,
+           'Resnet_block': ResnetBlock,
+           'Inception_block': InceptionBlock,
+           'DepthwiseConvBlock': DepthwiseSeparableConv}
+    
 
 def create_simple_CNN(
         config: Dict[int, Dict[str, Union[str, Dict]]],
         in_channels: int,
-        shape: Optional[Tuple[int, int]] = None) -> Union[nn.Sequential, Tuple[nn.Sequential, Tuple[int, int]]]:
+        shape: Tuple[int, int] = None):
+    
     """
     Creates a simple CNN based on the provided configuration.
 
@@ -224,29 +238,30 @@ def create_simple_CNN(
 
 
 class SimpleRNN(nn.Module):
-    """
+    def __init__(
+        self, 
+        rnn_type, 
+        input_size, 
+        hidden_size, 
+        num_layers=1, 
+        bidirectional=False, 
+        pre_rnn_linear_size=None
+    ):
+        """
     A simple recurrent neural network (RNN) module that supports RNN, LSTM, and GRU architectures.
 
     Parameters:
     - rnn_type (str): Type of RNN ('RNN', 'LSTM', or 'GRU').
     - input_size (int): Number of input features.
     - hidden_size (int): Number of hidden units.
+    - output_size (int): Number of output units.
     - num_layers (int, optional): Number of RNN layers. Default is 1.
     - bidirectional (bool, optional): Whether the RNN is bidirectional. Default is False.
-    - pre_rnn_linear_size (Optional[int], optional): Size of the optional linear layer before the RNN.
-
+    - pre_rnn_linear_size (int, optional): Size of the optional linear layer before the RNN.
+    
     Returns:
-    - hidden (Tensor): Output tensor from the RNN (last hidden state or concatenated hidden state for bidirectional RNN).
+    - output (Tensor): Output tensor after the RNN and fully connected layer.
     """
-    def __init__(
-        self, 
-        rnn_type: str, 
-        input_size: int, 
-        hidden_size: int, 
-        num_layers: int = 1, 
-        bidirectional: bool = False, 
-        pre_rnn_linear_size: Optional[int] = None
-    ):
         super(SimpleRNN, self).__init__()
         self.hidden_size = hidden_size
         self.num_layers = num_layers
@@ -273,7 +288,8 @@ class SimpleRNN(nn.Module):
         else:
             raise ValueError(f"Unsupported rnn_type: {rnn_type}. Choose from 'RNN', 'LSTM', 'GRU'.")
     
-    def forward(self, sequences: torch.Tensor, lengths: torch.Tensor) -> torch.Tensor:
+    def forward(self, sequences, lengths):
+        # Apply the optional linear layer before the RNN
         x = sequences
         if self.pre_rnn_linear is not None:
             x = self.pre_rnn_linear(x)
@@ -286,7 +302,7 @@ class SimpleRNN(nn.Module):
         packed_out, hidden = self.rnn(packed_x)
         
         # Unpack the sequence
-        out, _ = nn.utils.rnn.pad_packed_sequence(packed_out, batch_first=True)
+        #out, _ = nn.utils.rnn.pad_packed_sequence(packed_out, batch_first=True)
         
         # If the RNN is bidirectional, concatenate the hidden states from both directions
         if self.bidirectional:
@@ -299,31 +315,30 @@ class SimpleRNN(nn.Module):
                 hidden = hidden[0][-1]
             else:  # For RNN and GRU
                 hidden = hidden[-1]
-        
+        # Pass the last hidden state through the fully connected layer
         return hidden
 
 
 class VitNet(nn.Module):
     """
-    A vision-and-text network that fuses CNN and RNN-based representations using concatenation or addition.
-
+    Parent class for a vision-and-text network that fuses CNN and RNN-based representations using concatenation or addition.
+    
     Parameters:
     - CNN (nn.Module): CNN backbone for processing image data.
     - RNN (nn.Module): RNN backbone for processing sequence data.
+    - input_dim (int): Input dimension for the RNN.
+    - projected_dim (int): Dimension of the projected sequence representation.
     - fusion_mode (str, optional): Fusion mode ('concat' or 'add'). Default is 'concat'.
-    - activation (Optional[nn.Module], optional): Activation function applied after fusion. Default is None.
-    - embed_dim (int, optional): Embedding dimension for the projected features. Default is 32.
-
-    Returns:
-    - x (Tensor): Fused feature representation of images and sequences.
+    - activation (nn.Module, optional): Activation function applied after fusion. Default is None.
+    - embed_dim (int, optional): Embedding dimension for the projected features. Default is 128.
     """
     
     def __init__(self, 
-                 CNN: nn.Module, 
-                 RNN: nn.Module, 
-                 fusion_mode: str = 'concat', 
-                 activation: Optional[nn.Module] = None, 
-                 embed_dim: int = 32):
+                 CNN, 
+                 RNN, 
+                 fusion_mode = 'concat', 
+                 activation = None, 
+                 embed_dim = 32):
         super(VitNet, self).__init__()
         self.CNN = CNN
         self.RNN = RNN
@@ -333,10 +348,10 @@ class VitNet(nn.Module):
         self.rnn_proj = nn.LazyLinear(embed_dim)
         self.flat = nn.Flatten()
 
-    def forward(self, images: torch.Tensor, sequences: torch.Tensor, lengths: torch.Tensor) -> torch.Tensor:
+    def forward(self, images, sequences, lengths):
         x_1 = self.image_proj(self.flat(self.CNN(images)))
 
-        projected_sequences = self.rnn_proj(sequences)
+        projected_sequences = self.rnn_projection(sequences)
         packed_input = nn.utils.rnn.pack_padded_sequence(projected_sequences, lengths, batch_first=True, enforce_sorted=False)
         packed_output, x_2 = self.RNN(packed_input)
         _, _ = nn.utils.rnn.pad_packed_sequence(packed_output, batch_first=True, padding_value=0)
@@ -350,47 +365,44 @@ class VitNet(nn.Module):
             x = self.activation(x)
 
         return x
-
-
+    
 class VitNetWithCrossAttention(VitNet):
     """
-    A vision-and-text network extending VitNet by adding cross-attention between image and sequence representations.
+    Child class extending VitNet by adding cross-attention between image and sequence representations.
 
     Parameters:
     - CNN (nn.Module): CNN backbone for processing image data.
     - RNN (nn.Module): RNN backbone for processing sequence data.
+    - input_dim (int): Input dimension for the RNN.
+    - projected_dim (int): Dimension of the projected sequence representation.
     - cross_attention_fusion_mode (str, optional): Fusion mode after cross-attention ('concat' or 'add'). Default is 'concat'.
-    - activation (Optional[nn.Module], optional): Activation function applied after fusion. Default is None.
+    - activation (nn.Module, optional): Activation function applied after fusion. Default is None.
     - embed_dim (int, optional): Embedding dimension for the projected features. Default is 128.
     - return_attention_weights (bool, optional): Whether to return attention weights. Default is False.
-
-    Returns:
-    - x (Tensor): Output after fusion and cross-attention.
-    - attention_weights (Optional[Tensor]): Attention weights if return_attention_weights is True.
     """
     
     def __init__(self, 
-                 CNN: nn.Module, 
-                 RNN: nn.Module, 
+                 CNN, 
+                 RNN, 
                  input_dim: int, 
                  projected_dim: int, 
-                 cross_attention_fusion_mode: str = 'concat', 
-                 activation: Optional[nn.Module] = None, 
-                 embed_dim: int = 128, 
-                 return_attention_weights: bool = False):
-        super(VitNetWithCrossAttention, self).__init__(CNN, RNN, fusion_mode='concat', activation=activation, embed_dim=embed_dim)
+                 cross_attention_fusion_mode = 'concat', 
+                 activation = None, 
+                 embed_dim = 128, 
+                 return_attention_weights = False):
+        super(VitNetWithCrossAttention, self).__init__(CNN, RNN, input_dim, projected_dim, fusion_mode='concat', activation=activation, embed_dim=embed_dim)
         self.cross_attention_layer = nn.MultiheadAttention(embed_dim, num_heads=8)
         self.cross_attention_fusion_mode = cross_attention_fusion_mode
         self.return_attention_weights = return_attention_weights
         self.padding_idx = RNN.padding_idx
 
-    def forward(self, images: torch.Tensor, sequences: torch.Tensor, lengths: torch.Tensor) -> Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
+    def forward(self, images, sequences, lengths):
         # First, run the parent class's forward method to get the basic fusion output
         x = super().forward(images, sequences, lengths)
 
         # Cross-attention mechanism
         x_1 = self.image_proj(self.CNN(images))
-        projected_sequences = self.rnn_proj(sequences)
+        projected_sequences = self.sequence_projection(sequences)
         packed_input = nn.utils.rnn.pack_padded_sequence(projected_sequences, lengths, batch_first=True, enforce_sorted=False)
         packed_output, _ = self.RNN(packed_input)
         all_hidden, _ = nn.utils.rnn.pad_packed_sequence(packed_output, batch_first=True, padding_value=0)
@@ -415,7 +427,8 @@ class VitNetWithCrossAttention(VitNet):
         return x
     
 
-class GCN(nn.Module):
+class GCN(torch.nn.Module):
+
     """
     A graph convolutional network (GCN) with optional learnable node embeddings.
 
@@ -426,23 +439,24 @@ class GCN(nn.Module):
     - layer_sizes (List[int]): List of hidden layer sizes for each GCN layer.
     - out_channels (int): Number of output channels.
     - use_embeddings (bool, optional): Whether to use learnable embeddings. Default is True.
-
+    
     Returns:
     - x (Tensor): Output tensor after graph convolutions and global mean pooling.
     """
-    def __init__(self, num_nodes: int, feature_dim: int, embedding_dim: int, layer_sizes: List[int], out_channels: int, use_embeddings: bool = True):
+    def __init__(self, num_nodes, feature_dim, embedding_dim, layer_sizes, out_channels, use_embeddings=True):
         super(GCN, self).__init__()
         self.use_embeddings = use_embeddings
         if use_embeddings:
-            self.embeddings = nn.Embedding(num_nodes, embedding_dim)  # Learnable embeddings
+            self.embeddings = torch.nn.Embedding(num_nodes, embedding_dim)  # Learnable embeddings
 
         in_channels = feature_dim + (embedding_dim if use_embeddings else 0)
-        self.convs = nn.ModuleList()  # List of GCN layers
+        self.convs = torch.nn.ModuleList()  # List of GCN layers
         for hidden_channels in layer_sizes:
             self.convs.append(GCNConv(in_channels, hidden_channels))
             in_channels = hidden_channels  # Update in_channels for next layer
 
-    def forward(self, graphs: torch.Tensor) -> torch.Tensor:
+
+    def forward(self, graphs):
         if self.use_embeddings:
             # Combine node features and learnable embeddings
             node_embeddings = self.embeddings.weight[graphs.mapping]  # Retrieve embeddings for each node
@@ -458,10 +472,13 @@ class GCN(nn.Module):
 
         # Global pooling (mean pooling)
         x = global_mean_pool(x, graphs.batch)
-        return x
+        
+        
+        return x 
     
 
-class GIN(nn.Module):
+class GIN(torch.nn.Module):
+
     """
     A graph isomorphism network (GIN) with shared embeddings for nodes across graphs.
 
@@ -471,43 +488,33 @@ class GIN(nn.Module):
     - embedding_dim (int): Dimensionality of the shared node embeddings.
     - layer_sizes (List[int]): List of hidden layer sizes for each GIN layer.
     - out_channels (int): Number of output channels.
-    - use_embeddings (bool, optional): Whether to use learnable embeddings. Default is True
-
+    
     Returns:
     - x (Tensor): Output tensor after GIN layers and global mean pooling.
     """
      
-    def __init__(self, 
-                 num_common_nodes: int, 
-                 feature_dim: int,
-                 embedding_dim: int,
-                 layer_sizes: List[int], 
-                 out_channels: int,
-                 use_embeddings: bool):
+    def __init__(self, num_common_nodes, feature_dim, embedding_dim, layer_sizes, out_channels):
         super(GIN, self).__init__()
         # Shared embeddings across graphs
-        self.use_embeddings = 
-        self.embeddings = nn.Embedding(num_common_nodes, embedding_dim)
+        self.embeddings = torch.nn.Embedding(num_common_nodes, embedding_dim)
 
         # Determine the input dimension for the first GIN layer
         in_channels = feature_dim + embedding_dim
         
-        self.convs = nn.ModuleList()  # List of GIN layers
+        self.convs = torch.nn.ModuleList()  # List of GIN layers
         for hidden_channels in layer_sizes:
-            nn_layer = nn.Sequential(nn.Linear(in_channels, hidden_channels), 
-                                     nn.ReLU(), nn.Linear(hidden_channels, hidden_channels))
-            self.convs.append(GINConv(nn_layer))
+            nn = nn.Sequential(nn.Linear(in_channels, hidden_channels), 
+                               nn.ReLU(), nn.Linear(hidden_channels, hidden_channels))
+            self.convs.append(GINConv(nn))
             in_channels = hidden_channels  # Update in_channels for next layer
 
-    def forward(self, graphs: torch.Tensor) -> torch.Tensor:
+
+    def forward(self, graphs):
         # Retrieve the shared embeddings using the common index
-        if self.use_embeddings:
-            # Combine node features and learnable embeddings
-            node_embeddings = self.embeddings.weight[graphs.mapping]  # Retrieve embeddings for each node
-            x = torch.cat([graphs.x, node_embeddings], dim=1)
-        else:
-            # Use only node features
-            x = graphs.x
+        shared_embeddings = self.embeddings(graphs.common_index)
+
+        # Concatenate node features with the shared embeddings
+        x = torch.cat([graphs.x, shared_embeddings], dim=1)
 
         # Apply each GIN layer
         for conv in self.convs:
@@ -516,9 +523,11 @@ class GIN(nn.Module):
 
         # Global pooling (mean pooling)
         x = global_mean_pool(x, graphs.batch)
+        
         return x
 
 class BaseModel(pl.LightningModule):
+
     """
     A base PyTorch Lightning module for neural networks with optional custom optimizer and scheduler.
 
@@ -529,11 +538,11 @@ class BaseModel(pl.LightningModule):
     - activation (nn.Module, optional): Activation function to apply between layers. Default is ReLU.
     - learning_rate (float, optional): Learning rate for the optimizer. Default is 1e-3.
     - optimizer_class (Callable, optional): Optimizer class to use. Default is AdamW.
-    - optimizer_params (Optional[dict], optional): Additional parameters for the optimizer. Default is None.
-    - scheduler_class (Optional[Callable], optional): Scheduler class to use. Default is None.
-    - scheduler_params (Optional[dict], optional): Additional parameters for the scheduler. Default is None.
-    - loss_fn (Optional[Callable], optional): Loss function to use. Default is None.
-
+    - optimizer_params (dict, optional): Additional parameters for the optimizer. Default is None.
+    - scheduler_class (Callable, optional): Scheduler class to use. Default is None.
+    - scheduler_params (dict, optional): Additional parameters for the scheduler. Default is None.
+    - loss_fn (Callable, optional): Loss function to use. Default is None.
+    
     Returns:
     - x (Tensor): Output after the forward pass through the network.
     """
@@ -541,9 +550,9 @@ class BaseModel(pl.LightningModule):
     def __init__(
         self,
         backbone: Union[nn.ModuleList, nn.Module],
-        output_size: int,
+        output_size,
         hidden_layers: Tuple = (),
-        activation: nn.Module = nn.ReLU(),
+        activation=nn.ReLU(),
         learning_rate: float = 1e-3,
         optimizer_class: Callable = torch.optim.AdamW,
         optimizer_params: Optional[dict] = None,
@@ -575,18 +584,18 @@ class BaseModel(pl.LightningModule):
 
         self.flat = nn.Flatten()
 
-    def forward(self, x: Dict[str, torch.Tensor]) -> torch.Tensor:
+    def forward(self, x):
         if isinstance(self.backbone, nn.Sequential):
             x = self.backbone(*x.values())
         else:
             x = self.backbone(**x)
-        if len(x.size()) == 4:
+        if len(x.size())==4:
             x = self.flat(x)
         for layer in self.head:
             x = layer(x)
         return x
 
-    def configure_optimizers(self) -> Union[torch.optim.Optimizer, Tuple[torch.optim.Optimizer, List]]:
+    def configure_optimizers(self):
         optimizer = self.optimizer_class(self.parameters(), lr=self.LR, **self.optimizer_params)
 
         if self.scheduler_class is not None:
@@ -595,19 +604,24 @@ class BaseModel(pl.LightningModule):
         else:
             return optimizer
 
-    def training_step(self, batch: Dict[str, torch.Tensor], batch_idx: int) -> torch.Tensor:
-        y = batch.pop("y")
+    def training_step(self, batch, batch_idx):
+        y = batch.pop("y")     
         out = self(batch)
         loss = self.loss_fn(out, y)
-        self.log("train_loss", loss, prog_bar=True)
+        self.log("train_loss", loss, on_step=False, on_epoch=True, prog_bar=True)
         return loss
 
-    def validation_step(self, batch: Dict[str, torch.Tensor], batch_idx: int) -> None:
-        y = batch.pop("y")
+    def validation_step(self, batch, batch_idx):
+        y = batch.pop("y")     
         out = self(batch)
         loss = self.loss_fn(out, y)
-        self.log("valid_loss", loss, on_step=True, on_epoch=True)
+        self.log("valid_loss", loss, on_step=False, on_epoch=True, prog_bar=True)
+    
 
+import torchmetrics
+from typing import Optional, Callable, Tuple, Union
+import torch.nn as nn
+import torch
 
 class Classifier(BaseModel):
     """
@@ -620,10 +634,10 @@ class Classifier(BaseModel):
     - classifier_activation (nn.Module, optional): Activation function to use in the classifier. Default is ReLU.
     - learning_rate (float, optional): Learning rate for the optimizer. Default is 1e-3.
     - optimizer_class (Callable, optional): Optimizer class to use. Default is AdamW.
-    - optimizer_params (Optional[dict], optional): Additional parameters for the optimizer. Default is None.
-    - scheduler_class (Optional[Callable], optional): Scheduler class to use. Default is None.
-    - scheduler_params (Optional[dict], optional): Additional parameters for the scheduler. Default is None.
-
+    - optimizer_params (dict, optional): Additional parameters for the optimizer. Default is None.
+    - scheduler_class (Callable, optional): Scheduler class to use. Default is None.
+    - scheduler_params (dict, optional): Additional parameters for the scheduler. Default is None.
+    
     Returns:
     - logits (Tensor): Output logits after the forward pass through the classifier.
     """
@@ -631,10 +645,10 @@ class Classifier(BaseModel):
     def __init__(
         self,
         backbone: Union[nn.ModuleList, nn.Module],
-        n_classes: int,
-        classifier_hidden_layers: Tuple = (),
-        classifier_activation: nn.Module = nn.ReLU(),
-        learning_rate: float = 1e-3,
+        n_classes,
+        classifier_hidden_layers=(),
+        classifier_activation=nn.ReLU(),
+        learning_rate=1e-3,
         optimizer_class: Callable = torch.optim.AdamW,
         optimizer_params: Optional[dict] = None,
         scheduler_class: Optional[Callable] = None,
@@ -697,7 +711,7 @@ class Classifier(BaseModel):
 
         self.prob = nn.Softmax(dim=1)
 
-    def validation_step(self, batch: Dict[str, torch.Tensor], batch_idx: int) -> None:
+    def validation_step(self, batch, batch_idx):
         y = batch.pop("y")  # Assuming that "y" is the ground truth labels
         out = self(batch)  # Forward pass
         loss = self.loss_fn(out, y)
@@ -715,23 +729,36 @@ class Classifier(BaseModel):
         macro_f1 = self.macro_f1(logits, y)
 
         # Log loss and accuracy
-        self.log("valid_loss", loss, on_step=True, on_epoch=True)
-        self.log("val_acc_step", accu, on_step=False, on_epoch=True)
+        self.log("valid_loss", loss, on_step=False, on_epoch=True, prog_bar=True)
+        self.log("val_acc_step", accu, on_step=False, on_epoch=True, prog_bar=False)
 
         # Log precision, recall, and F1-score for each class
         for i in range(len(precision)):
-            self.log(f"val_precision_class_{i}", precision[i], on_step=False, on_epoch=True)
-            self.log(f"val_recall_class_{i}", recall[i], on_step=False, on_epoch=True)
-            self.log(f"val_f1_class_{i}", f1[i], on_step=False, on_epoch=True)
+            self.log(f"val_precision_class_{i}", precision[i], on_step=False, on_epoch=True, prog_bar=False)
+            self.log(f"val_recall_class_{i}", recall[i], on_step=False, on_epoch=True, prog_bar=False)
+            self.log(f"val_f1_class_{i}", f1[i], on_step=False, on_epoch=True, prog_bar=False)
 
         # Log macro averages
-        self.log("val_macro_precision", macro_precision, on_step=False, on_epoch=True)
-        self.log("val_macro_recall", macro_recall, on_step=False, on_epoch=True)
-        self.log("val_macro_f1", macro_f1, on_step=False, on_epoch=True)
+        self.log("val_macro_precision", macro_precision, on_step=False, on_epoch=True, prog_bar=False)
+        self.log("val_macro_recall", macro_recall, on_step=False, on_epoch=True, prog_bar=False)
+        self.log("val_macro_f1", macro_f1, on_step=False, on_epoch=True, prog_bar=False)
 
 
 class Regressor(BaseModel):
-    """
+    def __init__(
+        self,
+        backbone: Union[nn.ModuleList, nn.Module],
+        output_dim,
+        regressor_hidden_layers=(),
+        regressor_activation=nn.ReLU(),
+        learning_rate=1e-3,
+        optimizer_class: Callable = torch.optim.AdamW,
+        optimizer_params: Optional[dict] = None,
+        scheduler_class: Optional[Callable] = None,
+        scheduler_params: Optional[dict] = None,
+    ):
+        
+        """
     A regression model built on top of the BaseModel, using mean squared error loss.
 
     Parameters:
@@ -741,25 +768,13 @@ class Regressor(BaseModel):
     - regressor_activation (nn.Module, optional): Activation function to use in the regressor. Default is ReLU.
     - learning_rate (float, optional): Learning rate for the optimizer. Default is 1e-3.
     - optimizer_class (Callable, optional): Optimizer class to use. Default is AdamW.
-    - optimizer_params (Optional[dict], optional): Additional parameters for the optimizer. Default is None.
-    - scheduler_class (Optional[Callable], optional): Scheduler class to use. Default is None.
-    - scheduler_params (Optional[dict], optional): Additional parameters for the scheduler. Default is None.
-
+    - optimizer_params (dict, optional): Additional parameters for the optimizer. Default is None.
+    - scheduler_class (Callable, optional): Scheduler class to use. Default is None.
+    - scheduler_params (dict, optional): Additional parameters for the scheduler. Default is None.
+    
     Returns:
     - output (Tensor): Regression output after the forward pass.
     """
-    def __init__(
-        self,
-        backbone: Union[nn.ModuleList, nn.Module],
-        output_dim: int,
-        regressor_hidden_layers: Tuple = (),
-        regressor_activation: nn.Module = nn.ReLU(),
-        learning_rate: float = 1e-3,
-        optimizer_class: Callable = torch.optim.AdamW,
-        optimizer_params: Optional[dict] = None,
-        scheduler_class: Optional[Callable] = None,
-        scheduler_params: Optional[dict] = None,
-    ):
         super().__init__(
             backbone=backbone,
             output_size=output_dim,
