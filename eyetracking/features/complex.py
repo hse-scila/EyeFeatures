@@ -129,8 +129,8 @@ def get_rqa(
 
     :return: rqa matrix
     """
-    n = data.size
     fixations = data[[x, y]].values
+    n = len(fixations)
     rqa_matrix = np.zeros((n, n), dtype=np.int32)
 
     for i in prange(n):
