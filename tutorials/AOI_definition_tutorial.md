@@ -3,7 +3,7 @@ This tutorial describes methods and utilities for AOI definition. Firstly, we wi
 
 
 ```python
-from aoi_extraction import ThresholdBased, ShapeBased
+from eyetracking.preprocessing.aoi_extraction import ThresholdBased, ShapeBased
 from eyetracking.visualization.static_visualization import scanpath_visualization
 import os, requests
 import pandas as pd
@@ -230,7 +230,7 @@ result_sb = shape_based.transform(data)
 scanpath_visualization(result_sb[(result_sb['SUBJ_NAME'] == "s04") & (result_sb['TEXT'] == "chasse_oiseaux-a1")], x="norm_pos_x", y="norm_pos_y", aoi="AOI", show_hull=True, with_axes=True, only_points=True)
 ```
 
-![png](../images/aoi_tutorial_pic_01.png)
+![png](images/aoi_tutorial_pic_01.png)
     
 
 
@@ -248,7 +248,7 @@ result_tb = threshold_based.transform(data)
 scanpath_visualization(result_tb[(result_tb['SUBJ_NAME'] == "s04") & (result_tb['TEXT'] == "chasse_oiseaux-a1")], x="norm_pos_x", y="norm_pos_y", aoi="AOI", show_hull=True, with_axes=True, only_points=True)
 ```
 
-![png](../images/aoi_tutorial_pic_02.png)
+![png](images/aoi_tutorial_pic_02.png)
     
 
 
@@ -273,7 +273,7 @@ result_extr = extractor.transform(data)
 scanpath_visualization(result_extr[(result_extr['SUBJ_NAME'] == "s01") & (result_extr['TEXT'] == "chasse_oiseaux-a1")], x="norm_pos_x", y="norm_pos_y", aoi="AOI", show_hull=True, with_axes=True, only_points=True)
 ```
 
-![png](../images/aoi_tutorial_pic_03.png)
+![png](images/aoi_tutorial_pic_03.png)
     
 
 
@@ -309,7 +309,7 @@ sns.barplot(x=check_count.index, y=check_count.values)
 
     <Axes: xlabel='None'>
 
-![png](../images/aoi_tutorial_pic_04.png)
+![png](images/aoi_tutorial_pic_04.png)
     
 
 
@@ -436,6 +436,6 @@ prep_data = pipeline.transform(data)
 scanpath_visualization(prep_data[(prep_data['SUBJ_NAME'] == "s01") & (prep_data['TEXT'] == "chasse_oiseaux-a1")], x="norm_pos_x", y="norm_pos_y", aoi="AOI", show_hull=True, with_axes=True, only_points=True)
 ```
 
-![png](../images/aoi_tutorial_pic_05.png)
+![png](images/aoi_tutorial_pic_05.png)
     
 

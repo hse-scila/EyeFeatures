@@ -3,8 +3,7 @@ This tutorial covers the basic visualization options from EyeFeatures. First of 
 
 
 ```python
-from static_visualization import scanpath_visualization, baseline_visualization, saccade_visualization, \
-    aoi_visualization, Visualization, get_visualizations
+from eyetracking.visualization.static_visualization import scanpath_visualization, get_visualizations
 import pandas as pd
 ```
 
@@ -130,7 +129,7 @@ data.head()
 scanpath_visualization(data[(data['SUBJ_NAME'] == "s04") & (data['TEXT'] == "chasse_oiseaux-a1")], x, y, return_ndarray=False, with_axes=True, path_width=1)
 ```
 
-![png](../images/visualization_tutorial_pic_01.png)
+![png](images/visualization_tutorial_pic_01.png)
     
 
 
@@ -144,7 +143,7 @@ We can modify the previous plot and get a presentable plot with more information
 scanpath_visualization(data[(data['SUBJ_NAME'] == "s04") & (data['TEXT'] == "chasse_oiseaux-a1")], x, y, aoi=aoi, show_legend=True, add_regressions=True, regression_color='red', seq_colormap=True, is_vectors=True, points_enumeration=True, rule=(2, ), return_ndarray=False, with_axes=True)
 ```
 
-![png](../images/visualization_tutorial_pic_02.png)
+![png](images/visualization_tutorial_pic_02.png)
     
 
 
@@ -156,10 +155,10 @@ Our fixations have the AOI. Let's visualize it. It is simple, you should add the
 
 
 ```python
-aoi_visualization(data[(data['SUBJ_NAME'] == "s04") & (data['TEXT'] == "chasse_oiseaux-a1")], x, y, aoi="AOI", return_ndarray=False, with_axes=True, only_points=True, show_legend=True)
+scanpath_visualization(data[(data['SUBJ_NAME'] == "s04") & (data['TEXT'] == "chasse_oiseaux-a1")], x, y, aoi="AOI", return_ndarray=False, with_axes=True, only_points=True, show_legend=True)
 ```
 
-![png](../images/visualization_tutorial_pic_03.png)
+![png](images/visualization_tutorial_pic_03.png)
     
 
 
@@ -171,7 +170,7 @@ Now we will visualize only fixation, but with extra information. We will add dif
 scanpath_visualization(data[(data['SUBJ_NAME'] == "s04") & (data['TEXT'] == "chasse_oiseaux-a1")], x, y, shape_column=duration, aoi=aoi, show_legend=True, points_enumeration=True, only_points=True, return_ndarray=False, with_axes=True)
 ```
 
-![png](../images/visualization_tutorial_pic_04.png)
+![png](images/visualization_tutorial_pic_04.png)
     
 
 
