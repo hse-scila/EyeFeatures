@@ -19,7 +19,7 @@ warnings.simplefilter("ignore")
 ```python
 def get_movies_dataset():
     """
-    Read Movies Dataset.
+    Read Movies Dataset from https://www.inb.uni-luebeck.de/index.php?id=515, statimages.
     * gaze_x: x-coordinate of gaze.
     * gaze_y: y-coordinate of gaze.
     * timestamp: number of milliseconds from start of the recording.
@@ -207,7 +207,7 @@ scanpath_visualization(get_object(data), x, y, with_axes=True, path_width=1)
 
 
     
-![png](../images/prep_output_9_0.png)
+![png](images/prep_output_9_0.png)
     
 
 
@@ -478,7 +478,7 @@ scanpath_visualization(get_object(fixations), x, y, with_axes=True, path_width=1
 
 
     
-![png](../images/prep_output_15_0.png)
+![png](images/prep_output_15_0.png)
     
 
 
@@ -513,7 +513,7 @@ scanpath_visualization(get_object(fixations_smooth), x, y, with_axes=True, path_
 
 
     
-![png](../images/prep_output_18_0.png)
+![png](images/prep_output_18_0.png)
     
 
 
