@@ -120,8 +120,7 @@ def _calculate_length_vectorized(coords):
     
     return lengths
 
-def create_edge_list_and_cumulative_features(df, add_duration, x_col, y_col, 
-                                             xlim, ylim, shape, directed=True):
+def create_edge_list_and_cumulative_features(df, add_duration, x_col, y_col, xlim, ylim, shape, directed=True):
     """
     Creates an edge list and computes cumulative node features (total duration, total saccade lengths, and cell center coordinates).
     These features are normalized by their respective maximum values. Also computes edge features based on the sum of edge lengths.
@@ -221,8 +220,7 @@ def create_edge_list_and_cumulative_features(df, add_duration, x_col, y_col,
     
     return edge_list, edge_features, node_mapping, cumulative_node_features
 
-def create_graph_data_from_dataframe(df, y, x_col, y_col, add_duration,
-                                     xlim, ylim, shape, directed=True):
+def create_graph_data_from_dataframe(df, y, x_col, y_col, add_duration, xlim, ylim, shape, directed=True):
     """
     Converts a DataFrame into a PyTorch Geometric Data object for GCN training.
     Includes cumulative node features (total duration, total saccade length to/from node, and cell center coordinates).
@@ -291,9 +289,9 @@ class Dataset2D(Dataset):
     """
     def __init__(self, 
                  X: pd.DataFrame,
+                 Y: ArrayLike, 
                  x: str,
                  y: str,  
-                 Y: ArrayLike, 
                  pk:List[str], 
                  shape: Union[Tuple[int], int],
                  representations: List[str], 
@@ -302,7 +300,7 @@ class Dataset2D(Dataset):
 
         self.pmk = pk
         self.X = torch.cat([torch.tensor(_representations[i](X, x, y, 
-                            pk=pk, shape=shape), dtype=torch.float32) for i in representations], dim=1)
+                                                             pk=pk, shape=shape), dtype=torch.float32) for i in representations], dim=1)
         self.channels_dim = self.X.shape[1]
         print(f'Number of channels = {self.channels_dim}.')
         if not isinstance(Y, pd.Series):
@@ -373,7 +371,8 @@ class DatasetTimeSeries(Dataset):
                  y: str,
                  pk:List[str], 
                  features: List[str], 
-                 transforms=None):
+                 transforms=None,
+                 max_length = 10):
 
         self.pmk = pk
         self.X = _get_features(X, features, x, y, t=None, pk=pk)
@@ -387,6 +386,7 @@ class DatasetTimeSeries(Dataset):
         
         self.n_features = 2+len(features)
         self.transforms = transforms
+        self.max_length = max_length
 
     def __len__(self):
         return len(self.X)
@@ -403,10 +403,18 @@ class DatasetTimeSeries(Dataset):
         }
     
     def collate_fn(self, batch):
-        lengths = [x["sequences"].shape[0] for x in batch]
-        max_len = max(lengths)
-        padded_batch = [torch.cat([x["sequences"], torch.zeros(max_len - x["sequences"].shape[0], 
+        if self.max_length is None:
+            lengths = [x["sequences"].shape[0] for x in batch]
+            max_len = max(lengths)
+            padded_batch = [torch.cat([x["sequences"], torch.zeros(max_len - x["sequences"].shape[0], 
                                                         self.n_features)], axis=0) for x in batch]
+        else:
+            max_len = self.max_length
+            lengths = [min(x["sequences"].shape[0], max_len) for x in batch]
+            padded_batch = [torch.cat([x["sequences"][:self.max_length], 
+                                       torch.zeros(max_len - x["sequences"][:self.max_length].shape[0], 
+                                                        self.n_features)], axis=0) for x in batch]
+            
         
         y = torch.tensor([x['y'] for x in batch])
         return {"sequences": torch.stack(padded_batch),
@@ -582,17 +590,13 @@ class DatasetLightningBase(pl.LightningDataModule):
         elif self.split_type == 'all_categories_repetetive':
             groups_train, groups_val = iterative_split(groups, self.test_size, self.pk)
         elif self.split_type == 'first_category_repetetive':
-            groups_train, groups_val = train_test_split(groups, 
-                                                        test_size=self.test_size, 
-                                                        stratify=groups.iloc[:, 0])
+            groups_train, groups_val = train_test_split(groups, test_size=self.test_size, stratify=groups.iloc[:, 0])
         elif self.split_type == 'first_category_unique':
-            groups_train, groups_val = train_test_split(groups.iloc[:, 0].drop_duplicates(), 
-                                                        test_size=self.test_size)
+            groups_train, groups_val = train_test_split(groups.iloc[:, 0].drop_duplicates(), test_size=self.test_size)
             pk = groups.iloc[:, 0]
         else:
             raise ValueError(f'''Invalid split type: {self.split_type}. 
-                             Supported split types are: simple, first_category_unique,
-                             first_category_repetetive, 
+                             Supported split types are: simple, first_category_unique, first_category_repetetive, 
                              all_categories_unique, all_categories_repetetive.''')
 
         X_train = self.X.merge(groups_train, on=pk)
@@ -627,9 +631,9 @@ class DatasetLightning2D(DatasetLightningBase):
         self.representations = representations
 
     def create_train_val_datasets(self, X_train, y_train, X_val, y_val):
-        self.train_dataset = Dataset2D(X_train, self.x, self.y, y_train,
+        self.train_dataset = Dataset2D(X_train, y_train, self.x, self.y,
                                         pk=self.pk, shape=self.shape, representations=self.representations)
-        self.val_dataset = Dataset2D(X_val, self.x, self.y, y_val, 
+        self.val_dataset = Dataset2D(X_val, y_val, self.x, self.y, 
                                      pk=self.pk, shape=self.shape, representations=self.representations)
 
 
@@ -647,15 +651,19 @@ class DatasetLightningTimeSeries(DatasetLightningBase):
                  features: List[str],  
                  test_size: int, 
                  batch_size: int, 
-                 split_type: str = 'simple'):
+                 split_type: str = 'simple',
+                 max_length = 10):
         super().__init__(X, Y, x, y, pk, test_size, batch_size, split_type)
         self.features = features
+        self.max_length = max_length
 
     def create_train_val_datasets(self, X_train, y_train, X_val, y_val):
-        self.train_dataset = DatasetTimeSeries(X_train, self.x, self.y, 
-                                               y_train, pk=self.pk, features=self.features)
-        self.val_dataset = DatasetTimeSeries(X_val, self.x, self.y,
-                                              y_val, pk=self.pk, features=self.features)
+        self.train_dataset = DatasetTimeSeries(X_train, y_train, self.x, self.y, 
+                                               pk=self.pk, features=self.features, 
+                                               max_length = self.max_length)
+        self.val_dataset = DatasetTimeSeries(X_val, y_val, self.x, self.y,
+                                             pk=self.pk, features=self.features, 
+                                               max_length = self.max_length)
 
 
 class DatasetLightningTimeSeries2D(DatasetLightningBase):
@@ -674,15 +682,25 @@ class DatasetLightningTimeSeries2D(DatasetLightningBase):
                  features: List[str],  
                  test_size: int, 
                  batch_size: int, 
-                 split_type: str = 'simple'):
+                 split_type: str = 'simple',
+                 max_length: int = 10):
         super().__init__(X, Y, x, y, pk, test_size, batch_size, split_type)
         self.shape = shape
         self.representations = representations
         self.features = features
+        self.max_length = max_length
 
     def create_train_val_datasets(self, X_train, y_train, X_val, y_val):
-        data2D = Dataset2D(X_train, self.x, self.y, y_train, pk=self.pk, 
+        data2D = Dataset2D(X_train, y_train, self.x, self.y, pk=self.pk, 
                            shape=self.shape, representations=self.representations)
-        dataTime = DatasetTimeSeries(X_train, self.x, self.y, 
-                                     y_train, pk=self.pk, features=self.features)
+        dataTime = DatasetTimeSeries(X_train, y_train, self.x, self.y, 
+                                    pk=self.pk, features=self.features,
+                                    max_length = self.max_length)                     
         self.train_dataset = TimeSeries_2D_Dataset(data2D, dataTime)
+
+        data2D = Dataset2D(X_val, y_val, self.x, self.y, pk=self.pk,
+                           shape=self.shape, representations=self.representations)
+        dataTime = DatasetTimeSeries(X_val, y_val, self.x, self.y,
+                                     pk=self.pk, features=self.features,
+                                     max_length = self.max_length)
+        self.val_dataset = TimeSeries_2D_Dataset(data2D, dataTime)
