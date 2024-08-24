@@ -275,7 +275,8 @@ from sklearn.cluster import KMeans
 from eyetracking.preprocessing.aoi_extraction import AOIExtractor
 
 methods = [ThresholdBased(threshold=0.0, window_size=6), KMeans(n_clusters=3)]
-extractor = AOIExtractor(methods=methods, x=x, y=y, pk=pk, instance_columns=['TEXT'], aoi_name='AOI', show_best=True)
+extractor = AOIExtractor(x=x, y=y, methods=methods, pk=pk,
+                         instance_columns=['TEXT'], aoi_name=aoi, show_best=True)
 extractor.fit(data)
 result_extr = extractor.transform(data)
 ```
@@ -332,7 +333,8 @@ Sometimes AOI methods shuffle AOI labels. The correct order of the AOI names and
 
 ```python
 from eyetracking.preprocessing.aoi_extraction import AOIMatcher
-matcher = AOIMatcher(x=x, y=y, pk=pk, instance_columns=["TEXT"], aoi=aoi, n_aoi=3)
+matcher = AOIMatcher(x=x, y=y, pk=pk, 
+                     instance_columns=["TEXT"], aoi=aoi, n_aoi=3)
 result_match = matcher.transform(result_extr)
 result_match.head()
 ```
