@@ -1,5 +1,6 @@
 # AOI definition tutorial
-This tutorial describes methods and utilities for AOI definition. Firstly, we will import all AOI methods and load the dataset.
+This tutorial describes methods and utilities for AOI definition. Firstly, we will import all AOI methods and load the dataset.\
+> Tip: The dataset should include preprocessed data with fixations. If the data isn't preprocessed, and you want to learn how to do this, then explore the preprocessing tutorial.
 
 
 ```python
@@ -9,6 +10,12 @@ import os, requests
 import pandas as pd
 
 def load_data():
+    '''
+    Download and load the Paris experiment dataset from Zenodo.
+    The dataset contains scanpaths data from 15 participants reading approximately 180 texts.
+    The dataset is normalized and split into X (fixations data), Y (target), and other features.
+    Deatiled description of variables and task can be found at: https://zenodo.org/records/4655840
+    '''
     if not os.path.exists("data/em-y35-fasttext.csv"):
         url = "https://zenodo.org/records/4655840/files/em-y35-fasttext.csv?download=1"
         response = requests.get(url, stream=True)
@@ -34,6 +41,7 @@ def load_data():
 x = "norm_pos_x"
 y = "norm_pos_y"
 pk = ["SUBJ_NAME", "TEXT"]
+aoi = "AOI"
 data, target, other = load_data()
 data.head()
 ```
@@ -42,6 +50,19 @@ data.head()
 
 
 <div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
@@ -112,6 +133,19 @@ data.head()
 
 
 <div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
@@ -187,21 +221,24 @@ Columns of data:
 * ```SUBJ_NAME``` — id of the participant
 * ```TEXT``` — label of the text
 * ```norm_pos_x``` — normalized x-axis coordinate of the fixation [0, 1]
-* ```norm_pos-y``` — normalized y-axis coordinate of the fixation [0, 1]
+* ```norm_pos_y``` — normalized y-axis coordinate of the fixation [0, 1]
 * ```duration``` — duration of the fixation in ms
 
 ## Shape-based method
-It is a very simple method. It gets data with fixations, a list of tuples with shapes (rectangle, circle, ellipse), where each shape is a particular AOI, and a primary key. The last one is distinctive feature for each record. This method just checks if each fixation is in shape.
+It is a very simple method. It gets data with fixations, a list of tuples with shapes (rectangle, circle, ellipse), where each shape is a particular AOI, and a primary key. The last one is distinctive for each record. This method just checks if each fixation is in shape.
 
 
 ```python
-shape_based = ShapeBased(x, y, shapes=[[['r', (0., 0.7), (1., 1.)], ('r', (0., 0.5), (1., 0.7)), ('r', (0., 0.), (1., 0.5)),],], pk=pk, aoi_name="AOI") 
+shapes = [['r', (0., 0.7), (1., 1.)], ('r', (0., 0.5), (1., 0.7)), ('r', (0., 0.), (1., 0.5)),]
+shape_based = ShapeBased(x, y, shapes=[shapes,], pk=pk, aoi_name=aoi) 
 result_sb = shape_based.transform(data)
 ```
 
 
 ```python
-scanpath_visualization(result_sb[(result_sb['SUBJ_NAME'] == "s04") & (result_sb['TEXT'] == "chasse_oiseaux-a1")], x="norm_pos_x", y="norm_pos_y", aoi="AOI", show_hull=True, with_axes=True, only_points=True)
+record = result_sb[(result_sb['SUBJ_NAME'] == "s04") & (result_sb['TEXT'] == "chasse_oiseaux-a1")]
+aoi_color = {"aoi_0" : "blue", "aoi_1" : "green", "aoi_2" : "red"}
+scanpath_visualization(record, x=x, y=y, aoi="AOI", show_hull=True, with_axes=True, only_points=True, show_legend=True, aoi_c=aoi_color)
 ```
 
 ![png](images/aoi_tutorial_pic_01.png)
@@ -213,13 +250,14 @@ This method defines AOI by using kernel density estimation and pre-thresholding 
 
 
 ```python
-threshold_based = ThresholdBased(x=x, y=y, threshold=0.5, pk=pk, window_size=10, aoi_name="AOI")
+threshold_based = ThresholdBased(x=x, y=y, threshold=0.5, pk=pk, window_size=10, aoi_name=aoi)
 result_tb = threshold_based.transform(data)
 ```
 
 
 ```python
-scanpath_visualization(result_tb[(result_tb['SUBJ_NAME'] == "s04") & (result_tb['TEXT'] == "chasse_oiseaux-a1")], x="norm_pos_x", y="norm_pos_y", aoi="AOI", show_hull=True, with_axes=True, only_points=True)
+record = result_tb[(result_tb['SUBJ_NAME'] == "s04") & (result_tb['TEXT'] == "chasse_oiseaux-a1")]
+scanpath_visualization(record, x=x, y=y, aoi=aoi, show_hull=True, with_axes=True, only_points=True, show_legend=True, aoi_c=aoi_color)
 ```
 
 ![png](images/aoi_tutorial_pic_02.png)
@@ -229,7 +267,7 @@ scanpath_visualization(result_tb[(result_tb['SUBJ_NAME'] == "s04") & (result_tb[
 You can also try other AOI definition methods.
 
 ## AOI extractor
-The AOI extractor gets a list of the AOI methods and selects for AOI splitting with minimal entropy. It also supports Sklearn clustering methods. The extractor has an ```instance_column``` parameter. This needs to separate particular instances, not records.
+The AOI extractor gets a list of the AOI methods and selects for AOI splitting with minimal entropy. It also supports Sklearn clustering methods. The extractor has an ```instance_column``` parameter. This is to separate particular instances, not records.
 
 
 ```python
@@ -244,7 +282,8 @@ result_extr = extractor.transform(data)
 
 
 ```python
-scanpath_visualization(result_extr[(result_extr['SUBJ_NAME'] == "s01") & (result_extr['TEXT'] == "chasse_oiseaux-a1")], x="norm_pos_x", y="norm_pos_y", aoi="AOI", show_hull=True, with_axes=True, only_points=True)
+record = result_extr[(result_extr['SUBJ_NAME'] == "s01") & (result_extr['TEXT'] == "chasse_oiseaux-a1")]
+scanpath_visualization(record, x=x, y=y, aoi=aoi, show_hull=True, with_axes=True, only_points=True, show_legend=True, aoi_c=aoi_color)
 ```
 
 ![png](images/aoi_tutorial_pic_03.png)
@@ -266,8 +305,8 @@ check_count
 
 
 
-    ThresholdBased    1393
-    KMeans             990
+    ThresholdBased    1438
+    KMeans             945
     dtype: int64
 
 
@@ -293,7 +332,7 @@ Sometimes AOI methods shuffle AOI labels. The correct order of the AOI names and
 
 ```python
 from eyetracking.preprocessing.aoi_extraction import AOIMatcher
-matcher = AOIMatcher(x=x, y=y, pk=pk, instance_columns=["TEXT"], aoi='AOI', n_aoi=3)
+matcher = AOIMatcher(x=x, y=y, pk=pk, instance_columns=["TEXT"], aoi=aoi, n_aoi=3)
 result_match = matcher.transform(result_extr)
 result_match.head()
 ```
@@ -302,6 +341,19 @@ result_match.head()
 
 
 <div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
@@ -325,7 +377,7 @@ result_match.head()
       <td>-0.050774</td>
       <td>119</td>
       <td>s01_aide_refugies-a1</td>
-      <td>aoi_2</td>
+      <td>aoi_1</td>
       <td>KMeans</td>
     </tr>
     <tr>
@@ -336,7 +388,7 @@ result_match.head()
       <td>-0.043732</td>
       <td>172</td>
       <td>s01_aide_refugies-a1</td>
-      <td>aoi_2</td>
+      <td>aoi_1</td>
       <td>KMeans</td>
     </tr>
     <tr>
@@ -347,7 +399,7 @@ result_match.head()
       <td>-0.041002</td>
       <td>103</td>
       <td>s01_aide_refugies-a1</td>
-      <td>aoi_0</td>
+      <td>aoi_2</td>
       <td>KMeans</td>
     </tr>
     <tr>
@@ -358,7 +410,7 @@ result_match.head()
       <td>-0.028931</td>
       <td>236</td>
       <td>s01_aide_refugies-a1</td>
-      <td>aoi_1</td>
+      <td>aoi_0</td>
       <td>KMeans</td>
     </tr>
     <tr>
@@ -369,7 +421,7 @@ result_match.head()
       <td>-0.031087</td>
       <td>173</td>
       <td>s01_aide_refugies-a1</td>
-      <td>aoi_1</td>
+      <td>aoi_0</td>
       <td>KMeans</td>
     </tr>
   </tbody>
@@ -387,14 +439,18 @@ One of the most important features is the ability to use this in the Sklearn pip
 ```python
 from sklearn.pipeline import Pipeline
 
-pipeline = Pipeline([('AOIExtractor', AOIExtractor(methods=methods, x=x, y=y, pk=pk, instance_columns=['TEXT'], aoi_name='AOI', show_best=True)), ("AOIMatcher", AOIMatcher(x=x, y=y, pk=pk, instance_columns=["TEXT"], aoi='AOI', n_aoi=3))])
+extractor = AOIExtractor(methods=methods, x=x, y=y, pk=pk, instance_columns=['TEXT'], aoi_name=aoi, show_best=True)
+matcher = AOIMatcher(x=x, y=y, pk=pk, instance_columns=["TEXT"], aoi=aoi, n_aoi=3)
+
+pipeline = Pipeline([("AOIExtractor", extractor), ("AOIMatcher", matcher)])
 pipeline.fit(data)
 prep_data = pipeline.transform(data)
 ```
 
 
 ```python
-scanpath_visualization(prep_data[(prep_data['SUBJ_NAME'] == "s01") & (prep_data['TEXT'] == "chasse_oiseaux-a1")], x="norm_pos_x", y="norm_pos_y", aoi="AOI", show_hull=True, with_axes=True, only_points=True)
+record = prep_data[(prep_data['SUBJ_NAME'] == "s01") & (prep_data['TEXT'] == "chasse_oiseaux-a1")]
+scanpath_visualization(record, x=x, y=y, aoi=aoi, show_hull=True, with_axes=True, only_points=True, show_legend=True, aoi_c=aoi_color)
 ```
 
 ![png](images/aoi_tutorial_pic_05.png)
