@@ -1,16 +1,15 @@
 import math
-from typing import Any, Dict, List, Union, Tuple
+from typing import Any, Dict, List, Tuple, Union
 
 import numpy as np
 import pandas as pd
 from numba import jit
 from scipy.ndimage import maximum_filter, prewitt, sobel
-from sklearn.base import BaseEstimator, TransformerMixin, ClusterMixin
+from sklearn.base import BaseEstimator, ClusterMixin, TransformerMixin
 
 from eyetracking.features.measures import ShannonEntropy
 from eyetracking.preprocessing.base import BaseAOIPreprocessor
 from eyetracking.utils import _split_dataframe
-
 
 # ======== AOI PREPROCESSORS ========
 
@@ -418,7 +417,9 @@ class GradientBased(BaseAOIPreprocessor):
                                 max_magnitude = window_magnitude[1 + j][1 + k]
                             # If the point in the window (except for the center) doesn't have aoi, then add it to queue
                             elif (
-                                aoi_matrix[x_coord + j][y_coord + k] == 0 and (x_coord + j, y_coord + k) not in queue_of_centers[ind]
+                                aoi_matrix[x_coord + j][y_coord + k] == 0
+                                and (x_coord + j, y_coord + k)
+                                not in queue_of_centers[ind]
                             ):  # and magnitude[1+j][1+k] >= gradient_eps:
                                 queue_of_centers[ind].append((x_coord + j, y_coord + k))
                 aoi_matrix[x_coord][y_coord] = aoi_to_add

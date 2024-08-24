@@ -1,16 +1,17 @@
-from typing import Dict, Tuple, Union, List
-from numpy.typing import NDArray
+import io
+from typing import Dict, List, Tuple, Union
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-from PIL import Image, ImageOps
-import io
 import numpy as np
 import pandas as pd
+from numpy.typing import NDArray
+from PIL import Image, ImageOps
 from scipy.spatial import ConvexHull
-from eyetracking.utils import _select_regressions, _split_dataframe
 from sklearn.base import BaseEstimator, TransformerMixin
 from tqdm import tqdm
+
+from eyetracking.utils import _select_regressions, _split_dataframe
 
 
 def _cmap_generation(n: int):

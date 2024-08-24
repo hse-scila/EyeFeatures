@@ -1,19 +1,23 @@
-import pandas as pd
-import numpy as np
-from typing import List, Literal, Union, Tuple
+from typing import List, Literal, Tuple, Union
 
-from scipy.signal import savgol_filter, iirfilter, firwin, lfilter
+import numpy as np
+import pandas as pd
+from scipy.signal import firwin, iirfilter, lfilter, savgol_filter
+
 from eyetracking.preprocessing.base import BaseSmoothingPreprocessor
 
 
 # ======== SMOOTHING PREPROCESSORS ========
-class SavGolFilter(BaseSmoothingPreprocessor):     # TODO 2D SG filter: https://github.com/espdev/sgolay2
+class SavGolFilter(
+    BaseSmoothingPreprocessor
+):  # TODO 2D SG filter: https://github.com/espdev/sgolay2
     """
     Savitzkiy-Golay filter. 'x' and 'y' directions are filtered independently, time is ignored.
     Parameters are passed to `scipy.signal.savgol_filter`.
 
     Default values are taken from https://arxiv.org/pdf/2303.02134.
     """
+
     def __init__(
         self,
         x: str,
@@ -40,14 +44,22 @@ class SavGolFilter(BaseSmoothingPreprocessor):     # TODO 2D SG filter: https://
 
         X_filt = X.copy()
         if len(X_filt) >= self.wl:
-            X_filt[self.x] = savgol_filter(x=X[self.x].values, window_length=self.wl, polyorder=self.po,
-                                           **self.savgol_kw)
-            X_filt[self.y] = savgol_filter(x=X[self.y].values, window_length=self.wl, polyorder=self.po,
-                                           **self.savgol_kw)
+            X_filt[self.x] = savgol_filter(
+                x=X[self.x].values,
+                window_length=self.wl,
+                polyorder=self.po,
+                **self.savgol_kw
+            )
+            X_filt[self.y] = savgol_filter(
+                x=X[self.y].values,
+                window_length=self.wl,
+                polyorder=self.po,
+                **self.savgol_kw
+            )
         return X_filt
 
 
-class FIRFilter(BaseSmoothingPreprocessor):          # TODO 2D version?
+class FIRFilter(BaseSmoothingPreprocessor):  # TODO 2D version?
     """
     FIR filter. Convolution with RIR kernel along 'x' and 'y'. `kwargs` are passed to `scipy.signal.firwin`
     to determine the kernel.
@@ -55,6 +67,7 @@ class FIRFilter(BaseSmoothingPreprocessor):          # TODO 2D version?
 
     Default values are taken from https://arxiv.org/pdf/2303.02134.
     """
+
     def __init__(
         self,
         x: str,
@@ -64,7 +77,9 @@ class FIRFilter(BaseSmoothingPreprocessor):          # TODO 2D version?
         numtaps: int = 81,
         fs: int = 250,
         cutoff: Union[float, Tuple[float, ...]] = 100,
-        pass_zero: Literal[False, True, "bandpass", "lowpass", "highpass", "bandstop"] = False,
+        pass_zero: Literal[
+            False, True, "bandpass", "lowpass", "highpass", "bandstop"
+        ] = False,
         mode: Literal["valid", "full", "same"] = "valid",
         **fir_kw
     ):
@@ -87,19 +102,25 @@ class FIRFilter(BaseSmoothingPreprocessor):          # TODO 2D version?
 
         X_filt = X.copy()
         if len(X) > self.numtaps:
-            kernel = firwin(numtaps=self.numtaps, cutoff=self.cutoff, pass_zero=self.pass_zero, fs=self.fs, **self.fir_kw)
+            kernel = firwin(
+                numtaps=self.numtaps,
+                cutoff=self.cutoff,
+                pass_zero=self.pass_zero,
+                fs=self.fs,
+                **self.fir_kw
+            )
             x_filt = np.convolve(X[self.x].values.ravel(), kernel, mode=self.mode)
             y_filt = np.convolve(X[self.y].values.ravel(), kernel, mode=self.mode)
 
             # slice part of array based on convolution mode
             k, h = len(kernel) - 1, (len(kernel) - 1) // 2
             if self.mode == "valid":
-                X_filt = X[h + (k % 2):-h]
+                X_filt = X[h + (k % 2) : -h]
             elif self.mode == "same":
                 pass
-            else:           # "full"
-                x_filt = x_filt[h + k % 2:-h]
-                y_filt = y_filt[h + k % 2:-h]
+            else:  # "full"
+                x_filt = x_filt[h + k % 2 : -h]
+                y_filt = y_filt[h + k % 2 : -h]
 
             X_filt.loc[:, self.x] = x_filt
             X_filt.loc[:, self.y] = y_filt
@@ -107,7 +128,7 @@ class FIRFilter(BaseSmoothingPreprocessor):          # TODO 2D version?
         return X_filt
 
 
-class IIRFilter(BaseSmoothingPreprocessor):          # TODO 2D version?
+class IIRFilter(BaseSmoothingPreprocessor):  # TODO 2D version?
     """
     IIR filter. Convolution with IIR kernel along 'x' and 'y'. `kwargs` are passed to `scipy.signal.iirfilter`
     to determine the kernel.
@@ -115,6 +136,7 @@ class IIRFilter(BaseSmoothingPreprocessor):          # TODO 2D version?
 
     Default values are taken from https://arxiv.org/pdf/2303.02134.
     """
+
     def __init__(
         self,
         x: str,
@@ -134,24 +156,26 @@ class IIRFilter(BaseSmoothingPreprocessor):          # TODO 2D version?
         m = "IIR filter"
         assert self.x is not None, self._err_no_field(m, "x")
         assert self.y is not None, self._err_no_field(m, "y")
-        assert self.iir_kw.get('output', 'ba') == 'ba', "Only 'output'='ba' is supported."
+        assert (
+            self.iir_kw.get("output", "ba") == "ba"
+        ), "Only 'output'='ba' is supported."
 
     def _preprocess(self, X: pd.DataFrame) -> pd.DataFrame:
         if self.pk:
             X = X.drop(self.pk, axis=1)
 
-        if self.iir_kw.get('ftype') is None:
-            self.iir_kw['ftype'] = 'butter'
+        if self.iir_kw.get("ftype") is None:
+            self.iir_kw["ftype"] = "butter"
 
-        if self.iir_kw.get('btype') is None:
-            self.iir_kw['btype'] = 'highpass'
+        if self.iir_kw.get("btype") is None:
+            self.iir_kw["btype"] = "highpass"
 
-        b, a = iirfilter(N=self.N, Wn=self.Wn, **self.iir_kw, output='ba')
-        x_filt = lfilter(b, a, X[self.x].values)[len(b) - 1:]  # "valid" in np.convolve
-        y_filt = lfilter(b, a, X[self.y].values)[len(b) - 1:]  # "valid" in np.convolve
+        b, a = iirfilter(N=self.N, Wn=self.Wn, **self.iir_kw, output="ba")
+        x_filt = lfilter(b, a, X[self.x].values)[len(b) - 1 :]  # "valid" in np.convolve
+        y_filt = lfilter(b, a, X[self.y].values)[len(b) - 1 :]  # "valid" in np.convolve
 
         k, h = len(a) - 1, (len(a) - 1) // 2
-        X_filt = X[h + (k % 2):-h]
+        X_filt = X[h + (k % 2) : -h]
 
         X_filt.loc[:, self.x] = x_filt
         X_filt.loc[:, self.y] = y_filt
@@ -166,6 +190,7 @@ class WienerFilter(BaseSmoothingPreprocessor):
     :param sigma: std of Gaussian filter.
     :param size: length of Gaussian filter.
     """
+
     def __init__(
         self,
         x: str,
@@ -174,7 +199,7 @@ class WienerFilter(BaseSmoothingPreprocessor):
         pk: List[str] = None,
         K: Union[float, Literal["auto"]] = 4.3e-5,
         sigma: float = 0.2,
-        size: int = 11
+        size: int = 11,
     ):
         super().__init__(x=x, y=y, t=t, pk=pk)
         self.K = K
@@ -182,7 +207,7 @@ class WienerFilter(BaseSmoothingPreprocessor):
         self.size = size
 
     def _check_params(self):
-        assert self.K == 'auto' or isinstance(self.K, float)
+        assert self.K == "auto" or isinstance(self.K, float)
 
     @staticmethod
     def _gaussian_kernel(size, sigma):
@@ -192,7 +217,11 @@ class WienerFilter(BaseSmoothingPreprocessor):
             x = np.arange(-size // 2 + 1, size // 2 + 1, 1).ravel()
 
         # get 1D kernel using Gaussian PDF
-        kernel = 1 / (2 * np.pi * np.square(sigma)) * np.exp(- np.square(x) / (2 * np.square(sigma)))
+        kernel = (
+            1
+            / (2 * np.pi * np.square(sigma))
+            * np.exp(-np.square(x) / (2 * np.square(sigma)))
+        )
         # normalize kernel
         kernel = kernel / np.sum(kernel)
         return kernel
@@ -244,7 +273,7 @@ class WienerFilter(BaseSmoothingPreprocessor):
         kernel = self._gaussian_kernel(self.size, self.sigma)
 
         # find optimal value for K
-        if self.K == 'auto':
+        if self.K == "auto":
             best_psnr = -np.inf
             best_K = 0
 

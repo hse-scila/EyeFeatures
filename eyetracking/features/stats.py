@@ -7,7 +7,8 @@ from numba import jit
 from numpy.typing import NDArray
 
 from eyetracking.features.extractor import BaseTransformer
-from eyetracking.utils import _calc_dt, _get_id, _split_dataframe, _select_regressions
+from eyetracking.utils import (_calc_dt, _get_id, _select_regressions,
+                               _split_dataframe)
 
 
 class StatsTransformer(BaseTransformer):

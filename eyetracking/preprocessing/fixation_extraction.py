@@ -99,7 +99,13 @@ class IVT(BaseFixationPreprocessor):
         fixations_df["centers"] = centers
 
         # default features
-        feats = ("duration", "saccade_duration", "saccade_length", "saccade_angle", "saccade2_angle")
+        feats = (
+            "duration",
+            "saccade_duration",
+            "saccade_length",
+            "saccade_angle",
+            "saccade2_angle",
+        )
         fixations_df = self._compute_feats(fixations_df, feats)
 
         return fixations_df
@@ -256,7 +262,13 @@ class IDT(BaseFixationPreprocessor):
         )
 
         # default features
-        feats = ("duration", "saccade_duration", "saccade_length", "saccade_angle", "saccade2_angle")
+        feats = (
+            "duration",
+            "saccade_duration",
+            "saccade_length",
+            "saccade_angle",
+            "saccade2_angle",
+        )
         fixations_df = self._compute_feats(fixations_df, feats)
 
         return fixations_df
@@ -370,8 +382,8 @@ class IHMM(BaseFixationPreprocessor):
             #     }
             # }
             dp = {
-                'fixation': {'loc': 0.002, 'scale': 0.001},
-                'saccade': {'loc': 0.03, 'scale': 0.005}
+                "fixation": {"loc": 0.002, "scale": 0.001},
+                "saccade": {"loc": 0.03, "scale": 0.005},
             }
         else:
             dp = self.distrib_params
@@ -422,7 +434,13 @@ class IHMM(BaseFixationPreprocessor):
         )
 
         # default features
-        feats = ("duration", "saccade_duration", "saccade_length", "saccade_angle", "saccade2_angle")
+        feats = (
+            "duration",
+            "saccade_duration",
+            "saccade_length",
+            "saccade_angle",
+            "saccade2_angle",
+        )
         fixations_df = self._compute_feats(fixations_df, feats)
 
         return fixations_df

@@ -1,5 +1,5 @@
-from abc import abstractmethod, ABC
-from typing import Any, List, Union, Tuple
+from abc import ABC, abstractmethod
+from typing import Any, List, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -9,7 +9,7 @@ from scipy.stats import gaussian_kde
 from sklearn.base import BaseEstimator, TransformerMixin
 
 from eyetracking.preprocessing._utils import _get_distance
-from eyetracking.utils import _split_dataframe, _get_angle, _get_angle3
+from eyetracking.utils import _get_angle, _get_angle3, _split_dataframe
 
 
 class BasePreprocessor(BaseEstimator, TransformerMixin):
@@ -99,9 +99,7 @@ class BaseFixationPreprocessor(BasePreprocessor, ABC):
         return dist
 
     def _compute_feats(
-        self,
-        fixations_df: pd.DataFrame,
-        feats: Tuple[str, ...]
+        self, fixations_df: pd.DataFrame, feats: Tuple[str, ...]
     ) -> pd.DataFrame:
         """
         Method computes list of required features.
@@ -115,7 +113,7 @@ class BaseFixationPreprocessor(BasePreprocessor, ABC):
         # saccade preceding the fixation
         if "saccade_duration" in feats:
             sd = fixations_df.start_time.values - fixations_df.end_time.shift(1).values
-            sd[0] = 0                                                           # no preceding saccade
+            sd[0] = 0  # no preceding saccade
             fixations_df["saccade_duration"] = sd
 
         # saccade preceding the fixation
@@ -123,8 +121,9 @@ class BaseFixationPreprocessor(BasePreprocessor, ABC):
             start_points = fixations_df[[self.x, self.y]].values
             end_points = fixations_df[[self.x, self.y]].shift(1).values
             sl = _get_distance(
-                end_points, start_points,
-                distance=self.distance                                          # initialized by child class
+                end_points,
+                start_points,
+                distance=self.distance,  # initialized by child class
             )
             sl[0] = 0
             fixations_df["saccade_length"] = sl
@@ -145,9 +144,12 @@ class BaseFixationPreprocessor(BasePreprocessor, ABC):
             sa2 = np.zeros(shape=(n,))
             for i in prange(1, n - 1):
                 sa2[i] = _get_angle3(
-                    x0=xx[i],     y0=yy[i],
-                    x1=xx[i - 1], y1=yy[i - 1],
-                    x2=xx[i + 1], y2=yy[i + 1]
+                    x0=xx[i],
+                    y0=yy[i],
+                    x1=xx[i - 1],
+                    y1=yy[i - 1],
+                    x2=xx[i + 1],
+                    y2=yy[i + 1],
                 )
             fixations_df["saccade2_angle"] = sa2
 

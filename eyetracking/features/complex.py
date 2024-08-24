@@ -1,14 +1,13 @@
-from typing import Callable, List
+from typing import Callable, List, Literal, Tuple, Union
 
 import numpy as np
 import pandas as pd
 from numba import jit, prange
 from numpy.typing import NDArray
-from typing import Union, Literal, Tuple
-from scipy.stats import gaussian_kde
 from scipy.signal import convolve2d
+from scipy.stats import gaussian_kde
 
-from eyetracking.utils import _split_dataframe, _rec2square, _square2rec
+from eyetracking.utils import _rec2square, _split_dataframe, _square2rec
 
 
 # =========================== HEATMAPS ===========================
@@ -16,7 +15,9 @@ def _check_shape(shape: Tuple[int, int]):
     assert isinstance(shape, tuple), f"'shape' must be tuple, hot {type(shape)}."
     assert len(shape) == 2, f"'shape' must be of length 2, got {len(shape)}."
     for k in shape:
-        assert isinstance(k, int), f"Values in 'shape' must be integers, got '{type(k)}'."
+        assert isinstance(
+            k, int
+        ), f"Values in 'shape' must be integers, got '{type(k)}'."
         assert k > 0, f"Integers in 'shape' must be positive, got '{k}'."
 
 
@@ -48,7 +49,9 @@ def get_heatmap(x: NDArray, y: NDArray, shape: Tuple[int, int], check: bool = Tr
     return np.reshape(kernel(positions), x.shape)
 
 
-def get_heatmaps(data: pd.DataFrame, x: str, y: str, shape: Tuple[int, int], pk: List[str] = None):
+def get_heatmaps(
+    data: pd.DataFrame, x: str, y: str, shape: Tuple[int, int], pk: List[str] = None
+):
     """
     Convenience wrapper for get_heatmap function.
     """
@@ -83,10 +86,10 @@ def pca(matrix: NDArray, p: int, cum_sum: float = None):
     assert len(matrix.shape) == 2, "'matrix' should be a matrix"
     assert 0 <= p <= matrix.shape[0], "given 'matrix' is n x m, 0 <= p <= n must hold"
     assert (p is not None) or (
-            cum_sum is not None
+        cum_sum is not None
     ), "either 'p' or 'cum_sum' must be provided"
     assert (cum_sum is None) or (
-            0.0 <= cum_sum <= 1.0
+        0.0 <= cum_sum <= 1.0
     ), "'cum_sum' must be between 0.0 and 1.0"
 
     matrix = matrix.astype(np.float64)
@@ -117,7 +120,7 @@ def pca(matrix: NDArray, p: int, cum_sum: float = None):
 # =========================== RQA ===========================
 @jit(forceobj=True, looplift=True)
 def get_rqa(
-        data: pd.DataFrame, x: str, y: str, metric: Callable, rho: float
+    data: pd.DataFrame, x: str, y: str, metric: Callable, rho: float
 ) -> np.ndarray:
     """
     Calculates recurrence quantification analysis matrix based on given fixations.
@@ -144,11 +147,13 @@ def get_rqa(
 
 # =========================== MTF ===========================
 def get_mtf(
-        data: pd.DataFrame, x: str, y: str,
-        n_bins: int = 10,
-        output_size: Union[int, float] = 1.0,
-        shrink_strategy: Literal["max", "mean", "normal"] = "normal",
-        flatten: bool = False
+    data: pd.DataFrame,
+    x: str,
+    y: str,
+    n_bins: int = 10,
+    output_size: Union[int, float] = 1.0,
+    shrink_strategy: Literal["max", "mean", "normal"] = "normal",
+    flatten: bool = False,
 ) -> np.array:
     """
     Calculates Markov Transition Field for (x,y) coordinates.
@@ -168,7 +173,9 @@ def get_mtf(
         output_size = np.ceil(output_size * len(data)).astype(np.int64)
 
     elif isinstance(output_size, int):
-        assert 0 < output_size <= len(data), "'output_size' must be positive integer not exceeding the input size."
+        assert (
+            0 < output_size <= len(data)
+        ), "'output_size' must be positive integer not exceeding the input size."
 
     else:
         raise ValueError(f"'output_size' is of wrong type '{type(output_size)}'.")
@@ -183,10 +190,14 @@ def get_mtf(
     if output_size < n_timestamps:
         shrunk_mtfs = []
         for i in prange(n_samples):
-            shrunk_mtfs.append(_shrink_matrix(fixations_mtf[i, :, :],
-                                              height=output_size,
-                                              width=output_size,
-                                              strategy=shrink_strategy))
+            shrunk_mtfs.append(
+                _shrink_matrix(
+                    fixations_mtf[i, :, :],
+                    height=output_size,
+                    width=output_size,
+                    strategy=shrink_strategy,
+                )
+            )
 
         del fixations_mtf
         fixations_mtf = np.array(shrunk_mtfs)
@@ -200,21 +211,25 @@ def _get_mtf(a: np.array, n_bins: int) -> np.array:
     n_samples, n_timestamps = a.shape
 
     a_binned = np.zeros(a.shape, dtype=np.int64)
-    quantiles = np.linspace(0, 1, n_bins + 1)[1:-1]                         # evenly spaced quantiles
-    bins = np.quantile(a, q=quantiles, axis=1).T                            # bins for each sample
+    quantiles = np.linspace(0, 1, n_bins + 1)[1:-1]  # evenly spaced quantiles
+    bins = np.quantile(a, q=quantiles, axis=1).T  # bins for each sample
     for i in prange(n_samples):
-        a_binned[i, :] = np.searchsorted(bins[i, :], a[i, :], side='left')  # squeeze coordinates
+        a_binned[i, :] = np.searchsorted(
+            bins[i, :], a[i, :], side="left"
+        )  # squeeze coordinates
 
-    mtm = np.zeros((n_samples, n_bins, n_bins))                             # build Markov Transition Matrix
+    mtm = np.zeros((n_samples, n_bins, n_bins))  # build Markov Transition Matrix
     for i in prange(n_samples):
         for j in prange(n_timestamps - 1):
             mtm[i, a_binned[i, j], a_binned[i, j + 1]] += 1
 
-    mtm_sum = mtm.sum(axis=2)                                               # normalize rows sums in each sample to 1
+    mtm_sum = mtm.sum(axis=2)  # normalize rows sums in each sample to 1
     np.place(mtm_sum, mtm_sum == 0, 1)
     mtm /= mtm_sum[:, :, None]
 
-    mtf = np.zeros((n_samples, n_timestamps, n_timestamps))                 # build Markov Transition Field
+    mtf = np.zeros(
+        (n_samples, n_timestamps, n_timestamps)
+    )  # build Markov Transition Field
     for i in prange(n_samples):
         for j in prange(n_timestamps):
             for k in prange(n_timestamps):
@@ -223,9 +238,12 @@ def _get_mtf(a: np.array, n_bins: int) -> np.array:
     return mtf
 
 
-def _shrink_matrix(mat: np.array, height: int, width: int,
-                   strategy: Literal["max", "mean", "normal"] = "normal"
-                   ) -> np.array:
+def _shrink_matrix(
+    mat: np.array,
+    height: int,
+    width: int,
+    strategy: Literal["max", "mean", "normal"] = "normal",
+) -> np.array:
     """
     Shrinks matrix to be close to output_size x output_size.
     :param mat: 2d matrix (image channel).
@@ -242,28 +260,28 @@ def _shrink_matrix(mat: np.array, height: int, width: int,
     assert len(mat.shape) == 2
     assert oh < ih and ow < iw
 
-    if strategy in ('mean', 'normal'):  # convolution (uniform/normal)
+    if strategy in ("mean", "normal"):  # convolution (uniform/normal)
         dh, dw = ih - oh + 1, iw - ow + 1
-        if strategy == 'mean':
+        if strategy == "mean":
             kernel = np.ones((dh, dw)) / (dh * dw)
-        else:        # 'normal'
+        else:  # 'normal'
             m = max(dh, dw)
             kernel = _gaussian_kernel(m, sigma=5)
             kernel = _rec2square(kernel)
 
-        shrunk_mat = convolve2d(mat, kernel, mode='valid')
+        shrunk_mat = convolve2d(mat, kernel, mode="valid")
 
-    elif strategy == 'max':  # max pooling
+    elif strategy == "max":  # max pooling
         dh, dw = int(np.ceil(ih / oh)), int(np.ceil(iw / ow))
         rh, rw = ih // dh, iw // dw
 
         if ih % dh == 0 and iw % dw == 0:  # filter divides matrix on equal blocks
             shrunk_mat = mat.reshape(rh, dh, rw, dw).max(axis=(1, 3))
         else:
-            Q1 = mat[:rh * dh, :rw * dw].reshape(rh, dh, rw, dw).max(axis=(1, 3))
-            Q2 = mat[rh * dh:, :rw * dw].reshape(-1, rw, dw).max(axis=2)
-            Q3 = mat[:rh * dh, rw * dw:].reshape(rh, dh, -1).max(axis=1)
-            Q4 = mat[rh * dh:, rw * dw:].max()
+            Q1 = mat[: rh * dh, : rw * dw].reshape(rh, dh, rw, dw).max(axis=(1, 3))
+            Q2 = mat[rh * dh :, : rw * dw].reshape(-1, rw, dw).max(axis=2)
+            Q3 = mat[: rh * dh, rw * dw :].reshape(rh, dh, -1).max(axis=1)
+            Q4 = mat[rh * dh :, rw * dw :].max()
             shrunk_mat = np.vstack(np.c_[Q1, Q3], np.c_[Q2, Q4])
 
     else:
@@ -281,17 +299,22 @@ def _gaussian_kernel(size, sigma) -> np.array:
     xx = np.tile(x, (size, 1))
     yy = np.rot90(xx, 1)
 
-    kernel = (1 / 2 * np.pi * np.square(sigma)) * np.exp(- (np.square(xx) + np.square(yy)) / (2 * np.square(sigma)))
+    kernel = (1 / 2 * np.pi * np.square(sigma)) * np.exp(
+        -(np.square(xx) + np.square(yy)) / (2 * np.square(sigma))
+    )
     kernel = kernel / np.sum(kernel)
     return kernel
 
 
 # =========================== GASF/GADF ===========================
 def get_gaf(
-        data: pd.DataFrame, x: str, y: str, t: str = None,
-        field_type: Literal["difference", "sum"] = "difference",
-        to_polar: Literal["regular", "cosine"] = "cosine",
-        flatten: bool = False
+    data: pd.DataFrame,
+    x: str,
+    y: str,
+    t: str = None,
+    field_type: Literal["difference", "sum"] = "difference",
+    to_polar: Literal["regular", "cosine"] = "cosine",
+    flatten: bool = False,
 ) -> np.array:
     """
     Calculates Gramian Angular Field for (x,y) coordinates.
@@ -308,25 +331,35 @@ def get_gaf(
 
     :returns: tensor of shape (2, n_coords, n_coords), where n_coords is the length of input dataframe.
     """
-    assert field_type in ('difference', 'sum'), f"'field_type'={field_type} is not supported."
-    assert to_polar in ('regular', 'cosine'), f"'to_polar'={to_polar} is not supported."
+    assert field_type in (
+        "difference",
+        "sum",
+    ), f"'field_type'={field_type} is not supported."
+    assert to_polar in ("regular", "cosine"), f"'to_polar'={to_polar} is not supported."
     x_coords, y_coords = data[[x]].values.ravel(), data[[y]].values.ravel()
     timestamps = np.arange(len(x_coords)) if t is None else data[[t]].values.ravel()
-    gaf = _get_gaf(np.array([x_coords, y_coords]), timestamps,
-                   field_type=field_type, to_polar=to_polar)
+    gaf = _get_gaf(
+        np.array([x_coords, y_coords]),
+        timestamps,
+        field_type=field_type,
+        to_polar=to_polar,
+    )
     return gaf.flatten() if flatten else gaf
 
 
-def _get_gaf(a: np.array, t: np.array,
-             field_type: Literal["difference", "sum"],
-             to_polar: Literal["regular", "cosine"]
-             ) -> np.array:
+def _get_gaf(
+    a: np.array,
+    t: np.array,
+    field_type: Literal["difference", "sum"],
+    to_polar: Literal["regular", "cosine"],
+) -> np.array:
     """
     :param a: array of shape (n_samples, n_timestamps) being angular values.
     :param t: array of shape (n_timestamps,) being timestamps for all samples in 'a' or
                              (n_samples, n_timestamps) being timestamps of corresponding angular values in 'a',
                                                        i.e. a[i, :] are expected to be the angles at time t[i, :].
     """
+
     def _get_t(t_: np.array, i_: int):
         return t_[i_, :] if len(t_.shape) > 1 else t_
 
@@ -337,17 +370,22 @@ def _get_gaf(a: np.array, t: np.array,
         assert len(t.shape) == 1 and len(t) == a.shape[1]
 
     n_samples, n_timestamps = a.shape
-    if field_type == 'sum':
+    if field_type == "sum":
+
         def f(phi1, phi2):
             return np.cos(phi1 + phi2)
-    else:          # 'difference'
+
+    else:  # 'difference'
+
         def f(phi1, phi2):
             return np.sin(phi1 - phi2)
 
     gaf = np.zeros((n_samples, n_timestamps, n_timestamps))
     for i in prange(n_samples):
-        if to_polar == 'regular':
-            rho, phi = _car2pol(a[i, :], _get_t(t, i))         # _get_t used to avoid copies of 't' in 1d case
+        if to_polar == "regular":
+            rho, phi = _car2pol(
+                a[i, :], _get_t(t, i)
+            )  # _get_t used to avoid copies of 't' in 1d case
         else:
             rho, phi = _encode_car(a[i, :], _get_t(t, i))
 
@@ -374,7 +412,7 @@ def _minmax(a: np.array) -> np.array:
 
 
 def _car2pol(x: np.array, f_x: np.array) -> Tuple[np.array, np.array]:
-    rho = np.sqrt(x ** 2 + f_x ** 2)
+    rho = np.sqrt(x**2 + f_x**2)
     phi = np.arctan2(f_x, x)
     return rho, phi
 
@@ -387,7 +425,9 @@ def _encode_car(x: np.array, t: np.array) -> Tuple[np.array, np.array]:
 
 # =========================== HILBERT CURVE ===========================
 @jit(forceobj=True, looplift=True)
-def get_hilbert_curve_enc(data: pd.DataFrame, x: str, y: str, scale: bool = True, p: int = 4) -> np.array:
+def get_hilbert_curve_enc(
+    data: pd.DataFrame, x: str, y: str, scale: bool = True, p: int = 4
+) -> np.array:
     """
     Map scanpath to values on Hilbert curve and encode to single feature vector.
     :param data: dataframe containing fixation coordinates.
@@ -398,17 +438,21 @@ def get_hilbert_curve_enc(data: pd.DataFrame, x: str, y: str, scale: bool = True
               Higher value of p indicates better locality preservation.
     :return: scanpath encoding in 2^p-dimensional feature space using 1D Hilbert curve.
     """
-    n = 2 ** p
-    mapping = get_hilbert_curve(data=data, x=x, y=y, scale=scale, p=p)  # get Hilbert curve mapping
-    mapping = np.unique(mapping)                                        # leave only unique values
+    n = 2**p
+    mapping = get_hilbert_curve(
+        data=data, x=x, y=y, scale=scale, p=p
+    )  # get Hilbert curve mapping
+    mapping = np.unique(mapping)  # leave only unique values
     vec = np.zeros((n * n,))
     for i in prange(n * n):
-        vec[i] = (i in mapping)                                         # activate mapped values
+        vec[i] = i in mapping  # activate mapped values
     return vec
 
 
 @jit(forceobj=True, looplift=True)
-def get_hilbert_curve(data: pd.DataFrame, x: str, y: str, scale: bool = True, p: int = 4) -> np.array:
+def get_hilbert_curve(
+    data: pd.DataFrame, x: str, y: str, scale: bool = True, p: int = 4
+) -> np.array:
     """
     Map scanpath to points on 1D Hilbert curve.
     :param data: dataframe containing fixation coordinates.
@@ -423,13 +467,20 @@ def get_hilbert_curve(data: pd.DataFrame, x: str, y: str, scale: bool = True, p:
     n_fixations = len(x)
 
     if scale:
-        x, y = _minmax(x), _minmax(y)                     # map x, y to [0, 1]  TODO: better approach than minmax?
+        x, y = _minmax(x), _minmax(
+            y
+        )  # map x, y to [0, 1]  TODO: better approach than minmax?
     else:
-        assert 0 <= x <= 1, "Either scale 'x' to be between 0 and 1 or add 'scale'=True."
-        assert 0 <= y <= 1, "Either scale 'y' to be between 0 and 1 or add 'scale'=True."
-    x, y = x * (2 ** p), y * (2 ** p)                      # map x, y to [0, 2^p]
-    x, y = np.array(np.round(x), dtype=int),\
-           np.array(np.round(y), dtype=int)                # map [0, 2^p] to {0, 1, .., 2^p}
+        assert (
+            0 <= x <= 1
+        ), "Either scale 'x' to be between 0 and 1 or add 'scale'=True."
+        assert (
+            0 <= y <= 1
+        ), "Either scale 'y' to be between 0 and 1 or add 'scale'=True."
+    x, y = x * (2**p), y * (2**p)  # map x, y to [0, 2^p]
+    x, y = np.array(np.round(x), dtype=int), np.array(
+        np.round(y), dtype=int
+    )  # map [0, 2^p] to {0, 1, .., 2^p}
 
     h = np.zeros((n_fixations,))
     for i in prange(n_fixations):
@@ -448,7 +499,7 @@ def xy2h(x: int, y: int, p: int) -> int:
 
     Algorithm: https://people.math.sc.edu/Burkardt/py_src/hilbert_curve/hilbert_curve.py.
     """
-    n = 2 ** p
+    n = 2**p
 
     s = n // 2
     d = 0
@@ -456,8 +507,8 @@ def xy2h(x: int, y: int, p: int) -> int:
     while s > 0:
         rx = (x & s) > 0
         ry = (y & s) > 0
-        d += s * s * ((3 * rx) ^ ry)   # adding length on Hilbert curve
-        if ry == 0:                    # rotation of quadrant
+        d += s * s * ((3 * rx) ^ ry)  # adding length on Hilbert curve
+        if ry == 0:  # rotation of quadrant
             if rx == 1:
                 x = n - 1 - x
                 y = n - 1 - y
@@ -467,37 +518,47 @@ def xy2h(x: int, y: int, p: int) -> int:
 
 
 if __name__ == "__main__":
-    import pandas as pd
-    import numpy as np
+    from os.path import join
+
     import matplotlib.pyplot as plt
+    import numpy as np
+    import pandas as pd
 
     from eyetracking.preprocessing.fixation_extraction import IDT
 
-    from os.path import join
-
-    DATA_PATH = join('..', 'test_data')
-
+    DATA_PATH = join("..", "test_data")
 
     def remove_points(df, x_min, x_max, y_min, y_max):
-        df = df[df['norm_pos_x'] <= x_max]
-        df = df[df['norm_pos_x'] >= x_min]
-        df = df[df['norm_pos_y'] >= y_min]
-        df = df[df['norm_pos_y'] <= y_max]
+        df = df[df["norm_pos_x"] <= x_max]
+        df = df[df["norm_pos_x"] >= x_min]
+        df = df[df["norm_pos_y"] >= y_min]
+        df = df[df["norm_pos_y"] <= y_max]
         return df
 
+    data = pd.concat(
+        [
+            pd.read_excel(join(DATA_PATH, "itog_gaze_1.xlsx")),
+            pd.read_excel(join(DATA_PATH, "itog_gaze_2.xlsx")),
+        ],
+        axis=0,
+    )
 
-    data = pd.concat([pd.read_excel(join(DATA_PATH, 'itog_gaze_1.xlsx')),
-                      pd.read_excel(join(DATA_PATH, 'itog_gaze_2.xlsx'))], axis=0)
-
-    data.drop(['world_index', 'confidence', 'base_data'], axis=1, inplace=True)
+    data.drop(["world_index", "confidence", "base_data"], axis=1, inplace=True)
     data = remove_points(data, -1, 1, -1, 1)
 
-    x = 'norm_pos_x'
-    y = 'norm_pos_y'
-    t = 'gaze_timestamp'
+    x = "norm_pos_x"
+    y = "norm_pos_y"
+    t = "gaze_timestamp"
 
-    idt = IDT(x=x, y=y, t=t, pk=['Participant', 'tekst'], min_duration=0.01, max_dispersion=0.05,
-              distance="euc")
+    idt = IDT(
+        x=x,
+        y=y,
+        t=t,
+        pk=["Participant", "tekst"],
+        min_duration=0.01,
+        max_dispersion=0.05,
+        distance="euc",
+    )
     idt_data = idt.transform(data)
 
     heatmaps = get_heatmaps(idt_data, x, y, shape=(100, 100))

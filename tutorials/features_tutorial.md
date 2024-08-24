@@ -1,4 +1,4 @@
-# EyeFeatures: introduction to distance and measure modules
+# EyeFeatures: introduction to features with scanpaths and fixations
 
 
 ```python
@@ -37,6 +37,9 @@ def get_paris_dataset():
     df.X = df.X / df.X.max()
     df.Y = df.Y / df.Y.max()
     df = df.rename(columns={'FDUR': 'duration', 'X': 'norm_pos_x', 'Y': 'norm_pos_y'})
+    df['dispersion'] = df['duration']
+    df['timestamp'] = df.duration.cumsum()  # timestamps of fixations
+    df['timestamp'] /= 1e3                    # milliseconds
 
     return df.drop(columns=['Unnamed: 0'])
 ```
@@ -47,6 +50,23 @@ data = get_paris_dataset()
 data
 ```
 
+
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
@@ -62,8 +82,6 @@ data
       <th>norm_pos_y</th>
       <th>duration</th>
       <th>...</th>
-      <th>COS_INST_FASTTEXT_2016</th>
-      <th>COS_CUM_FASTTEXT_2016</th>
       <th>WFREQ_RANK_FASTTEXT_2016</th>
       <th>COS_INST_FASTTEXT_2018</th>
       <th>COS_CUM_FASTTEXT_2018</th>
@@ -72,6 +90,8 @@ data
       <th>COS_INST_FASTTEXT_1618</th>
       <th>COS_CUM_FASTTEXT_1618</th>
       <th>TEXT_TYPE_2</th>
+      <th>dispersion</th>
+      <th>timestamp</th>
     </tr>
   </thead>
   <tbody>
@@ -88,8 +108,6 @@ data
       <td>0.384969</td>
       <td>96</td>
       <td>...</td>
-      <td>0.184662</td>
-      <td>0.184662</td>
       <td>8205.0</td>
       <td>0.186901</td>
       <td>0.186901</td>
@@ -98,6 +116,8 @@ data
       <td>0.185782</td>
       <td>0.185782</td>
       <td>a</td>
+      <td>96</td>
+      <td>0.096</td>
     </tr>
     <tr>
       <th>1</th>
@@ -112,8 +132,6 @@ data
       <td>0.383532</td>
       <td>129</td>
       <td>...</td>
-      <td>0.184662</td>
-      <td>0.184662</td>
       <td>8205.0</td>
       <td>0.186901</td>
       <td>0.186901</td>
@@ -122,6 +140,8 @@ data
       <td>0.185782</td>
       <td>0.185782</td>
       <td>a</td>
+      <td>129</td>
+      <td>0.225</td>
     </tr>
     <tr>
       <th>2</th>
@@ -136,8 +156,6 @@ data
       <td>0.382957</td>
       <td>280</td>
       <td>...</td>
-      <td>0.207028</td>
-      <td>0.222649</td>
       <td>12071.0</td>
       <td>0.221362</td>
       <td>0.228615</td>
@@ -146,6 +164,8 @@ data
       <td>0.214195</td>
       <td>0.225632</td>
       <td>a</td>
+      <td>280</td>
+      <td>0.505</td>
     </tr>
     <tr>
       <th>3</th>
@@ -160,8 +180,6 @@ data
       <td>0.399626</td>
       <td>278</td>
       <td>...</td>
-      <td>0.171182</td>
-      <td>0.240086</td>
       <td>1217.0</td>
       <td>0.256207</td>
       <td>0.254959</td>
@@ -170,6 +188,8 @@ data
       <td>0.213694</td>
       <td>0.247522</td>
       <td>a</td>
+      <td>278</td>
+      <td>0.783</td>
     </tr>
     <tr>
       <th>4</th>
@@ -184,8 +204,6 @@ data
       <td>0.397615</td>
       <td>266</td>
       <td>...</td>
-      <td>0.171182</td>
-      <td>0.241489</td>
       <td>1217.0</td>
       <td>0.256207</td>
       <td>0.268313</td>
@@ -194,6 +212,8 @@ data
       <td>0.213694</td>
       <td>0.254901</td>
       <td>a</td>
+      <td>266</td>
+      <td>1.049</td>
     </tr>
     <tr>
       <th>...</th>
@@ -232,8 +252,6 @@ data
       <td>0.796091</td>
       <td>142</td>
       <td>...</td>
-      <td>0.330287</td>
-      <td>0.560464</td>
       <td>200185.0</td>
       <td>0.522610</td>
       <td>0.331133</td>
@@ -242,6 +260,8 @@ data
       <td>0.426449</td>
       <td>0.445799</td>
       <td>f+</td>
+      <td>142</td>
+      <td>7279.520</td>
     </tr>
     <tr>
       <th>39560</th>
@@ -256,8 +276,6 @@ data
       <td>0.806581</td>
       <td>171</td>
       <td>...</td>
-      <td>0.275178</td>
-      <td>0.569613</td>
       <td>8832.0</td>
       <td>0.251470</td>
       <td>0.340826</td>
@@ -266,6 +284,8 @@ data
       <td>0.263324</td>
       <td>0.455220</td>
       <td>f+</td>
+      <td>171</td>
+      <td>7279.691</td>
     </tr>
     <tr>
       <th>39561</th>
@@ -280,8 +300,6 @@ data
       <td>0.882885</td>
       <td>152</td>
       <td>...</td>
-      <td>0.208679</td>
-      <td>0.569217</td>
       <td>15043.0</td>
       <td>0.127237</td>
       <td>0.345502</td>
@@ -290,6 +308,8 @@ data
       <td>0.167958</td>
       <td>0.457360</td>
       <td>f+</td>
+      <td>152</td>
+      <td>7279.843</td>
     </tr>
     <tr>
       <th>39562</th>
@@ -304,8 +324,6 @@ data
       <td>0.875126</td>
       <td>276</td>
       <td>...</td>
-      <td>0.699906</td>
-      <td>0.628054</td>
       <td>1245.0</td>
       <td>0.741338</td>
       <td>0.395152</td>
@@ -314,6 +332,8 @@ data
       <td>0.720622</td>
       <td>0.511603</td>
       <td>f+</td>
+      <td>276</td>
+      <td>7280.119</td>
     </tr>
     <tr>
       <th>39563</th>
@@ -328,8 +348,6 @@ data
       <td>0.888346</td>
       <td>139</td>
       <td>...</td>
-      <td>0.699906</td>
-      <td>0.670538</td>
       <td>1245.0</td>
       <td>0.741338</td>
       <td>0.439672</td>
@@ -338,10 +356,12 @@ data
       <td>0.720622</td>
       <td>0.555105</td>
       <td>f+</td>
+      <td>139</td>
+      <td>7280.258</td>
     </tr>
   </tbody>
 </table>
-<p>39564 rows × 37 columns</p>
+<p>39564 rows × 39 columns</p>
 </div>
 
 
@@ -350,8 +370,8 @@ data
 
 
 ```python
-data = data[['SUBJ', 'norm_pos_x', 'norm_pos_y', 'duration', 'ANSWER']]
-data['group'] = 1 # dummy column for groupping purposes (we operate with single group)
+data = data[['SUBJ', 'norm_pos_x', 'norm_pos_y', 'timestamp', 'duration', 'dispersion', 'ANSWER']]
+data['group'] = 1                           # dummy column for grouping purposes (we operate with single group)
 data
 ```
 
@@ -359,6 +379,19 @@ data
 
 
 <div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
@@ -366,7 +399,9 @@ data
       <th>SUBJ</th>
       <th>norm_pos_x</th>
       <th>norm_pos_y</th>
+      <th>timestamp</th>
       <th>duration</th>
+      <th>dispersion</th>
       <th>ANSWER</th>
       <th>group</th>
     </tr>
@@ -377,6 +412,8 @@ data
       <td>1</td>
       <td>0.376268</td>
       <td>0.384969</td>
+      <td>0.096</td>
+      <td>96</td>
       <td>96</td>
       <td>1</td>
       <td>1</td>
@@ -386,6 +423,8 @@ data
       <td>1</td>
       <td>0.437754</td>
       <td>0.383532</td>
+      <td>0.225</td>
+      <td>129</td>
       <td>129</td>
       <td>1</td>
       <td>1</td>
@@ -395,6 +434,8 @@ data
       <td>1</td>
       <td>0.546146</td>
       <td>0.382957</td>
+      <td>0.505</td>
+      <td>280</td>
       <td>280</td>
       <td>1</td>
       <td>1</td>
@@ -404,6 +445,8 @@ data
       <td>1</td>
       <td>0.706643</td>
       <td>0.399626</td>
+      <td>0.783</td>
+      <td>278</td>
       <td>278</td>
       <td>1</td>
       <td>1</td>
@@ -413,6 +456,8 @@ data
       <td>1</td>
       <td>0.724645</td>
       <td>0.397615</td>
+      <td>1.049</td>
+      <td>266</td>
       <td>266</td>
       <td>1</td>
       <td>1</td>
@@ -425,12 +470,16 @@ data
       <td>...</td>
       <td>...</td>
       <td>...</td>
+      <td>...</td>
+      <td>...</td>
     </tr>
     <tr>
       <th>39559</th>
       <td>15</td>
       <td>0.420385</td>
       <td>0.796091</td>
+      <td>7279.520</td>
+      <td>142</td>
       <td>142</td>
       <td>1</td>
       <td>1</td>
@@ -440,6 +489,8 @@ data
       <td>15</td>
       <td>0.536004</td>
       <td>0.806581</td>
+      <td>7279.691</td>
+      <td>171</td>
       <td>171</td>
       <td>1</td>
       <td>1</td>
@@ -449,6 +500,8 @@ data
       <td>15</td>
       <td>0.526749</td>
       <td>0.882885</td>
+      <td>7279.843</td>
+      <td>152</td>
       <td>152</td>
       <td>1</td>
       <td>1</td>
@@ -458,6 +511,8 @@ data
       <td>15</td>
       <td>0.757860</td>
       <td>0.875126</td>
+      <td>7280.119</td>
+      <td>276</td>
       <td>276</td>
       <td>1</td>
       <td>1</td>
@@ -467,13 +522,15 @@ data
       <td>15</td>
       <td>0.701952</td>
       <td>0.888346</td>
+      <td>7280.258</td>
+      <td>139</td>
       <td>139</td>
       <td>1</td>
       <td>1</td>
     </tr>
   </tbody>
 </table>
-<p>39564 rows × 6 columns</p>
+<p>39564 rows × 8 columns</p>
 </div>
 
 
@@ -487,7 +544,7 @@ data
 import eyetracking.features.scanpath_dist as eye_dist
 ```
 
-##### See the example of calculating some basic distances (Euclidean, Eye and Mannan). Note that the primary key (`path_pk`) is set to `'group'` so there is a separate expected path for each unique group. The primary key (`pk`) is also set to `'SUBJ'` and `'group'` which defines the way to distinguish between unique paths.
+##### See the example of calculating some basic distances (Euclidean, Eye and Mannan). Note that the primary key (`path_pk`) is set to 'group' so there is a separate expected path for each unique group. The primary key (`pk`) is also set to 'SUBJ' and 'group' which defines the way to distinguish between unique paths.
 
 
 ```python
@@ -504,15 +561,28 @@ transformer = eye_dist.SimpleDistances(
 transformer.fit_transform(data)
 ```
 
-    100%|██████████| 15/15 [00:00<00:00, 1159.63it/s]
-    100%|██████████| 15/15 [00:04<00:00,  3.18it/s]
-    100%|██████████| 15/15 [00:04<00:00,  3.01it/s]
+    100%|██████████| 15/15 [00:00<00:00, 174.15it/s]
+    100%|██████████| 15/15 [00:03<00:00,  4.56it/s]
+    100%|██████████| 15/15 [00:03<00:00,  4.60it/s]
 
 
 
 
 
 <div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
@@ -659,6 +729,19 @@ fill_path
 
 
 <div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
@@ -752,13 +835,26 @@ scanmatch = eye_dist.ScanMatchDist(
 scanmatch.fit_transform(data)
 ```
 
-    100%|██████████| 15/15 [00:06<00:00,  2.40it/s]
+    100%|██████████| 15/15 [00:03<00:00,  4.55it/s]
 
 
 
 
 
 <div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
@@ -769,63 +865,63 @@ scanmatch.fit_transform(data)
   <tbody>
     <tr>
       <th>1_1</th>
-      <td>0.809898</td>
+      <td>0.933843</td>
     </tr>
     <tr>
       <th>2_1</th>
-      <td>0.563541</td>
+      <td>0.352993</td>
     </tr>
     <tr>
       <th>3_1</th>
-      <td>0.099326</td>
+      <td>0.620893</td>
     </tr>
     <tr>
       <th>4_1</th>
-      <td>0.454761</td>
+      <td>0.691871</td>
     </tr>
     <tr>
       <th>5_1</th>
-      <td>0.304610</td>
+      <td>0.926866</td>
     </tr>
     <tr>
       <th>6_1</th>
-      <td>0.464609</td>
+      <td>0.891209</td>
     </tr>
     <tr>
       <th>7_1</th>
-      <td>0.127177</td>
+      <td>0.239042</td>
     </tr>
     <tr>
       <th>8_1</th>
-      <td>0.686680</td>
+      <td>0.584023</td>
     </tr>
     <tr>
       <th>9_1</th>
-      <td>0.353146</td>
+      <td>0.399081</td>
     </tr>
     <tr>
       <th>10_1</th>
-      <td>0.532799</td>
+      <td>0.694188</td>
     </tr>
     <tr>
       <th>11_1</th>
-      <td>0.589163</td>
+      <td>0.775750</td>
     </tr>
     <tr>
       <th>12_1</th>
-      <td>0.127177</td>
+      <td>0.239042</td>
     </tr>
     <tr>
       <th>13_1</th>
-      <td>0.954058</td>
+      <td>0.791370</td>
     </tr>
     <tr>
       <th>14_1</th>
-      <td>0.371605</td>
+      <td>0.738963</td>
     </tr>
     <tr>
       <th>15_1</th>
-      <td>0.996683</td>
+      <td>0.928938</td>
     </tr>
   </tbody>
 </table>
@@ -863,13 +959,26 @@ euc_matrix = eye_complex.get_dist_matrix(list_of_scanpaths, dist_metric=eye_dist
 euc_matrix
 ```
 
-    100%|██████████| 15/15 [00:00<00:00, 1219.13it/s]
+    100%|██████████| 15/15 [00:00<00:00, 3816.01it/s]
 
 
 
 
 
 <div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
@@ -1192,13 +1301,26 @@ eye_matrix = eye_complex.get_dist_matrix(list_of_scanpaths, dist_metric=eye_dist
 eye_matrix
 ```
 
-    100%|██████████| 15/15 [00:09<00:00,  1.57it/s]
+    100%|██████████| 15/15 [00:08<00:00,  1.85it/s]
 
 
 
 
 
 <div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
@@ -1528,6 +1650,19 @@ eye_complex.get_compromise_matrix([euc_matrix, eye_matrix])
 
 
 <div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
@@ -1841,6 +1976,19 @@ pd.DataFrame(sim_matrix)
 
 
 <div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
@@ -2151,6 +2299,19 @@ pd.DataFrame(mds_reordered_matrix)
 
 
 <div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
@@ -2176,271 +2337,271 @@ pd.DataFrame(mds_reordered_matrix)
     <tr>
       <th>0</th>
       <td>1.000000</td>
-      <td>0.503174</td>
-      <td>0.502775</td>
-      <td>0.502218</td>
-      <td>0.502828</td>
-      <td>0.505733</td>
+      <td>0.501775</td>
+      <td>0.501888</td>
+      <td>0.502147</td>
+      <td>0.501771</td>
+      <td>0.502038</td>
+      <td>0.502194</td>
+      <td>0.503161</td>
+      <td>0.506386</td>
+      <td>0.501781</td>
+      <td>0.502422</td>
+      <td>0.502804</td>
+      <td>0.501877</td>
       <td>0.502178</td>
-      <td>0.502266</td>
-      <td>0.502508</td>
-      <td>0.502382</td>
-      <td>0.502404</td>
-      <td>0.502291</td>
-      <td>0.502265</td>
-      <td>0.502416</td>
-      <td>0.502427</td>
+      <td>0.502771</td>
     </tr>
     <tr>
       <th>1</th>
-      <td>0.503174</td>
+      <td>0.501775</td>
       <td>1.000000</td>
-      <td>0.503330</td>
-      <td>0.503081</td>
-      <td>0.503113</td>
-      <td>0.506289</td>
-      <td>0.503161</td>
-      <td>0.502989</td>
-      <td>0.503462</td>
-      <td>0.503227</td>
-      <td>0.503298</td>
-      <td>0.503152</td>
-      <td>0.503020</td>
-      <td>0.503174</td>
+      <td>0.502123</td>
+      <td>0.502086</td>
+      <td>0.501578</td>
+      <td>0.502068</td>
+      <td>0.502357</td>
       <td>0.503369</td>
+      <td>0.505912</td>
+      <td>0.501828</td>
+      <td>0.502634</td>
+      <td>0.503068</td>
+      <td>0.501698</td>
+      <td>0.502427</td>
+      <td>0.502868</td>
     </tr>
     <tr>
       <th>2</th>
-      <td>0.502775</td>
-      <td>0.503330</td>
+      <td>0.501888</td>
+      <td>0.502123</td>
       <td>1.000000</td>
+      <td>0.502084</td>
+      <td>0.501980</td>
+      <td>0.502106</td>
+      <td>0.502224</td>
+      <td>0.503081</td>
+      <td>0.505386</td>
+      <td>0.501970</td>
+      <td>0.502455</td>
+      <td>0.502963</td>
+      <td>0.502066</td>
+      <td>0.502218</td>
       <td>0.502815</td>
-      <td>0.503145</td>
-      <td>0.506218</td>
-      <td>0.502771</td>
-      <td>0.502601</td>
-      <td>0.503132</td>
-      <td>0.502947</td>
-      <td>0.502957</td>
-      <td>0.502824</td>
-      <td>0.502705</td>
-      <td>0.502997</td>
-      <td>0.502868</td>
     </tr>
     <tr>
       <th>3</th>
-      <td>0.502218</td>
-      <td>0.503081</td>
-      <td>0.502815</td>
-      <td>1.000000</td>
-      <td>0.502963</td>
-      <td>0.505386</td>
-      <td>0.501888</td>
-      <td>0.501980</td>
-      <td>0.502455</td>
-      <td>0.502066</td>
+      <td>0.502147</td>
+      <td>0.502086</td>
       <td>0.502084</td>
-      <td>0.502224</td>
-      <td>0.501970</td>
-      <td>0.502106</td>
-      <td>0.502123</td>
+      <td>1.000000</td>
+      <td>0.502024</td>
+      <td>0.502223</td>
+      <td>0.502356</td>
+      <td>0.503298</td>
+      <td>0.506445</td>
+      <td>0.502160</td>
+      <td>0.502578</td>
+      <td>0.502877</td>
+      <td>0.502205</td>
+      <td>0.502404</td>
+      <td>0.502957</td>
     </tr>
     <tr>
       <th>4</th>
-      <td>0.502828</td>
-      <td>0.503113</td>
-      <td>0.503145</td>
-      <td>0.502963</td>
+      <td>0.501771</td>
+      <td>0.501578</td>
+      <td>0.501980</td>
+      <td>0.502024</td>
       <td>1.000000</td>
-      <td>0.505565</td>
-      <td>0.502804</td>
-      <td>0.502705</td>
-      <td>0.503164</td>
-      <td>0.502875</td>
-      <td>0.502877</td>
-      <td>0.502840</td>
-      <td>0.502900</td>
+      <td>0.501899</td>
+      <td>0.502155</td>
       <td>0.502989</td>
-      <td>0.503068</td>
+      <td>0.505436</td>
+      <td>0.501722</td>
+      <td>0.502394</td>
+      <td>0.502705</td>
+      <td>0.501675</td>
+      <td>0.502266</td>
+      <td>0.502601</td>
     </tr>
     <tr>
       <th>5</th>
-      <td>0.505733</td>
-      <td>0.506289</td>
-      <td>0.506218</td>
-      <td>0.505386</td>
-      <td>0.505565</td>
+      <td>0.502038</td>
+      <td>0.502068</td>
+      <td>0.502106</td>
+      <td>0.502223</td>
+      <td>0.501899</td>
       <td>1.000000</td>
-      <td>0.506386</td>
-      <td>0.505436</td>
-      <td>0.506109</td>
-      <td>0.506518</td>
-      <td>0.506445</td>
-      <td>0.505995</td>
-      <td>0.505916</td>
+      <td>0.502305</td>
+      <td>0.503174</td>
       <td>0.506219</td>
-      <td>0.505912</td>
+      <td>0.501972</td>
+      <td>0.502557</td>
+      <td>0.502989</td>
+      <td>0.502114</td>
+      <td>0.502416</td>
+      <td>0.502997</td>
     </tr>
     <tr>
       <th>6</th>
-      <td>0.502178</td>
-      <td>0.503161</td>
-      <td>0.502771</td>
-      <td>0.501888</td>
-      <td>0.502804</td>
-      <td>0.506386</td>
-      <td>1.000000</td>
-      <td>0.501771</td>
-      <td>0.502422</td>
-      <td>0.501877</td>
-      <td>0.502147</td>
       <td>0.502194</td>
-      <td>0.501781</td>
-      <td>0.502038</td>
-      <td>0.501775</td>
+      <td>0.502357</td>
+      <td>0.502224</td>
+      <td>0.502356</td>
+      <td>0.502155</td>
+      <td>0.502305</td>
+      <td>1.000000</td>
+      <td>0.503152</td>
+      <td>0.505995</td>
+      <td>0.502204</td>
+      <td>0.502475</td>
+      <td>0.502840</td>
+      <td>0.502338</td>
+      <td>0.502291</td>
+      <td>0.502824</td>
     </tr>
     <tr>
       <th>7</th>
-      <td>0.502266</td>
+      <td>0.503161</td>
+      <td>0.503369</td>
+      <td>0.503081</td>
+      <td>0.503298</td>
       <td>0.502989</td>
-      <td>0.502601</td>
-      <td>0.501980</td>
-      <td>0.502705</td>
-      <td>0.505436</td>
-      <td>0.501771</td>
+      <td>0.503174</td>
+      <td>0.503152</td>
       <td>1.000000</td>
-      <td>0.502394</td>
-      <td>0.501675</td>
-      <td>0.502024</td>
-      <td>0.502155</td>
-      <td>0.501722</td>
-      <td>0.501899</td>
-      <td>0.501578</td>
+      <td>0.506289</td>
+      <td>0.503020</td>
+      <td>0.503462</td>
+      <td>0.503113</td>
+      <td>0.503227</td>
+      <td>0.503174</td>
+      <td>0.503330</td>
     </tr>
     <tr>
       <th>8</th>
-      <td>0.502508</td>
-      <td>0.503462</td>
-      <td>0.503132</td>
-      <td>0.502455</td>
-      <td>0.503164</td>
-      <td>0.506109</td>
-      <td>0.502422</td>
-      <td>0.502394</td>
+      <td>0.506386</td>
+      <td>0.505912</td>
+      <td>0.505386</td>
+      <td>0.506445</td>
+      <td>0.505436</td>
+      <td>0.506219</td>
+      <td>0.505995</td>
+      <td>0.506289</td>
       <td>1.000000</td>
-      <td>0.502602</td>
-      <td>0.502578</td>
-      <td>0.502475</td>
-      <td>0.502397</td>
-      <td>0.502557</td>
-      <td>0.502634</td>
+      <td>0.505916</td>
+      <td>0.506109</td>
+      <td>0.505565</td>
+      <td>0.506518</td>
+      <td>0.505733</td>
+      <td>0.506218</td>
     </tr>
     <tr>
       <th>9</th>
-      <td>0.502382</td>
-      <td>0.503227</td>
-      <td>0.502947</td>
-      <td>0.502066</td>
-      <td>0.502875</td>
-      <td>0.506518</td>
-      <td>0.501877</td>
-      <td>0.501675</td>
-      <td>0.502602</td>
+      <td>0.501781</td>
+      <td>0.501828</td>
+      <td>0.501970</td>
+      <td>0.502160</td>
+      <td>0.501722</td>
+      <td>0.501972</td>
+      <td>0.502204</td>
+      <td>0.503020</td>
+      <td>0.505916</td>
       <td>1.000000</td>
-      <td>0.502205</td>
-      <td>0.502338</td>
+      <td>0.502397</td>
+      <td>0.502900</td>
       <td>0.501833</td>
-      <td>0.502114</td>
-      <td>0.501698</td>
+      <td>0.502265</td>
+      <td>0.502705</td>
     </tr>
     <tr>
       <th>10</th>
-      <td>0.502404</td>
-      <td>0.503298</td>
-      <td>0.502957</td>
-      <td>0.502084</td>
-      <td>0.502877</td>
-      <td>0.506445</td>
-      <td>0.502147</td>
-      <td>0.502024</td>
+      <td>0.502422</td>
+      <td>0.502634</td>
+      <td>0.502455</td>
       <td>0.502578</td>
-      <td>0.502205</td>
+      <td>0.502394</td>
+      <td>0.502557</td>
+      <td>0.502475</td>
+      <td>0.503462</td>
+      <td>0.506109</td>
+      <td>0.502397</td>
       <td>1.000000</td>
-      <td>0.502356</td>
-      <td>0.502160</td>
-      <td>0.502223</td>
-      <td>0.502086</td>
+      <td>0.503164</td>
+      <td>0.502602</td>
+      <td>0.502508</td>
+      <td>0.503132</td>
     </tr>
     <tr>
       <th>11</th>
-      <td>0.502291</td>
-      <td>0.503152</td>
-      <td>0.502824</td>
-      <td>0.502224</td>
+      <td>0.502804</td>
+      <td>0.503068</td>
+      <td>0.502963</td>
+      <td>0.502877</td>
+      <td>0.502705</td>
+      <td>0.502989</td>
       <td>0.502840</td>
-      <td>0.505995</td>
-      <td>0.502194</td>
-      <td>0.502155</td>
-      <td>0.502475</td>
-      <td>0.502338</td>
-      <td>0.502356</td>
+      <td>0.503113</td>
+      <td>0.505565</td>
+      <td>0.502900</td>
+      <td>0.503164</td>
       <td>1.000000</td>
-      <td>0.502204</td>
-      <td>0.502305</td>
-      <td>0.502357</td>
+      <td>0.502875</td>
+      <td>0.502828</td>
+      <td>0.503145</td>
     </tr>
     <tr>
       <th>12</th>
-      <td>0.502265</td>
-      <td>0.503020</td>
-      <td>0.502705</td>
-      <td>0.501970</td>
-      <td>0.502900</td>
-      <td>0.505916</td>
-      <td>0.501781</td>
-      <td>0.501722</td>
-      <td>0.502397</td>
+      <td>0.501877</td>
+      <td>0.501698</td>
+      <td>0.502066</td>
+      <td>0.502205</td>
+      <td>0.501675</td>
+      <td>0.502114</td>
+      <td>0.502338</td>
+      <td>0.503227</td>
+      <td>0.506518</td>
       <td>0.501833</td>
-      <td>0.502160</td>
-      <td>0.502204</td>
+      <td>0.502602</td>
+      <td>0.502875</td>
       <td>1.000000</td>
-      <td>0.501972</td>
-      <td>0.501828</td>
+      <td>0.502382</td>
+      <td>0.502947</td>
     </tr>
     <tr>
       <th>13</th>
+      <td>0.502178</td>
+      <td>0.502427</td>
+      <td>0.502218</td>
+      <td>0.502404</td>
+      <td>0.502266</td>
       <td>0.502416</td>
+      <td>0.502291</td>
       <td>0.503174</td>
-      <td>0.502997</td>
-      <td>0.502106</td>
-      <td>0.502989</td>
-      <td>0.506219</td>
-      <td>0.502038</td>
-      <td>0.501899</td>
-      <td>0.502557</td>
-      <td>0.502114</td>
-      <td>0.502223</td>
-      <td>0.502305</td>
-      <td>0.501972</td>
+      <td>0.505733</td>
+      <td>0.502265</td>
+      <td>0.502508</td>
+      <td>0.502828</td>
+      <td>0.502382</td>
       <td>1.000000</td>
-      <td>0.502068</td>
+      <td>0.502775</td>
     </tr>
     <tr>
       <th>14</th>
-      <td>0.502427</td>
-      <td>0.503369</td>
+      <td>0.502771</td>
       <td>0.502868</td>
-      <td>0.502123</td>
-      <td>0.503068</td>
-      <td>0.505912</td>
-      <td>0.501775</td>
-      <td>0.501578</td>
-      <td>0.502634</td>
-      <td>0.501698</td>
-      <td>0.502086</td>
-      <td>0.502357</td>
-      <td>0.501828</td>
-      <td>0.502068</td>
+      <td>0.502815</td>
+      <td>0.502957</td>
+      <td>0.502601</td>
+      <td>0.502997</td>
+      <td>0.502824</td>
+      <td>0.503330</td>
+      <td>0.506218</td>
+      <td>0.502705</td>
+      <td>0.503132</td>
+      <td>0.503145</td>
+      <td>0.502947</td>
+      <td>0.502775</td>
       <td>1.000000</td>
     </tr>
   </tbody>
@@ -2479,6 +2640,19 @@ hurst_exponent.fit_transform(data)
 
 
 <div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
@@ -2571,6 +2745,19 @@ gridded_entropy.fit_transform(data)
 
 
 <div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
@@ -2672,6 +2859,19 @@ rqa_measures.fit_transform(data)
 
 
 <div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
@@ -2787,6 +2987,19 @@ saccade_unl.fit_transform(data)
 
 
 <div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
@@ -2861,6 +3074,241 @@ saccade_unl.fit_transform(data)
 
 
 
+## Statistical Features
+
+##### Attributes of saccades, fixations, as well as microsaccades and regressions such as max length, mean acceleration, and other are available in `stats` module of `eyetracking.features`. You can calculate statistics using any aggregation function supported by `pandas`.
+
+
+```python
+import eyetracking.features.stats as eye_stats
+```
+
+##### Prepare desired statistics about saccades:
+
+
+```python
+sac_feats_stats = {
+    'length': ['min', 'max'],
+    'speed': ['mean', 'kurtosis'],
+    'acceleration': ['mean']
+}
+```
+
+##### Also, one would like to see the similarity of object and its group. We have people ('SUBJ') which are divided into groups ('group', here we have a single group, but there could be many groups, for example, age-based). Thus, we can calculate shift features, which are a difference of object's feature value and its group's mean value.
+
+##### Prepare saccade statistics which we want to calculate shift features for:
+
+
+```python
+sac_feats_stats_shift = {'length': ['max'],
+                         'acceleration': ['mean']}
+```
+
+##### Define transformer for saccades:
+
+
+```python
+sf = eye_stats.SaccadeFeatures(x='norm_pos_x',
+                               y='norm_pos_y',
+                               t='timestamp',
+                               pk=['SUBJ', 'group'],
+                               features_stats=sac_feats_stats,
+                               shift_features=sac_feats_stats_shift,
+                               shift_pk=['group'])
+```
+
+
+```python
+sf.fit_transform(data)
+```
+
+
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>sac_length_min</th>
+      <th>sac_length_max</th>
+      <th>sac_length_max_shift</th>
+      <th>sac_acceleration_mean</th>
+      <th>sac_acceleration_mean_shift</th>
+      <th>sac_speed_mean</th>
+      <th>sac_speed_kurtosis</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>1_1</th>
+      <td>0.006033</td>
+      <td>0.735187</td>
+      <td>0.000000</td>
+      <td>3.200016</td>
+      <td>-0.412047</td>
+      <td>1.036293</td>
+      <td>4.289506</td>
+    </tr>
+    <tr>
+      <th>2_1</th>
+      <td>0.004946</td>
+      <td>0.695758</td>
+      <td>-0.039428</td>
+      <td>4.411436</td>
+      <td>0.799373</td>
+      <td>1.188990</td>
+      <td>3.949788</td>
+    </tr>
+    <tr>
+      <th>3_1</th>
+      <td>0.002494</td>
+      <td>0.691093</td>
+      <td>-0.044094</td>
+      <td>3.351796</td>
+      <td>-0.260267</td>
+      <td>1.073377</td>
+      <td>2.275953</td>
+    </tr>
+    <tr>
+      <th>4_1</th>
+      <td>0.004396</td>
+      <td>0.637963</td>
+      <td>-0.097223</td>
+      <td>3.246972</td>
+      <td>-0.365090</td>
+      <td>0.999678</td>
+      <td>4.342265</td>
+    </tr>
+    <tr>
+      <th>5_1</th>
+      <td>0.004814</td>
+      <td>0.693513</td>
+      <td>-0.041673</td>
+      <td>3.874696</td>
+      <td>0.262634</td>
+      <td>1.111982</td>
+      <td>4.788790</td>
+    </tr>
+    <tr>
+      <th>6_1</th>
+      <td>0.014949</td>
+      <td>0.659511</td>
+      <td>-0.075676</td>
+      <td>4.518683</td>
+      <td>0.906621</td>
+      <td>1.423984</td>
+      <td>2.408947</td>
+    </tr>
+    <tr>
+      <th>7_1</th>
+      <td>0.003880</td>
+      <td>0.579964</td>
+      <td>-0.155222</td>
+      <td>4.047229</td>
+      <td>0.435167</td>
+      <td>1.190862</td>
+      <td>2.696679</td>
+    </tr>
+    <tr>
+      <th>8_1</th>
+      <td>0.012126</td>
+      <td>0.661617</td>
+      <td>-0.073569</td>
+      <td>4.614863</td>
+      <td>1.002801</td>
+      <td>1.307412</td>
+      <td>1.579665</td>
+    </tr>
+    <tr>
+      <th>9_1</th>
+      <td>0.006906</td>
+      <td>0.656098</td>
+      <td>-0.079089</td>
+      <td>2.537365</td>
+      <td>-1.074698</td>
+      <td>0.872490</td>
+      <td>6.404846</td>
+    </tr>
+    <tr>
+      <th>10_1</th>
+      <td>0.002115</td>
+      <td>0.656778</td>
+      <td>-0.078408</td>
+      <td>1.736126</td>
+      <td>-1.875936</td>
+      <td>0.707411</td>
+      <td>6.400686</td>
+    </tr>
+    <tr>
+      <th>11_1</th>
+      <td>0.008301</td>
+      <td>0.673268</td>
+      <td>-0.061919</td>
+      <td>3.719054</td>
+      <td>0.106992</td>
+      <td>1.186794</td>
+      <td>2.141173</td>
+    </tr>
+    <tr>
+      <th>12_1</th>
+      <td>0.004982</td>
+      <td>0.648675</td>
+      <td>-0.086511</td>
+      <td>3.103430</td>
+      <td>-0.508633</td>
+      <td>1.051155</td>
+      <td>6.032897</td>
+    </tr>
+    <tr>
+      <th>13_1</th>
+      <td>0.014569</td>
+      <td>0.673546</td>
+      <td>-0.061641</td>
+      <td>5.627082</td>
+      <td>2.015020</td>
+      <td>1.587480</td>
+      <td>1.892242</td>
+    </tr>
+    <tr>
+      <th>14_1</th>
+      <td>0.013864</td>
+      <td>0.670388</td>
+      <td>-0.064799</td>
+      <td>2.511618</td>
+      <td>-1.100445</td>
+      <td>0.942285</td>
+      <td>5.053431</td>
+    </tr>
+    <tr>
+      <th>15_1</th>
+      <td>0.017111</td>
+      <td>0.730887</td>
+      <td>-0.004300</td>
+      <td>3.800426</td>
+      <td>0.188364</td>
+      <td>1.232593</td>
+      <td>3.360688</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
 ## Extractor Class
 
 ##### Finally, we can combine several extractor classes into one `Extractor` class to calculate all the features at once.
@@ -2877,9 +3325,17 @@ extractor = Extractor(
         ),
         eye_measures.GriddedDistributionEntropy(),
         eye_measures.SaccadeUnlikelihood(),
+        eye_stats.SaccadeFeatures(
+            features_stats=sac_feats_stats,
+            shift_features=sac_feats_stats_shift,
+            shift_pk=['group']
+        )
     ],
     x='norm_pos_x',
     y='norm_pos_y',
+    t='timestamp',
+    duration='duration',
+    dispersion='dispersion',
     path_pk=['group'],
     pk=['SUBJ', 'group'],
     return_df=True
@@ -2888,15 +3344,28 @@ extractor = Extractor(
 extractor.fit_transform(data)
 ```
 
-    100%|██████████| 15/15 [00:00<00:00, 1803.33it/s]
-      0%|          | 0/15 [00:00<?, ?it/s]100%|██████████| 15/15 [00:04<00:00,  3.11it/s]
-    100%|██████████| 15/15 [00:04<00:00,  3.12it/s]
+    100%|██████████| 15/15 [00:00<00:00, 2763.90it/s]
+    100%|██████████| 15/15 [00:02<00:00,  5.15it/s]
+    100%|██████████| 15/15 [00:02<00:00,  5.09it/s]
 
 
 
 
 
 <div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
@@ -2906,6 +3375,13 @@ extractor.fit_transform(data)
       <th>man_dist</th>
       <th>grid_entropy</th>
       <th>saccade_nll</th>
+      <th>sac_length_min</th>
+      <th>sac_length_max</th>
+      <th>sac_length_max_shift</th>
+      <th>sac_acceleration_mean</th>
+      <th>sac_acceleration_mean_shift</th>
+      <th>sac_speed_mean</th>
+      <th>sac_speed_kurtosis</th>
     </tr>
   </thead>
   <tbody>
@@ -2916,6 +3392,13 @@ extractor.fit_transform(data)
       <td>0.015358</td>
       <td>3.960535</td>
       <td>5855.969515</td>
+      <td>0.006033</td>
+      <td>0.735187</td>
+      <td>0.000000</td>
+      <td>1.736375e+16</td>
+      <td>-4.088451e+16</td>
+      <td>1.937620e+16</td>
+      <td>1409.816333</td>
     </tr>
     <tr>
       <th>2_1</th>
@@ -2924,6 +3407,13 @@ extractor.fit_transform(data)
       <td>0.017263</td>
       <td>3.829708</td>
       <td>5162.866221</td>
+      <td>0.004946</td>
+      <td>0.695758</td>
+      <td>-0.039428</td>
+      <td>5.750563e+16</td>
+      <td>-7.426283e+14</td>
+      <td>8.341979e+16</td>
+      <td>623.452215</td>
     </tr>
     <tr>
       <th>3_1</th>
@@ -2932,6 +3422,13 @@ extractor.fit_transform(data)
       <td>0.017920</td>
       <td>4.002632</td>
       <td>9246.306051</td>
+      <td>0.002494</td>
+      <td>0.691093</td>
+      <td>-0.044094</td>
+      <td>4.692676e+16</td>
+      <td>-1.132150e+16</td>
+      <td>7.542848e+16</td>
+      <td>679.472530</td>
     </tr>
     <tr>
       <th>4_1</th>
@@ -2940,6 +3437,13 @@ extractor.fit_transform(data)
       <td>0.015121</td>
       <td>3.997430</td>
       <td>7201.777450</td>
+      <td>0.004396</td>
+      <td>0.637963</td>
+      <td>-0.097223</td>
+      <td>8.420396e+16</td>
+      <td>2.595570e+16</td>
+      <td>1.207275e+17</td>
+      <td>375.534401</td>
     </tr>
     <tr>
       <th>5_1</th>
@@ -2948,6 +3452,13 @@ extractor.fit_transform(data)
       <td>0.017448</td>
       <td>3.972908</td>
       <td>6378.480145</td>
+      <td>0.004814</td>
+      <td>0.693513</td>
+      <td>-0.041673</td>
+      <td>3.597491e+16</td>
+      <td>-2.227334e+16</td>
+      <td>6.661781e+16</td>
+      <td>1494.364756</td>
     </tr>
     <tr>
       <th>6_1</th>
@@ -2956,6 +3467,13 @@ extractor.fit_transform(data)
       <td>0.014200</td>
       <td>4.002764</td>
       <td>3425.953969</td>
+      <td>0.014949</td>
+      <td>0.659511</td>
+      <td>-0.075676</td>
+      <td>6.432294e+16</td>
+      <td>6.074690e+15</td>
+      <td>7.196951e+16</td>
+      <td>567.907161</td>
     </tr>
     <tr>
       <th>7_1</th>
@@ -2964,6 +3482,13 @@ extractor.fit_transform(data)
       <td>0.017750</td>
       <td>4.139917</td>
       <td>4950.269975</td>
+      <td>0.003880</td>
+      <td>0.579964</td>
+      <td>-0.155222</td>
+      <td>8.772772e+16</td>
+      <td>2.947947e+16</td>
+      <td>1.261946e+17</td>
+      <td>392.914133</td>
     </tr>
     <tr>
       <th>8_1</th>
@@ -2972,6 +3497,13 @@ extractor.fit_transform(data)
       <td>0.018178</td>
       <td>4.158252</td>
       <td>5591.412520</td>
+      <td>0.012126</td>
+      <td>0.661617</td>
+      <td>-0.073569</td>
+      <td>8.430990e+16</td>
+      <td>2.606164e+16</td>
+      <td>1.068958e+17</td>
+      <td>376.451656</td>
     </tr>
     <tr>
       <th>9_1</th>
@@ -2980,6 +3512,13 @@ extractor.fit_transform(data)
       <td>0.016137</td>
       <td>3.799890</td>
       <td>6492.712042</td>
+      <td>0.006906</td>
+      <td>0.656098</td>
+      <td>-0.079089</td>
+      <td>9.964382e+15</td>
+      <td>-4.828387e+16</td>
+      <td>1.150047e+16</td>
+      <td>1618.912271</td>
     </tr>
     <tr>
       <th>10_1</th>
@@ -2988,6 +3527,13 @@ extractor.fit_transform(data)
       <td>0.013282</td>
       <td>4.022404</td>
       <td>5770.656154</td>
+      <td>0.002115</td>
+      <td>0.656778</td>
+      <td>-0.078408</td>
+      <td>3.178135e+16</td>
+      <td>-2.646690e+16</td>
+      <td>4.584361e+16</td>
+      <td>1447.565585</td>
     </tr>
     <tr>
       <th>11_1</th>
@@ -2996,6 +3542,13 @@ extractor.fit_transform(data)
       <td>0.016458</td>
       <td>4.164256</td>
       <td>7163.822825</td>
+      <td>0.008301</td>
+      <td>0.673268</td>
+      <td>-0.061919</td>
+      <td>4.828441e+16</td>
+      <td>-9.963844e+15</td>
+      <td>7.518146e+16</td>
+      <td>723.486787</td>
     </tr>
     <tr>
       <th>12_1</th>
@@ -3004,6 +3557,13 @@ extractor.fit_transform(data)
       <td>0.016428</td>
       <td>4.023588</td>
       <td>4257.228198</td>
+      <td>0.004982</td>
+      <td>0.648675</td>
+      <td>-0.086511</td>
+      <td>4.361359e+16</td>
+      <td>-1.463466e+16</td>
+      <td>6.764585e+16</td>
+      <td>768.066955</td>
     </tr>
     <tr>
       <th>13_1</th>
@@ -3012,6 +3572,13 @@ extractor.fit_transform(data)
       <td>0.014180</td>
       <td>3.972001</td>
       <td>4480.162030</td>
+      <td>0.014569</td>
+      <td>0.673546</td>
+      <td>-0.061641</td>
+      <td>1.857274e+17</td>
+      <td>1.274792e+17</td>
+      <td>2.804642e+17</td>
+      <td>177.747624</td>
     </tr>
     <tr>
       <th>14_1</th>
@@ -3020,6 +3587,13 @@ extractor.fit_transform(data)
       <td>0.012841</td>
       <td>3.930190</td>
       <td>1950.917958</td>
+      <td>0.013864</td>
+      <td>0.670388</td>
+      <td>-0.064799</td>
+      <td>8.424760e+15</td>
+      <td>-4.982349e+16</td>
+      <td>1.684952e+16</td>
+      <td>535.324400</td>
     </tr>
     <tr>
       <th>15_1</th>
@@ -3028,6 +3602,13 @@ extractor.fit_transform(data)
       <td>0.013304</td>
       <td>4.148421</td>
       <td>3704.882425</td>
+      <td>0.017111</td>
+      <td>0.730887</td>
+      <td>-0.004300</td>
+      <td>7.318467e+16</td>
+      <td>1.493641e+16</td>
+      <td>1.034776e+17</td>
+      <td>554.657857</td>
     </tr>
   </tbody>
 </table>
@@ -3058,12 +3639,12 @@ target = data.drop_duplicates(subset=['SUBJ'])['ANSWER'].reset_index(drop=True)
 predictions = pipeline.fit(data, target).predict(data)
 ```
 
-    100%|██████████| 15/15 [00:00<00:00, 1557.29it/s]
-      0%|          | 0/15 [00:00<?, ?it/s]100%|██████████| 15/15 [00:04<00:00,  3.08it/s]
-    100%|██████████| 15/15 [00:04<00:00,  3.12it/s]
-    100%|██████████| 15/15 [00:00<00:00, 1604.23it/s]
-    100%|██████████| 15/15 [00:04<00:00,  3.12it/s]
-    100%|██████████| 15/15 [00:04<00:00,  3.11it/s]
+    100%|██████████| 15/15 [00:00<00:00, 2965.01it/s]
+    100%|██████████| 15/15 [00:03<00:00,  4.99it/s]
+    100%|██████████| 15/15 [00:02<00:00,  5.16it/s]
+    100%|██████████| 15/15 [00:00<00:00, 2789.14it/s]
+    100%|██████████| 15/15 [00:02<00:00,  5.08it/s]
+    100%|██████████| 15/15 [00:03<00:00,  4.98it/s]
 
 
 
@@ -3074,5 +3655,6 @@ accuracy_score(target, predictions)
 
 
 
-    0.9333333333333333
+    1.0
+
 
