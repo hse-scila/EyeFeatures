@@ -1862,16 +1862,12 @@ eye_complex.get_compromise_matrix([euc_matrix, eye_matrix])
 
 ```python
 def sim(p, q) -> float:
-    return 1 / eye_dist.calc_euc_dist(p, q)
+    return 1 / eye_dist.calc_eye_dist(p, q)
 
 sim_matrix = eye_complex.get_sim_matrix(list_of_scanpaths, sim_metric=sim)
 pd.DataFrame(sim_matrix)
 ```
 
-
-
-
-<div>
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
@@ -1896,587 +1892,309 @@ pd.DataFrame(sim_matrix)
   <tbody>
     <tr>
       <th>0</th>
-      <td>1.000000</td>
-      <td>0.502305</td>
-      <td>0.502068</td>
-      <td>0.502114</td>
-      <td>0.501972</td>
-      <td>0.503174</td>
-      <td>0.502557</td>
-      <td>0.502106</td>
-      <td>0.502038</td>
-      <td>0.502223</td>
-      <td>0.501899</td>
-      <td>0.502997</td>
-      <td>0.502416</td>
-      <td>0.506219</td>
-      <td>0.502989</td>
+      <td>0.000113</td>
+      <td>0.610177</td>
+      <td>0.596714</td>
+      <td>0.628669</td>
+      <td>0.300533</td>
+      <td>0.434329</td>
+      <td>0.410506</td>
+      <td>0.497459</td>
+      <td>0.550898</td>
+      <td>0.531282</td>
+      <td>0.639914</td>
+      <td>0.790514</td>
+      <td>0.534857</td>
+      <td>0.173974</td>
+      <td>0.404507</td>
     </tr>
     <tr>
       <th>1</th>
-      <td>0.502305</td>
+      <td>0.610177</td>
+      <td>0.000113</td>
+      <td>0.594073</td>
       <td>1.000000</td>
-      <td>0.502357</td>
-      <td>0.502338</td>
-      <td>0.502204</td>
-      <td>0.503152</td>
-      <td>0.502475</td>
-      <td>0.502224</td>
-      <td>0.502194</td>
-      <td>0.502356</td>
-      <td>0.502155</td>
-      <td>0.502824</td>
-      <td>0.502291</td>
-      <td>0.505995</td>
-      <td>0.502840</td>
+      <td>0.658233</td>
+      <td>0.378114</td>
+      <td>0.313958</td>
+      <td>0.519474</td>
+      <td>0.573987</td>
+      <td>0.435145</td>
+      <td>0.487189</td>
+      <td>0.560248</td>
+      <td>0.324009</td>
+      <td>0.135466</td>
+      <td>0.252434</td>
     </tr>
     <tr>
       <th>2</th>
-      <td>0.502068</td>
-      <td>0.502357</td>
-      <td>1.000000</td>
-      <td>0.501698</td>
-      <td>0.501828</td>
-      <td>0.503369</td>
-      <td>0.502634</td>
-      <td>0.502123</td>
-      <td>0.501775</td>
-      <td>0.502086</td>
-      <td>0.501578</td>
-      <td>0.502868</td>
-      <td>0.502427</td>
-      <td>0.505912</td>
-      <td>0.503068</td>
+      <td>0.596714</td>
+      <td>0.594073</td>
+      <td>0.000113</td>
+      <td>0.747054</td>
+      <td>0.599457</td>
+      <td>0.506166</td>
+      <td>0.563857</td>
+      <td>0.870255</td>
+      <td>0.482085</td>
+      <td>0.461480</td>
+      <td>0.534687</td>
+      <td>0.637071</td>
+      <td>0.536292</td>
+      <td>0.171048</td>
+      <td>0.482146</td>
     </tr>
     <tr>
       <th>3</th>
-      <td>0.502114</td>
-      <td>0.502338</td>
-      <td>0.501698</td>
+      <td>0.628669</td>
       <td>1.000000</td>
-      <td>0.501833</td>
-      <td>0.503227</td>
-      <td>0.502602</td>
-      <td>0.502066</td>
-      <td>0.501877</td>
-      <td>0.502205</td>
-      <td>0.501675</td>
-      <td>0.502947</td>
-      <td>0.502382</td>
-      <td>0.506518</td>
-      <td>0.502875</td>
+      <td>0.747054</td>
+      <td>0.000113</td>
+      <td>0.766210</td>
+      <td>0.587598</td>
+      <td>0.459901</td>
+      <td>0.514625</td>
+      <td>0.553303</td>
+      <td>0.436374</td>
+      <td>0.465630</td>
+      <td>0.805251</td>
+      <td>0.339306</td>
+      <td>0.150324</td>
+      <td>0.392734</td>
     </tr>
     <tr>
       <th>4</th>
-      <td>0.501972</td>
-      <td>0.502204</td>
-      <td>0.501828</td>
-      <td>0.501833</td>
-      <td>1.000000</td>
-      <td>0.503020</td>
-      <td>0.502397</td>
-      <td>0.501970</td>
-      <td>0.501781</td>
-      <td>0.502160</td>
-      <td>0.501722</td>
-      <td>0.502705</td>
-      <td>0.502265</td>
-      <td>0.505916</td>
-      <td>0.502900</td>
+      <td>0.300533</td>
+      <td>0.658233</td>
+      <td>0.599457</td>
+      <td>0.766210</td>
+      <td>0.000113</td>
+      <td>0.446841</td>
+      <td>0.236833</td>
+      <td>0.448293</td>
+      <td>0.485945</td>
+      <td>0.392338</td>
+      <td>0.429789</td>
+      <td>0.496681</td>
+      <td>0.328114</td>
+      <td>0.147507</td>
+      <td>0.269558</td>
     </tr>
     <tr>
       <th>5</th>
-      <td>0.503174</td>
-      <td>0.503152</td>
-      <td>0.503369</td>
-      <td>0.503227</td>
-      <td>0.503020</td>
-      <td>1.000000</td>
-      <td>0.503462</td>
-      <td>0.503081</td>
-      <td>0.503161</td>
-      <td>0.503298</td>
-      <td>0.502989</td>
-      <td>0.503330</td>
-      <td>0.503174</td>
-      <td>0.506289</td>
-      <td>0.503113</td>
+      <td>0.434329</td>
+      <td>0.378114</td>
+      <td>0.506166</td>
+      <td>0.587598</td>
+      <td>0.446841</td>
+      <td>0.000113</td>
+      <td>0.437904</td>
+      <td>0.368250</td>
+      <td>0.578109</td>
+      <td>0.525135</td>
+      <td>0.611741</td>
+      <td>0.433852</td>
+      <td>0.402006</td>
+      <td>0.163781</td>
+      <td>0.300130</td>
     </tr>
     <tr>
       <th>6</th>
-      <td>0.502557</td>
-      <td>0.502475</td>
-      <td>0.502634</td>
-      <td>0.502602</td>
-      <td>0.502397</td>
-      <td>0.503462</td>
-      <td>1.000000</td>
-      <td>0.502455</td>
-      <td>0.502422</td>
-      <td>0.502578</td>
-      <td>0.502394</td>
-      <td>0.503132</td>
-      <td>0.502508</td>
-      <td>0.506109</td>
-      <td>0.503164</td>
+      <td>0.410506</td>
+      <td>0.313958</td>
+      <td>0.563857</td>
+      <td>0.459901</td>
+      <td>0.236833</td>
+      <td>0.437904</td>
+      <td>0.000113</td>
+      <td>0.424246</td>
+      <td>0.361010</td>
+      <td>0.337823</td>
+      <td>0.404716</td>
+      <td>0.377623</td>
+      <td>0.271711</td>
+      <td>0.131206</td>
+      <td>0.260353</td>
     </tr>
     <tr>
       <th>7</th>
-      <td>0.502106</td>
-      <td>0.502224</td>
-      <td>0.502123</td>
-      <td>0.502066</td>
-      <td>0.501970</td>
-      <td>0.503081</td>
-      <td>0.502455</td>
-      <td>1.000000</td>
-      <td>0.501888</td>
-      <td>0.502084</td>
-      <td>0.501980</td>
-      <td>0.502815</td>
-      <td>0.502218</td>
-      <td>0.505386</td>
-      <td>0.502963</td>
+      <td>0.497459</td>
+      <td>0.519474</td>
+      <td>0.870255</td>
+      <td>0.514625</td>
+      <td>0.448293</td>
+      <td>0.368250</td>
+      <td>0.424246</td>
+      <td>0.000113</td>
+      <td>0.431607</td>
+      <td>0.476741</td>
+      <td>0.614004</td>
+      <td>0.559689</td>
+      <td>0.493166</td>
+      <td>0.144470</td>
+      <td>0.363910</td>
     </tr>
     <tr>
       <th>8</th>
-      <td>0.502038</td>
-      <td>0.502194</td>
-      <td>0.501775</td>
-      <td>0.501877</td>
-      <td>0.501781</td>
-      <td>0.503161</td>
-      <td>0.502422</td>
-      <td>0.501888</td>
-      <td>1.000000</td>
-      <td>0.502147</td>
-      <td>0.501771</td>
-      <td>0.502771</td>
-      <td>0.502178</td>
-      <td>0.506386</td>
-      <td>0.502804</td>
+      <td>0.550898</td>
+      <td>0.573987</td>
+      <td>0.482085</td>
+      <td>0.553303</td>
+      <td>0.485945</td>
+      <td>0.578109</td>
+      <td>0.361010</td>
+      <td>0.431607</td>
+      <td>0.000113</td>
+      <td>0.659049</td>
+      <td>0.660081</td>
+      <td>0.643340</td>
+      <td>0.546822</td>
+      <td>0.192459</td>
+      <td>0.323988</td>
     </tr>
     <tr>
       <th>9</th>
-      <td>0.502223</td>
-      <td>0.502356</td>
-      <td>0.502086</td>
-      <td>0.502205</td>
-      <td>0.502160</td>
-      <td>0.503298</td>
-      <td>0.502578</td>
-      <td>0.502084</td>
-      <td>0.502147</td>
-      <td>1.000000</td>
-      <td>0.502024</td>
-      <td>0.502957</td>
-      <td>0.502404</td>
-      <td>0.506445</td>
-      <td>0.502877</td>
+      <td>0.531282</td>
+      <td>0.435145</td>
+      <td>0.461480</td>
+      <td>0.436374</td>
+      <td>0.392338</td>
+      <td>0.525135</td>
+      <td>0.337823</td>
+      <td>0.476741</td>
+      <td>0.659049</td>
+      <td>0.000113</td>
+      <td>0.611242</td>
+      <td>0.631493</td>
+      <td>0.568341</td>
+      <td>0.230248</td>
+      <td>0.433907</td>
     </tr>
     <tr>
       <th>10</th>
-      <td>0.501899</td>
-      <td>0.502155</td>
-      <td>0.501578</td>
-      <td>0.501675</td>
-      <td>0.501722</td>
-      <td>0.502989</td>
-      <td>0.502394</td>
-      <td>0.501980</td>
-      <td>0.501771</td>
-      <td>0.502024</td>
-      <td>1.000000</td>
-      <td>0.502601</td>
-      <td>0.502266</td>
-      <td>0.505436</td>
-      <td>0.502705</td>
+      <td>0.639914</td>
+      <td>0.487189</td>
+      <td>0.534687</td>
+      <td>0.465630</td>
+      <td>0.429789</td>
+      <td>0.611741</td>
+      <td>0.404716</td>
+      <td>0.614004</td>
+      <td>0.660081</td>
+      <td>0.611242</td>
+      <td>0.000113</td>
+      <td>0.596621</td>
+      <td>0.702427</td>
+      <td>0.211193</td>
+      <td>0.507753</td>
     </tr>
     <tr>
       <th>11</th>
-      <td>0.502997</td>
-      <td>0.502824</td>
-      <td>0.502868</td>
-      <td>0.502947</td>
-      <td>0.502705</td>
-      <td>0.503330</td>
-      <td>0.503132</td>
-      <td>0.502815</td>
-      <td>0.502771</td>
-      <td>0.502957</td>
-      <td>0.502601</td>
-      <td>1.000000</td>
-      <td>0.502775</td>
-      <td>0.506218</td>
-      <td>0.503145</td>
+      <td>0.790514</td>
+      <td>0.560248</td>
+      <td>0.637071</td>
+      <td>0.805251</td>
+      <td>0.496681</td>
+      <td>0.433852</td>
+      <td>0.377623</td>
+      <td>0.559689</td>
+      <td>0.643340</td>
+      <td>0.631493</td>
+      <td>0.596621</td>
+      <td>0.000113</td>
+      <td>0.501592</td>
+      <td>0.153756</td>
+      <td>0.374281</td>
     </tr>
     <tr>
       <th>12</th>
-      <td>0.502416</td>
-      <td>0.502291</td>
-      <td>0.502427</td>
-      <td>0.502382</td>
-      <td>0.502265</td>
-      <td>0.503174</td>
-      <td>0.502508</td>
-      <td>0.502218</td>
-      <td>0.502178</td>
-      <td>0.502404</td>
-      <td>0.502266</td>
-      <td>0.502775</td>
-      <td>1.000000</td>
-      <td>0.505733</td>
-      <td>0.502828</td>
+      <td>0.534857</td>
+      <td>0.324009</td>
+      <td>0.536292</td>
+      <td>0.339306</td>
+      <td>0.328114</td>
+      <td>0.402006</td>
+      <td>0.271711</td>
+      <td>0.493166</td>
+      <td>0.546822</td>
+      <td>0.568341</td>
+      <td>0.702427</td>
+      <td>0.501592</td>
+      <td>0.000113</td>
+      <td>0.178085</td>
+      <td>0.360779</td>
     </tr>
     <tr>
       <th>13</th>
-      <td>0.506219</td>
-      <td>0.505995</td>
-      <td>0.505912</td>
-      <td>0.506518</td>
-      <td>0.505916</td>
-      <td>0.506289</td>
-      <td>0.506109</td>
-      <td>0.505386</td>
-      <td>0.506386</td>
-      <td>0.506445</td>
-      <td>0.505436</td>
-      <td>0.506218</td>
-      <td>0.505733</td>
-      <td>1.000000</td>
-      <td>0.505565</td>
+      <td>0.173974</td>
+      <td>0.135466</td>
+      <td>0.171048</td>
+      <td>0.150324</td>
+      <td>0.147507</td>
+      <td>0.163781</td>
+      <td>0.131206</td>
+      <td>0.144470</td>
+      <td>0.192459</td>
+      <td>0.230248</td>
+      <td>0.211193</td>
+      <td>0.153756</td>
+      <td>0.178085</td>
+      <td>0.000113</td>
+      <td>0.148701</td>
     </tr>
     <tr>
       <th>14</th>
-      <td>0.502989</td>
-      <td>0.502840</td>
-      <td>0.503068</td>
-      <td>0.502875</td>
-      <td>0.502900</td>
-      <td>0.503113</td>
-      <td>0.503164</td>
-      <td>0.502963</td>
-      <td>0.502804</td>
-      <td>0.502877</td>
-      <td>0.502705</td>
-      <td>0.503145</td>
-      <td>0.502828</td>
-      <td>0.505565</td>
-      <td>1.000000</td>
+      <td>0.404507</td>
+      <td>0.252434</td>
+      <td>0.482146</td>
+      <td>0.392734</td>
+      <td>0.269558</td>
+      <td>0.300130</td>
+      <td>0.260353</td>
+      <td>0.363910</td>
+      <td>0.323988</td>
+      <td>0.433907</td>
+      <td>0.507753</td>
+      <td>0.374281</td>
+      <td>0.360779</td>
+      <td>0.148701</td>
+      <td>0.000113</td>
     </tr>
   </tbody>
 </table>
 </div>
 
+
+##### There are 4 methods implemented in `scanpath_complex` for similarity matrix reordering. For example, we can use `dimensionality_reduction_order` for the matrix calculated above. This function applies a dimensionality reduction technique, such as Multi-Dimensional Scaling (MDS), to the input similarity matrix. The goal is to project the items into a lower-dimensional space (typically 1D) where the order of items reflects their dissimilarities as closely as possible. The indices of items are then reordered according to their positions in this lower-dimensional space, resulting in an ordering that preserves the structure of the original similarities.
 
 
 ##### There are 4 methods implemented in `scanpath_complex` for similarity matrix reordering. For example, we can use `dimensionality_reduction_order` for the matrix calculated above. This function applies a dimensionality reduction technique, such as Multi-Dimensional Scaling (MDS), to the input similarity matrix. The goal is to project the items into a lower-dimensional space (typically 1D) where the order of items reflects their dissimilarities as closely as possible. The indices of items are then reordered according to their positions in this lower-dimensional space, resulting in an ordering that preserves the structure of the original similarities.
 
 
 ```python
-mds_reordered_matrix = eye_complex.dimensionality_reduction_order(sim_matrix)
-pd.DataFrame(mds_reordered_matrix)
+import seaborn as sns
+
+sns.heatmap(sim_matrix)
 ```
 
 
 
+    
+![png](output_28_1.png)
+    
 
-<div>
-<table border="1" class="dataframe">
-  <thead>
-    <tr style="text-align: right;">
-      <th></th>
-      <th>0</th>
-      <th>1</th>
-      <th>2</th>
-      <th>3</th>
-      <th>4</th>
-      <th>5</th>
-      <th>6</th>
-      <th>7</th>
-      <th>8</th>
-      <th>9</th>
-      <th>10</th>
-      <th>11</th>
-      <th>12</th>
-      <th>13</th>
-      <th>14</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th>0</th>
-      <td>1.000000</td>
-      <td>0.501775</td>
-      <td>0.501888</td>
-      <td>0.502147</td>
-      <td>0.501771</td>
-      <td>0.502038</td>
-      <td>0.502194</td>
-      <td>0.503161</td>
-      <td>0.506386</td>
-      <td>0.501781</td>
-      <td>0.502422</td>
-      <td>0.502804</td>
-      <td>0.501877</td>
-      <td>0.502178</td>
-      <td>0.502771</td>
-    </tr>
-    <tr>
-      <th>1</th>
-      <td>0.501775</td>
-      <td>1.000000</td>
-      <td>0.502123</td>
-      <td>0.502086</td>
-      <td>0.501578</td>
-      <td>0.502068</td>
-      <td>0.502357</td>
-      <td>0.503369</td>
-      <td>0.505912</td>
-      <td>0.501828</td>
-      <td>0.502634</td>
-      <td>0.503068</td>
-      <td>0.501698</td>
-      <td>0.502427</td>
-      <td>0.502868</td>
-    </tr>
-    <tr>
-      <th>2</th>
-      <td>0.501888</td>
-      <td>0.502123</td>
-      <td>1.000000</td>
-      <td>0.502084</td>
-      <td>0.501980</td>
-      <td>0.502106</td>
-      <td>0.502224</td>
-      <td>0.503081</td>
-      <td>0.505386</td>
-      <td>0.501970</td>
-      <td>0.502455</td>
-      <td>0.502963</td>
-      <td>0.502066</td>
-      <td>0.502218</td>
-      <td>0.502815</td>
-    </tr>
-    <tr>
-      <th>3</th>
-      <td>0.502147</td>
-      <td>0.502086</td>
-      <td>0.502084</td>
-      <td>1.000000</td>
-      <td>0.502024</td>
-      <td>0.502223</td>
-      <td>0.502356</td>
-      <td>0.503298</td>
-      <td>0.506445</td>
-      <td>0.502160</td>
-      <td>0.502578</td>
-      <td>0.502877</td>
-      <td>0.502205</td>
-      <td>0.502404</td>
-      <td>0.502957</td>
-    </tr>
-    <tr>
-      <th>4</th>
-      <td>0.501771</td>
-      <td>0.501578</td>
-      <td>0.501980</td>
-      <td>0.502024</td>
-      <td>1.000000</td>
-      <td>0.501899</td>
-      <td>0.502155</td>
-      <td>0.502989</td>
-      <td>0.505436</td>
-      <td>0.501722</td>
-      <td>0.502394</td>
-      <td>0.502705</td>
-      <td>0.501675</td>
-      <td>0.502266</td>
-      <td>0.502601</td>
-    </tr>
-    <tr>
-      <th>5</th>
-      <td>0.502038</td>
-      <td>0.502068</td>
-      <td>0.502106</td>
-      <td>0.502223</td>
-      <td>0.501899</td>
-      <td>1.000000</td>
-      <td>0.502305</td>
-      <td>0.503174</td>
-      <td>0.506219</td>
-      <td>0.501972</td>
-      <td>0.502557</td>
-      <td>0.502989</td>
-      <td>0.502114</td>
-      <td>0.502416</td>
-      <td>0.502997</td>
-    </tr>
-    <tr>
-      <th>6</th>
-      <td>0.502194</td>
-      <td>0.502357</td>
-      <td>0.502224</td>
-      <td>0.502356</td>
-      <td>0.502155</td>
-      <td>0.502305</td>
-      <td>1.000000</td>
-      <td>0.503152</td>
-      <td>0.505995</td>
-      <td>0.502204</td>
-      <td>0.502475</td>
-      <td>0.502840</td>
-      <td>0.502338</td>
-      <td>0.502291</td>
-      <td>0.502824</td>
-    </tr>
-    <tr>
-      <th>7</th>
-      <td>0.503161</td>
-      <td>0.503369</td>
-      <td>0.503081</td>
-      <td>0.503298</td>
-      <td>0.502989</td>
-      <td>0.503174</td>
-      <td>0.503152</td>
-      <td>1.000000</td>
-      <td>0.506289</td>
-      <td>0.503020</td>
-      <td>0.503462</td>
-      <td>0.503113</td>
-      <td>0.503227</td>
-      <td>0.503174</td>
-      <td>0.503330</td>
-    </tr>
-    <tr>
-      <th>8</th>
-      <td>0.506386</td>
-      <td>0.505912</td>
-      <td>0.505386</td>
-      <td>0.506445</td>
-      <td>0.505436</td>
-      <td>0.506219</td>
-      <td>0.505995</td>
-      <td>0.506289</td>
-      <td>1.000000</td>
-      <td>0.505916</td>
-      <td>0.506109</td>
-      <td>0.505565</td>
-      <td>0.506518</td>
-      <td>0.505733</td>
-      <td>0.506218</td>
-    </tr>
-    <tr>
-      <th>9</th>
-      <td>0.501781</td>
-      <td>0.501828</td>
-      <td>0.501970</td>
-      <td>0.502160</td>
-      <td>0.501722</td>
-      <td>0.501972</td>
-      <td>0.502204</td>
-      <td>0.503020</td>
-      <td>0.505916</td>
-      <td>1.000000</td>
-      <td>0.502397</td>
-      <td>0.502900</td>
-      <td>0.501833</td>
-      <td>0.502265</td>
-      <td>0.502705</td>
-    </tr>
-    <tr>
-      <th>10</th>
-      <td>0.502422</td>
-      <td>0.502634</td>
-      <td>0.502455</td>
-      <td>0.502578</td>
-      <td>0.502394</td>
-      <td>0.502557</td>
-      <td>0.502475</td>
-      <td>0.503462</td>
-      <td>0.506109</td>
-      <td>0.502397</td>
-      <td>1.000000</td>
-      <td>0.503164</td>
-      <td>0.502602</td>
-      <td>0.502508</td>
-      <td>0.503132</td>
-    </tr>
-    <tr>
-      <th>11</th>
-      <td>0.502804</td>
-      <td>0.503068</td>
-      <td>0.502963</td>
-      <td>0.502877</td>
-      <td>0.502705</td>
-      <td>0.502989</td>
-      <td>0.502840</td>
-      <td>0.503113</td>
-      <td>0.505565</td>
-      <td>0.502900</td>
-      <td>0.503164</td>
-      <td>1.000000</td>
-      <td>0.502875</td>
-      <td>0.502828</td>
-      <td>0.503145</td>
-    </tr>
-    <tr>
-      <th>12</th>
-      <td>0.501877</td>
-      <td>0.501698</td>
-      <td>0.502066</td>
-      <td>0.502205</td>
-      <td>0.501675</td>
-      <td>0.502114</td>
-      <td>0.502338</td>
-      <td>0.503227</td>
-      <td>0.506518</td>
-      <td>0.501833</td>
-      <td>0.502602</td>
-      <td>0.502875</td>
-      <td>1.000000</td>
-      <td>0.502382</td>
-      <td>0.502947</td>
-    </tr>
-    <tr>
-      <th>13</th>
-      <td>0.502178</td>
-      <td>0.502427</td>
-      <td>0.502218</td>
-      <td>0.502404</td>
-      <td>0.502266</td>
-      <td>0.502416</td>
-      <td>0.502291</td>
-      <td>0.503174</td>
-      <td>0.505733</td>
-      <td>0.502265</td>
-      <td>0.502508</td>
-      <td>0.502828</td>
-      <td>0.502382</td>
-      <td>1.000000</td>
-      <td>0.502775</td>
-    </tr>
-    <tr>
-      <th>14</th>
-      <td>0.502771</td>
-      <td>0.502868</td>
-      <td>0.502815</td>
-      <td>0.502957</td>
-      <td>0.502601</td>
-      <td>0.502997</td>
-      <td>0.502824</td>
-      <td>0.503330</td>
-      <td>0.506218</td>
-      <td>0.502705</td>
-      <td>0.503132</td>
-      <td>0.503145</td>
-      <td>0.502947</td>
-      <td>0.502775</td>
-      <td>1.000000</td>
-    </tr>
-  </tbody>
-</table>
-</div>
+
+
+```python
+mds_reordered_matrix = eye_complex.dimensionality_reduction_order(sim_matrix)
+sns.heatmap(mds_reordered_matrix)
+```
+
+
+
+    
+![png](output_29_1.png)
+    
 
 
 
