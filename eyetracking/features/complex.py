@@ -9,6 +9,7 @@ from scipy.stats import gaussian_kde
 
 from eyetracking.utils import _rec2square, _split_dataframe, _square2rec
 
+import gudhi as gd
 from PyEMD.EMD2d import EMD2D
 
 
@@ -587,3 +588,119 @@ def hilbert_huang_transform(data: np.ndarray, max_imf: int = 1) -> np.ndarray:
     emd = EMD2D()
     decomposed = emd(data, max_imf=max_imf)
     return decomposed
+
+
+# =========================== PERSISTENCE CURVE ===========================
+
+
+def vietoris_rips_filtration(
+    scanpath: np.array, max_dim: int = 2, max_radius: float = 1.0
+):
+    """
+    Compute the Vietoris-Rips filtration for a point cloud.
+    :param point_cloud: scanpath data as a numpy array of shape (n, 2)
+    :param max_dim: maximum dimension for persistent homology
+    :param max_radius: maximum radius for the filtration
+    :return: persistence diagram and simplex tree
+    """
+
+    rips_complex = gd.RipsComplex(points=scanpath, max_edge_length=max_radius)
+    simplex_tree = rips_complex.create_simplex_tree(max_dimension=max_dim)
+    persistence = simplex_tree.persistence()
+
+    return persistence, simplex_tree
+
+
+def lower_star_filtration(time_series: np.ndarray, max_dim: int = 1):
+    """
+    Compute the Lower Star filtration for a time series.
+    :param time_series: time series data
+    :param max_dim: maximum dimension for persistent homology
+    :param persistence: persistence diagram.
+    """
+
+    simplex_tree = gd.SimplexTree()
+
+    for i, val in enumerate(time_series):
+        simplex_tree.insert([i], filtration=val)
+
+    simplex_tree.make_filtration_non_decreasing()
+    persistence = simplex_tree.persistence()
+
+    return persistence, simplex_tree
+
+
+def persistence_curve(persistence_diagram: List[Tuple | np.ndarray], t: float):
+    """
+    Compute the persistence curve for a persistence diagram at time t.
+    :param persistence_diagram: persistence diagram [(birth, death), ...]
+    :param t: threshold time for persistence curve
+    :return: sum of persistence intervals active at time t
+    """
+    total_persistence = sum(
+        (death - birth) for birth, death in persistence_diagram if birth <= t <= death
+    )
+    return total_persistence
+
+
+def persistence_entropy_curve(persistence_diagram: List[Tuple | np.ndarray], t: float):
+    """
+    Compute the persistence entropy curve for a persistence diagram at time t.
+    :param persistence_diagram: persistence diagram [(birth, death), ...]
+    :param t: threshold time for persistence entropy curve
+    :return: entropy value at time t
+    """
+
+    intervals = [
+        (death - birth) for birth, death in persistence_diagram if birth <= t <= death
+    ]
+    total_persistence = sum(intervals)
+
+    if total_persistence == 0:
+        return 0
+
+    probabilities = [interval / total_persistence for interval in intervals]
+    entropy = -sum(p * np.log(p) for p in probabilities)
+
+    return entropy
+
+
+def calculate_topological_features(
+    scanpath: np.ndarray,
+    time_series: np.ndarray,
+    max_radius: float = 1.0,
+    max_time: float = 1.0,
+    max_dim: int = 2,
+    time_steps: int = 100,
+):
+    """
+    Calculate topological features (persistence curve and persistence entropy) for a scanpath.
+    :param scanpath: scanpath data array of shape (n, 2)
+    :param time_series: 1d array of time series data (e.g. x or y coordinates over time)
+    :param max_radius: maximum radius for Vietoris-Rips filtration
+    :param max_time: maximum threshold for the persistence curve
+    :param max_dim: maximum dimension for persistent homology
+    :param time_steps: number of time steps for evaluating the persistence curve and entropy
+    :return: values of persistence curve at each time step, Values of persistence entropy at each time step
+    """
+
+    persistence_vr, _ = vietoris_rips_filtration(
+        scanpath, max_dim=max_dim, max_radius=max_radius
+    )
+    persistence_ls, _ = lower_star_filtration(time_series, max_dim=max_dim)
+
+    time_grid = np.linspace(0, max_time, time_steps)
+    persistence_curve_vals = []
+    persistence_entropy_vals = []
+
+    for t in time_grid:
+        pc_vr = persistence_curve([p[1] for p in persistence_vr], t)
+        pe_vr = persistence_entropy_curve([p[1] for p in persistence_vr], t)
+
+        pc_ls = persistence_curve([p[1] for p in persistence_ls], t)
+        pe_ls = persistence_entropy_curve([p[1] for p in persistence_ls], t)
+
+        persistence_curve_vals.append(pc_vr + pc_ls)
+        persistence_entropy_vals.append(pe_vr + pe_ls)
+
+    return np.array(persistence_curve_vals), np.array(persistence_entropy_vals)

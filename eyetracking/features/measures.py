@@ -1155,14 +1155,17 @@ class HHTFeatures(BaseTransformer):
         return cis
 
     @jit(forceobj=True, looplift=True)
-    def calculate_features(self, data: np.ndarray) -> List[float]:
+    def calculate_features(self, data: pd.DataFrame) -> List[float]:
         """
         Feature extraction from the HHT.
         :param data: 1D array of the HHT signal
         :returns: list of features extracted from the HHT
         """
 
-        decomposed = hilbert_huang_transform(data, max_imf=self.max_imfs)
+        cols = [self.x, self.y]
+        X_data = data[cols].values
+
+        decomposed = hilbert_huang_transform(X_data, max_imf=self.max_imfs)
         n_imfs = decomposed.shape[0]
 
         columns_names = []
