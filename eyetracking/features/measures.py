@@ -3,13 +3,16 @@ from typing import Callable, List, Literal, Union
 import numpy as np
 import pandas as pd
 from numba import jit
-from scipy.fftpack import ifft
+from scipy.fftpack import ifft, fft2
 from scipy.spatial.distance import euclidean, pdist, squareform
-from scipy.stats import entropy
+from scipy.stats import entropy, skew, kurtosis
 
 from eyetracking.features.complex import get_rqa
 from eyetracking.features.extractor import BaseTransformer
 from eyetracking.utils import _split_dataframe
+from eyetracking.features.complex import hilbert_huang_transform
+
+from functools import partial
 
 
 class HurstExponent(BaseTransformer):
@@ -1010,6 +1013,188 @@ class SaccadeUnlikelihood(BaseTransformer):
             for group, current_X in X_splited:
                 group_names.append(group)
                 gathered_features.append([self.calculate_nll(current_X)])
+
+        features_df = pd.DataFrame(
+            data=gathered_features, columns=columns_names, index=group_names
+        )
+        return features_df if self.return_df else features_df.values
+
+
+class HHTFeatures(BaseTransformer):
+    """
+    Extracts features from the Hilbert-Huang Transform (HHT) of the scanpath.
+    :param max_imfs: maximum number of intrinsic mode functions (IMFs) to extract
+    :param features: list of features to extract from the HHT (aggregation functions, special features)
+    List of special functions: ['entropy', 'energy', 'dom_freq', 'sample_entropy', 'complexity_index']
+    :return: features extracted from the HHT
+    """
+
+    def __init__(
+        self,
+        max_imfs: int = -1,
+        features: List[str] = ["mean", "std"],
+        x: str = None,
+        y: str = None,
+        aoi: str = None,
+        pk: List[str] = None,
+        return_df: bool = True,
+    ):
+        super().__init__(x=x, y=y, pk=pk, return_df=return_df)
+        self.max_imfs = max_imfs
+        self.features = features
+        self.aoi = aoi
+        self._feature_mapping = {
+            "mean": partial(np.mean, axis=(1, 2)),
+            "std": partial(np.std, axis=(1, 2)),
+            "var": partial(np.var, axis=(1, 2)),
+            "median": partial(np.median, axis=(1, 2)),
+            "max": partial(np.max, axis=(1, 2)),
+            "min": partial(np.min, axis=(1, 2)),
+            "skew": partial(skew, axis=(1, 2)),
+            "kurtosis": partial(kurtosis, axis=(1, 2)),
+            "entropy": partial(entropy, axis=(1, 2)),
+            "energy": lambda data: np.sum(data**2, axis=(1, 2)),
+            "dom_freq": self.dominant_freq,
+            "sample_entropy": self.sample_entropy,
+            "complexity_index": self.complexity_index,
+        }
+
+    def _check_init(self, X_len: int):
+        assert X_len != 0, "Error: there are no fixations"
+        assert self.features, "Error: at least one feature must be passed"
+        assert (
+            self.max_imfs > 0 or self.max_imfs == -1
+        ), "Error: max_imfs must be a positive integer or -1"
+        for feature in self.features:
+            assert feature in self._feature_mapping, f"Error: unknown feature {feature}"
+
+    @jit(forceobj=True, looplift=True)
+    def fit(self, X: pd.DataFrame, y=None):
+        return self
+
+    @jit(forceobj=True, looplift=True)
+    def dominant_freq(self, imf_data: np.ndarray) -> List[float]:
+        """
+        Calculates dominant frequency of the intrinsic mode functions (IMFs) using FFT.
+        :param imf_data: intrinsic mode functions (IMFs) data
+        :return: dominant frequency of each IMF
+        """
+        imf_fft = fft2(imf_data, axes=(1, 2))
+        dom_freq = []
+        for imf in imf_fft:
+            signal = np.abs(imf.flatten())
+            dom_freq.append(np.argmax(signal) / np.max(len(signal), 1))
+        return dom_freq
+
+    @jit(forceobj=True, looplif=True)
+    def coarse_grain(self, imf_data: np.ndarray, scale: int = 5) -> np.ndarray:
+        """
+        Calculates coarse-grained standard deviation of the intrinsic mode functions (IMFs).
+        :param imf_data: intrinsic mode functions (IMFs) data
+        :return: coarse-grained standard deviation of each IMF
+        """
+        cg = []
+        for imf in imf_data:
+            signal = imf.flatten()
+            assert (
+                len(signal) >= scale
+            ), "Error: signal length must be greater than scale"
+            current = []
+            for i in range(0, len(signal), scale):
+                current.append(np.mean(signal[i : i + scale]))
+            cg.append(np.array(current))
+        return np.array(cg)
+
+    @jit(forceobj=True, looplif=True)
+    def sample_entropy(
+        self, imf_data: np.ndarray, m: int = 5, r: float = 0.20
+    ) -> List[float]:
+        """
+        Calculates sample entropy of the intrinsic mode functions (IMFs).
+        :param imf_data: intrinsic mode functions (IMFs) data
+        :param m: length of sequences to compare
+        :param r: tolerance for accepting mathces
+        :return: sample entropy of each IMF
+        """
+
+        se = []
+        for imf in imf_data:
+            cur_imf = imf.flatten()
+            cur_r = r * np.std(cur_imf)
+
+            def _phi(m: int) -> float:
+                X = np.array([cur_imf[i : i + m] for i in range(len(cur_imf) - m)])
+                B = np.sum(
+                    np.all(np.abs(X[:, np.newaxis] - X[np.newaxis, :]) <= cur_r, axis=2)
+                ) - len(X)
+                return B / (len(cur_imf) - m)
+
+            se.append(_phi(m + 1) / _phi(m))
+        return se
+
+    @jit(forceobj=True, looplif=True)
+    def complexity_index(
+        self, imf_data: np.ndarray, m: int = 5, r: float = 0.20, max_scale: int = 5
+    ) -> List[float]:
+        """
+        Calculates complexity index of the intrinsic mode functions (IMFs).
+        :param imf_data: intrinsic mode functions (IMFs) data
+        :param m: length of sequences for sample entropy
+        :param r: tolerance for sample entropy
+        :param max_scale: maximum scale for coarse-graning
+        :return: complexity index of each IMF
+        """
+
+        cis = []
+        for imf in imf_data:
+            ci = 0
+            for scale in range(1, max_scale + 1):
+                cg_data = self.coarse_grain(imf[np.newaxis, :, :], scale)[0]
+                ci += self.sample_entropy(cg_data, m=m, r=r)[0]
+            cis.append(ci)
+        return cis
+
+    @jit(forceobj=True, looplift=True)
+    def calculate_features(self, data: np.ndarray) -> List[float]:
+        """
+        Feature extraction from the HHT.
+        :param data: 1D array of the HHT signal
+        :returns: list of features extracted from the HHT
+        """
+
+        decomposed = hilbert_huang_transform(data, max_imf=self.max_imfs)
+        n_imfs = decomposed.shape[0]
+
+        columns_names = []
+        gathered_features = []
+        for feature in self.features:
+            for i in range(n_imfs):
+                columns_names.append(f"imf{i}_{feature}")
+            gathered_features.extend(
+                list(map(self._feature_mapping[feature], decomposed))
+            )
+
+        return columns_names, gathered_features
+
+    @jit(forceobj=True, looplift=True)
+    def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
+        self._check_init(X_len=X.shape[0])
+
+        columns_names = []
+        gathered_features = []
+        group_names = []
+
+        if self.pk is None:
+            group_names.append("all")
+            columns_names, gathered_features = self.calculate_features(X)
+        else:
+            X_splited = _split_dataframe(X, self.pk)
+            for group, current_X in X_splited:
+                group_names.append(group)
+                cur_names, cur_features = self.calculate_features(current_X)
+                if len(columns_names) == 0:
+                    columns_names.extend(cur_names)
+                gathered_features.extend([cur_features])
 
         features_df = pd.DataFrame(
             data=gathered_features, columns=columns_names, index=group_names

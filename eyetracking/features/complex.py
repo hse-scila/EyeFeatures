@@ -9,6 +9,8 @@ from scipy.stats import gaussian_kde
 
 from eyetracking.utils import _rec2square, _split_dataframe, _square2rec
 
+from PyEMD.EMD2d import EMD2D
+
 
 # =========================== HEATMAPS ===========================
 def _check_shape(shape: Tuple[int, int]):
@@ -572,3 +574,16 @@ if __name__ == "__main__":
     heatmaps = get_heatmaps(idt_data, x, y, shape=(50, 100))
     plt.imshow(heatmaps[0])
     plt.show()
+
+
+def hilbert_huang_transform(data: np.ndarray, max_imf: int = 1) -> np.ndarray:
+    """
+    Perform Hilbert-Huang transform on a given data sequence.
+    :param data: input sequence of form (x, y) coordinates
+    :param max_imf: maximum number of intrinsic mode functions to extract
+    :return: np.ndarray: intrinsic mode functions from an input data vector
+    """
+
+    emd = EMD2D()
+    decomposed = emd(data, max_imf=max_imf)
+    return decomposed
