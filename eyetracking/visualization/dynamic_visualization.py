@@ -6,31 +6,7 @@ import plotly.graph_objects as go
 from eyetracking.utils import _select_regressions
 
 
-def scanpath_animation(
-    data_: pd.DataFrame,
-    x: str,
-    y: str,
-    path_color: str = "green",
-    path_width: float = 0.5,
-    points_color: str = "black",
-    points_width: float = 6,
-    add_regression: bool = False,
-    regression_color: str = "red",
-    meta_data: List[str] = None,
-    rule: Tuple[int, ...] = None,
-    deviation: Union[int, Tuple[int, ...]] = None,
-    aoi: str = None,
-    aoi_c: Dict[str, str] = None,
-):
-    data = data_.reset_index(drop=True)
-    X = data[x].values
-    Y = data[y].values
-    dX = data[x].diff()
-    dY = data[y].diff()
-    indexes = data.index
-
-    fig_dict = {"data": [], "layout": {}, "frames": []}
-
+def _built_figure(fig_dict: Dict, element_count: int, animation_duration: int = 500):   # animation_duration in ms
     fig_dict["layout"]["width"] = 600
     fig_dict["layout"]["height"] = 600
     fig_dict["layout"]["updatemenus"] = [
@@ -40,7 +16,7 @@ def scanpath_animation(
                     "args": [
                         None,
                         {
-                            "frame": {"duration": 500, "redraw": False},
+                            "frame": {"duration": animation_duration, "redraw": False},
                             "fromcurrent": True,
                             "transition": {
                                 "duration": 300,
@@ -74,6 +50,35 @@ def scanpath_animation(
             "yanchor": "top",
         }
     ]
+
+def tracker_animation(
+    data_: pd.DataFrame,
+    x: str,
+    y: str,
+    path_color: str = "green",
+    path_width: float = 0.5,
+    points_color: str = "black",
+    points_width: float = 6,
+    add_regression: bool = False,
+    regression_color: str = "red",
+    meta_data: List[str] = None,
+    rule: Tuple[int, ...] = None,
+    deviation: Union[int, Tuple[int, ...]] = None,
+    aoi: str = None,
+    aoi_c: Dict[str, str] = None,
+    tracker_color: str = "red",
+    animation_duration: int = 500,
+):
+    data = data_.reset_index(drop=True)
+    X = data[x].values
+    Y = data[y].values
+    dX = data[x].diff()
+    dY = data[y].diff()
+    indexes = data.index
+
+    fig_dict = {"data": [], "layout": {}, "frames": []}
+
+    _built_figure(fig_dict, data.shape[0], animation_duration)
 
     sliders_dict = {
         "active": 0,
@@ -161,13 +166,14 @@ def scanpath_animation(
             data_area = data[data[aoi] == area]
             indexes_area = data_area.index
             for i in range(len(indexes_area)):
-                row = data_area.loc[
-                    indexes_area[i], data_area.columns.intersection(meta_data)
-                ].values
-                comments = []
-                for j in range(len(meta_data)):
-                    comments.append(f"{meta_data[j]}: {row[j]}")
-                annotate.append("<br>".join(comments))
+                if not (meta_data is None):
+                    row = data_area.loc[
+                        indexes_area[i], data_area.columns.intersection(meta_data)
+                    ].values
+                    comments = []
+                    for j in range(len(meta_data)):
+                        comments.append(f"{meta_data[j]}: {row[j]}")
+                    annotate.append("<br>".join(comments))
             nodes.append(
                 {
                     "x": data_area[x].values,
@@ -182,11 +188,12 @@ def scanpath_animation(
     else:
         annotate = []
         for i in range(len(indexes)):
-            row = data.loc[indexes[i], data.columns.intersection(meta_data)].values
-            comments = []
-            for j in range(len(meta_data)):
-                comments.append(f"{meta_data[j]}: {row[j]}")
-            annotate.append("<br>".join(comments))
+            if not (meta_data is None):
+                row = data.loc[indexes[i], data.columns.intersection(meta_data)].values
+                comments = []
+                for j in range(len(meta_data)):
+                    comments.append(f"{meta_data[j]}: {row[j]}")
+                annotate.append("<br>".join(comments))
         nodes = {
             "x": X,
             "y": Y,
@@ -202,7 +209,7 @@ def scanpath_animation(
             "x": [X[0]],
             "y": [Y[0]],
             "mode": "markers",
-            "marker": dict(color="red"),
+            "marker": dict(color=tracker_color),
             "name": "tracker",
         }
     )
@@ -222,11 +229,117 @@ def scanpath_animation(
                 "x": [X[i]],
                 "y": [Y[i]],
                 "mode": "markers",
-                "marker": dict(color="red"),
+                "marker": dict(color=tracker_color),
                 "name": "tracker",
             }
         )
         fig_dict["frames"].append(frame)
+        slider_step = {
+            "args": [
+                [str(i)],
+                {
+                    "frame": {"duration": 300, "redraw": False},
+                    "mode": "immediate",
+                    "transition": {"duration": 300},
+                },
+            ],
+            "label": str(i),
+            "method": "animate",
+        }
+        sliders_dict["steps"].append(slider_step)
+
+    fig_dict["layout"]["sliders"] = [sliders_dict]
+    fig = go.Figure(fig_dict)
+    fig.show()
+
+def scanpath_animation(
+    data_: pd.DataFrame,
+    x: str,
+    y: str,
+    path_color: str = "green",
+    path_width: float = 0.5,
+    points_color: str = "black",
+    points_width: float = 6,
+    add_regression: bool = False,
+    regression_color: str = "red",
+    rule: Tuple[int, ...] = None,
+    deviation: Union[int, Tuple[int, ...]] = None,
+    animation_duration: int = 500,
+):
+    data = data_.reset_index(drop=True)
+    X = data[x].values
+    Y = data[y].values
+    x_min, x_max, y_min, y_max = X.min(), X.max(), Y.min(), Y.max()
+    indexes = data.index
+
+    fig_dict = {"data": [], "layout": {}, "frames": []}
+
+    _built_figure(fig_dict, data.shape[0], animation_duration)
+
+    sliders_dict = {
+        "active": 0,
+        "yanchor": "top",
+        "xanchor": "left",
+        "currentvalue": {
+            "font": {"size": 20},
+            "prefix": "Index:",
+            "visible": True,
+            "xanchor": "right",
+        },
+        "transition": {"duration": 300, "easing": "cubic-in-out"},
+        "pad": {"b": 10, "t": 50},
+        "len": 0.9,
+        "x": 0.1,
+        "y": 0.0,
+        "steps": [],
+    }
+
+    fig_dict["layout"]["xaxis"] = dict(range=[x_min - 0.1, x_max + 0.1], automargin=False)
+    fig_dict["layout"]["yaxis"] = dict(range=[y_min - 0.1, y_max + 0.1], automargin=False)
+
+    fig_dict["data"].extend(
+        [{
+            "x": [],
+            "y": [],
+            "mode": "lines",
+            "line": dict(color=path_color, width=path_width),
+        } for _ in range(len(indexes))]
+    )
+
+    graph = []
+
+    if add_regression:
+        dX = data[x].diff()
+        dY = data[y].diff()
+        mask = _select_regressions(dX, dY, rule, deviation)
+        reg_ind_x = dX[mask].index
+        reg_ind = []
+        for i in reg_ind_x:
+            if i != 0:
+                reg_ind.append(i - 1)
+                reg_ind.append(i)
+        data["is_reg"] = [1 if z in reg_ind else 0 for z in data.index]
+
+    for i in range(1, len(indexes)):
+        frame = {"data": [], "name": str(i)}
+        color = path_color
+        name = "saccedes"
+        if add_regression and (data.loc[i - 1, "is_reg"] == data.loc[i, "is_reg"] == 1):
+            color = regression_color
+            name = "regression"
+        new_edge = {
+                    "x": [data.loc[i - 1, x], data.loc[i, x]],
+                    "y": [data.loc[i - 1, y], data.loc[i, y]],
+                    "mode": "lines+markers",
+                    "line": dict(color=color, width=path_width),
+                    "marker": dict(color=points_color, size=points_width),
+                    "name": name,
+                    "showlegend": False,
+                    }
+        frame["data"].extend(graph)
+        frame["data"].append(new_edge)
+        fig_dict["frames"].append(frame)
+        graph.append(new_edge)
         slider_step = {
             "args": [
                 [str(i)],
