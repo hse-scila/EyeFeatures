@@ -172,7 +172,7 @@ def _select_regressions(
 # =========================== MATRIX TOOLS ===========================
 def _rec2square(mat: np.array) -> np.array:
     """
-    Given rectangular matrix, cuts it into shape (n,n) evenly from longest side,
+    Given rectangular matrix, cuts it into shape (n,n) evenly from the longest side,
     where n = min(height, width).
     """
     assert len(mat.shape) == 2

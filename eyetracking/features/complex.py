@@ -7,7 +7,7 @@ from numpy.typing import NDArray
 from scipy.signal import convolve2d
 from scipy.stats import gaussian_kde
 
-from eyetracking.utils import _rec2square, _split_dataframe, _square2rec
+from eyetracking.utils import _rec2square, _split_dataframe
 
 import gudhi as gd
 from PyEMD.EMD2d import EMD2D
@@ -518,63 +518,6 @@ def xy2h(x: int, y: int, p: int) -> int:
             x, y = y, x
         s = s // 2
     return d
-
-
-if __name__ == "__main__":
-    from os.path import join
-
-    import matplotlib.pyplot as plt
-    import numpy as np
-    import pandas as pd
-
-    from eyetracking.preprocessing.fixation_extraction import IDT
-
-    DATA_PATH = join("..", "test_data")
-
-    def remove_points(df, x_min, x_max, y_min, y_max):
-        df = df[df["norm_pos_x"] <= x_max]
-        df = df[df["norm_pos_x"] >= x_min]
-        df = df[df["norm_pos_y"] >= y_min]
-        df = df[df["norm_pos_y"] <= y_max]
-        return df
-
-    data = pd.concat(
-        [
-            pd.read_excel(join(DATA_PATH, "itog_gaze_1.xlsx")),
-            pd.read_excel(join(DATA_PATH, "itog_gaze_2.xlsx")),
-        ],
-        axis=0,
-    )
-
-    data.drop(["world_index", "confidence", "base_data"], axis=1, inplace=True)
-    data = remove_points(data, -1, 1, -1, 1)
-
-    x = "norm_pos_x"
-    y = "norm_pos_y"
-    t = "gaze_timestamp"
-
-    idt = IDT(
-        x=x,
-        y=y,
-        t=t,
-        pk=["Participant", "tekst"],
-        min_duration=0.01,
-        max_dispersion=0.05,
-        distance="euc",
-    )
-    idt_data = idt.transform(data)
-
-    heatmaps = get_heatmaps(idt_data, x, y, shape=(100, 100))
-    plt.imshow(heatmaps[0])
-    plt.show()
-
-    heatmaps = get_heatmaps(idt_data, x, y, shape=(100, 50))
-    plt.imshow(heatmaps[0])
-    plt.show()
-
-    heatmaps = get_heatmaps(idt_data, x, y, shape=(50, 100))
-    plt.imshow(heatmaps[0])
-    plt.show()
 
 
 def hilbert_huang_transform(data: np.ndarray, max_imf: int = 1) -> np.ndarray:
