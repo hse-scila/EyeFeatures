@@ -814,7 +814,7 @@ def calc_man_dist(p: pd.DataFrame, q: pd.DataFrame) -> float:
 @jit(forceobj=True, looplift=True)
 def calc_eye_dist(p: pd.DataFrame, q: pd.DataFrame) -> float:
     """
-    Calculates Mannan distance between paths p and q
+    Calculates EyeDist distance between paths p and q
     :param p: pd.DataFrame containing columns (x, y) only
     :param q: pd.DataFrame containing columns (x, y) only
     """

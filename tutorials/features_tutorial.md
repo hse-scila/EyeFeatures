@@ -1,4 +1,4 @@
-# EyeFeatures: introduction to features with scanpaths and fixations
+# Introduction to statistical features and features with scanpaths
 
 
 ```python
@@ -11,6 +11,12 @@ import pandas as pd
 
 import warnings
 warnings.simplefilter("ignore")
+```
+
+
+```python
+import sys
+sys.path.append('/home/perkyfever/study/projects/eyelib/EyeFeatures')
 ```
 
 ## Getting simple dataset to work with. 
@@ -53,7 +59,7 @@ data
 
 
 
-<div>
+
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
@@ -363,9 +369,6 @@ data
 ```
 
 
-
-
-<div>
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
@@ -509,6 +512,596 @@ data
 
 
 
+## Statistical Features
+
+##### Computes statistical features regarding saccades, fixations, as well as microsaccades and regressions such as max length, mean acceleration, and other which are available in `stats` module of `eyetracking.features`. 
+
+##### **Note**: One can calculate statistics using any aggregation function supported by `pandas`.
+
+
+```python
+import eyetracking.features.stats as eye_stats
+```
+
+##### Here's an example of how saccades can be computed: desired features should be represented as a dictionary, with saccade properties as keys and lists of statistics as values.
+
+##### In this example we prepare to calculate saccade length, speed and acceleration features, where
+
+$$
+\text{Length(Saccade}_i\text{)} = ||\text{Fixation}_{i+1} - \text{Fixation}_{i} ||_{2}\, \quad \text{Speed(Saccade}_i\text{)} = \frac{\text{Length(Saccade}_i\text{)}}{\text{Time}_{i+1} - \text{Time}_{i}}, \quad 
+\text{Acceleration(Saccade}_i\text{)} = \frac{1}{2} \frac{\text{Speed(Saccade}_i\text{)} }{\text{Time}_{i+1} - \text{Time}_{i}}
+$$
+
+
+```python
+sac_feats_stats = {
+    'length': ['min', 'max'],
+    'speed': ['mean', 'kurtosis'],
+    'acceleration': ['mean']
+}
+```
+
+##### Also, one would like to see the similarity of object and its group. We have people ('SUBJ') which are divided into groups ('group', here we have a single group, but there could be many groups, for example, age-based). Thus, we can calculate shift features, which are a difference of object's feature value and its group's mean value. The rest remains the same except the way these statistics to be computed.
+
+
+```python
+sac_feats_stats_shift = {
+    'length': ['max'],
+    'acceleration': ['mean']
+}
+```
+
+##### Finally, define a transformer and get the desired features.
+
+
+```python
+sf = eye_stats.SaccadeFeatures(
+    x='norm_pos_x',
+    y='norm_pos_y',
+    t='timestamp',
+    pk=['SUBJ', 'group'],
+    features_stats=sac_feats_stats,
+    shift_features=sac_feats_stats_shift,
+    shift_pk=['group']
+)
+```
+
+##### Here, each row represents the features of one of 15 different `SUBJ` groups. 
+
+
+```python
+sf.fit_transform(data)
+```
+
+
+
+
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>sac_length_min</th>
+      <th>sac_length_max</th>
+      <th>sac_length_max_shift</th>
+      <th>sac_acceleration_mean</th>
+      <th>sac_acceleration_mean_shift</th>
+      <th>sac_speed_mean</th>
+      <th>sac_speed_kurtosis</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>1_1</th>
+      <td>0.006033</td>
+      <td>0.735187</td>
+      <td>0.000000</td>
+      <td>3.200016</td>
+      <td>-0.412047</td>
+      <td>1.036293</td>
+      <td>4.289506</td>
+    </tr>
+    <tr>
+      <th>2_1</th>
+      <td>0.004946</td>
+      <td>0.695758</td>
+      <td>-0.039428</td>
+      <td>4.411436</td>
+      <td>0.799373</td>
+      <td>1.188990</td>
+      <td>3.949788</td>
+    </tr>
+    <tr>
+      <th>3_1</th>
+      <td>0.002494</td>
+      <td>0.691093</td>
+      <td>-0.044094</td>
+      <td>3.351796</td>
+      <td>-0.260267</td>
+      <td>1.073377</td>
+      <td>2.275953</td>
+    </tr>
+    <tr>
+      <th>4_1</th>
+      <td>0.004396</td>
+      <td>0.637963</td>
+      <td>-0.097223</td>
+      <td>3.246972</td>
+      <td>-0.365090</td>
+      <td>0.999678</td>
+      <td>4.342265</td>
+    </tr>
+    <tr>
+      <th>5_1</th>
+      <td>0.004814</td>
+      <td>0.693513</td>
+      <td>-0.041673</td>
+      <td>3.874696</td>
+      <td>0.262634</td>
+      <td>1.111982</td>
+      <td>4.788790</td>
+    </tr>
+    <tr>
+      <th>6_1</th>
+      <td>0.014949</td>
+      <td>0.659511</td>
+      <td>-0.075676</td>
+      <td>4.518683</td>
+      <td>0.906621</td>
+      <td>1.423984</td>
+      <td>2.408947</td>
+    </tr>
+    <tr>
+      <th>7_1</th>
+      <td>0.003880</td>
+      <td>0.579964</td>
+      <td>-0.155222</td>
+      <td>4.047229</td>
+      <td>0.435167</td>
+      <td>1.190862</td>
+      <td>2.696679</td>
+    </tr>
+    <tr>
+      <th>8_1</th>
+      <td>0.012126</td>
+      <td>0.661617</td>
+      <td>-0.073569</td>
+      <td>4.614863</td>
+      <td>1.002801</td>
+      <td>1.307412</td>
+      <td>1.579665</td>
+    </tr>
+    <tr>
+      <th>9_1</th>
+      <td>0.006906</td>
+      <td>0.656098</td>
+      <td>-0.079089</td>
+      <td>2.537365</td>
+      <td>-1.074698</td>
+      <td>0.872490</td>
+      <td>6.404846</td>
+    </tr>
+    <tr>
+      <th>10_1</th>
+      <td>0.002115</td>
+      <td>0.656778</td>
+      <td>-0.078408</td>
+      <td>1.736126</td>
+      <td>-1.875936</td>
+      <td>0.707411</td>
+      <td>6.400686</td>
+    </tr>
+    <tr>
+      <th>11_1</th>
+      <td>0.008301</td>
+      <td>0.673268</td>
+      <td>-0.061919</td>
+      <td>3.719054</td>
+      <td>0.106992</td>
+      <td>1.186794</td>
+      <td>2.141173</td>
+    </tr>
+    <tr>
+      <th>12_1</th>
+      <td>0.004982</td>
+      <td>0.648675</td>
+      <td>-0.086511</td>
+      <td>3.103430</td>
+      <td>-0.508633</td>
+      <td>1.051155</td>
+      <td>6.032897</td>
+    </tr>
+    <tr>
+      <th>13_1</th>
+      <td>0.014569</td>
+      <td>0.673546</td>
+      <td>-0.061641</td>
+      <td>5.627082</td>
+      <td>2.015020</td>
+      <td>1.587480</td>
+      <td>1.892242</td>
+    </tr>
+    <tr>
+      <th>14_1</th>
+      <td>0.013864</td>
+      <td>0.670388</td>
+      <td>-0.064799</td>
+      <td>2.511618</td>
+      <td>-1.100445</td>
+      <td>0.942285</td>
+      <td>5.053431</td>
+    </tr>
+    <tr>
+      <th>15_1</th>
+      <td>0.017111</td>
+      <td>0.730887</td>
+      <td>-0.004300</td>
+      <td>3.800426</td>
+      <td>0.188364</td>
+      <td>1.232593</td>
+      <td>3.360688</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+## Scanpath Measures
+
+##### This module offers classes and methods which calculate various measures of scanpaths. 
+
+
+```python
+import eyetracking.features.measures as eye_measures
+```
+
+##### Let's calculate some basic measures in order to demonstrate the usecase process.
+
+##### The HurstExponent class estimates the Hurst exponent of a time series using Rescaled Range (R/S) analysis. The Hurst exponent is a measure of the long-term memory of time series data, indicating whether the data is trending, mean-reverting, or behaving in a random walk. Parameter `n_iters` regulates the number of iterations for the R/S analysis, while `fill_strategy` is the strategy to adjust data to the power of 2.
+
+##### The algorithm is derived from the Rescaled Range (R/S) Analysis and works as follows:
+
+* Time series is divided into segments (blocks) of equal size
+* The mean is subtracted from each segment to center the data
+* Compute the cumulative sum of the mean-adjusted data and determine the range (maximum - minimum) of the cumulative deviation
+* Calculate the standard deviation of the original segment and the ratio of the range to the standard deviation
+* The slope of he log of the block size and the log of the R/S ratio estimates the Hurst Exponent
+
+$$
+\log(R/S) = \text{HurstExponent} \cdot \log(n) + C, \, \text{where } R/S \text{ is the rescaled range}, \, n \text{ is the block size and } C \text{ is some constant}
+$$
+
+
+```python
+hurst_exponent = eye_measures.HurstExponent(
+    var=['norm_pos_x', 'norm_pos_y'],
+    n_iters=10,
+    fill_strategy='reduce',
+    pk=['SUBJ', 'group'],
+    return_df=True
+)
+
+hurst_exponent.fit_transform(data)
+```
+
+
+
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>he_['norm_pos_x', 'norm_pos_y']</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>0.001590</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>0.001716</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>0.000698</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>0.001475</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>0.001473</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>0.002331</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>0.001375</td>
+    </tr>
+    <tr>
+      <th>7</th>
+      <td>0.001384</td>
+    </tr>
+    <tr>
+      <th>8</th>
+      <td>0.001553</td>
+    </tr>
+    <tr>
+      <th>9</th>
+      <td>0.001521</td>
+    </tr>
+    <tr>
+      <th>10</th>
+      <td>0.001682</td>
+    </tr>
+    <tr>
+      <th>11</th>
+      <td>0.001679</td>
+    </tr>
+    <tr>
+      <th>12</th>
+      <td>0.001560</td>
+    </tr>
+    <tr>
+      <th>13</th>
+      <td>0.005400</td>
+    </tr>
+    <tr>
+      <th>14</th>
+      <td>0.002474</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+##### We can also calculate the entropy of a 2D spatial distribution. 
+
+* Given a set of 2D points $\left\{(x_i, y_i) \right\}_{i=1}^N$ algorithm partitions the space into a grid consisting of $g \times g$ cells
+* Define the edges of the cells for each dimension: $\text{Edges}_x = \left\{x_0, \dots, x_g \right\}, \, \text{Edges}_y = \left\{y_0, \dots, y_g \right\}$
+* Then, each bin is basically a $B_{jk} = \left\{ (x, y): x_{j-1} \leq x < x_j, \, y_{k-1} \leq y < y_k \right\}$
+* Construct a **multi-dimensional histogram** $H$ where each element $H_{jk}$ represents the count of data points falling to the $B_{jk}\,$:
+$$
+H_{jk} = \sum_{i=1}^N \mathbb{I}\left\{(x_i, y_i) \in B_{jk} \right\}
+$$
+* Normalize the histogram to obtain a probability distribution $P \sim P_{jk} = \frac{H_{jk}}{N}$ and calculate its entropy 
+$$
+S = -\sum_{i=1}^g\sum_{j=1}^g P_{jk}\log(P_{jk})
+$$
+
+
+```python
+gridded_entropy = eye_measures.GriddedDistributionEntropy(
+    x='norm_pos_x',
+    y='norm_pos_y',
+    pk=['SUBJ', 'group'],
+    return_df=True
+)
+
+gridded_entropy.fit_transform(data)
+```
+
+
+
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>grid_entropy</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>1_1</th>
+      <td>3.960535</td>
+    </tr>
+    <tr>
+      <th>2_1</th>
+      <td>3.829708</td>
+    </tr>
+    <tr>
+      <th>3_1</th>
+      <td>4.002632</td>
+    </tr>
+    <tr>
+      <th>4_1</th>
+      <td>3.997430</td>
+    </tr>
+    <tr>
+      <th>5_1</th>
+      <td>3.972908</td>
+    </tr>
+    <tr>
+      <th>6_1</th>
+      <td>4.002764</td>
+    </tr>
+    <tr>
+      <th>7_1</th>
+      <td>4.139917</td>
+    </tr>
+    <tr>
+      <th>8_1</th>
+      <td>4.158252</td>
+    </tr>
+    <tr>
+      <th>9_1</th>
+      <td>3.799890</td>
+    </tr>
+    <tr>
+      <th>10_1</th>
+      <td>4.022404</td>
+    </tr>
+    <tr>
+      <th>11_1</th>
+      <td>4.164256</td>
+    </tr>
+    <tr>
+      <th>12_1</th>
+      <td>4.023588</td>
+    </tr>
+    <tr>
+      <th>13_1</th>
+      <td>3.972001</td>
+    </tr>
+    <tr>
+      <th>14_1</th>
+      <td>3.930190</td>
+    </tr>
+    <tr>
+      <th>15_1</th>
+      <td>4.148421</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+##### There are also some more complicated features.
+
+
+##### One of them is RQA (Recurrence Quantification Analysis) for time-series or spatial data. 
+The metrics calculated include Recurrence (REC), Determinism (DET), Laminarity (LAM), and Center of Recurrence Mass (CORM). These measures help to quantify the complexity and structure of the recurrence patterns within the data. In this example we use a default euclidean metric as `metric`. Parameters `rho` and `min_length` correspond for RQA matrix threshold radius and threshold length of its diagonal. In `measures` we specify the required features to calculate.
+
+Recurrence matrix $R$ is defined as $R_{ij} = \mathbb{I}\left\{d(x_i, x_j) \leq \rho \right\}$:
+
+- Reccurence Rate counts the total number of recurrence points above the main diagonal of $R$:
+$$
+\text{REC} = \frac{2}{n(n-1)} \sum_{i=1}^n \sum_{j=i+1}^n R_{ij}
+$$
+- Determinism measures the percentage of recurrence points forming diagonal lines of length at least $L_{min}$:
+$$
+\text{DET} = \frac{100 \cdot \sum_{l \geq L_{min}} l \cdot P(l)}{\sum_{i=1}^n \sum_{j=i+1}^n R_{ij}},
+$$
+$$
+\text{ where } L_{min} - \text{ minimum line length}, \, P(l) - \text{probability of diagonal lines of length } l
+$$
+- Liminarity measures the percentage of recurrence points forming vertical or horizontal lines of length at least $L_{min}$:
+$$
+\text{LAM} = \frac{50 \left( \sum_{\text{HL}} \text{HL} + \sum_{\text{VL}} \text{VL}\right)}{\sum_{i=1}^n \sum_{j=i+1}^n R_{ij}},
+$$
+$$
+\text{where HL and VL represents the sums of horizontal and vertical lines of length at least } L_{min}
+$$
+- Center of Recurrence Mass measures the weighted average of the distances between recurrence points, emphasizing the central tendency of recurrences in the matrix:
+$$
+\text{CORM} = \frac{100 \cdot \sum_{i=1}^{n-1} \sum_{j=i+1}^n (j-i) R_{ij}}{(n-1) \cdot \sum_{i=1}^n \sum_{j=i+1}^n R_{ij}}
+$$
+
+
+```python
+rqa_measures = eye_measures.RQAMeasures(
+    metric=lambda p, q: np.linalg.norm(p - q),
+    rho=0.10,
+    min_length=1,
+    measures=["rec", "corm"],
+    x='norm_pos_x',
+    y='norm_pos_y',
+    pk=['SUBJ', 'group'],
+    return_df=True
+)
+
+rqa_measures.fit_transform(data)
+```
+
+
+
+
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>rec</th>
+      <th>corm</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>1_1</th>
+      <td>11.811201</td>
+      <td>33.640767</td>
+    </tr>
+    <tr>
+      <th>2_1</th>
+      <td>12.874153</td>
+      <td>34.330960</td>
+    </tr>
+    <tr>
+      <th>3_1</th>
+      <td>11.805156</td>
+      <td>33.379707</td>
+    </tr>
+    <tr>
+      <th>4_1</th>
+      <td>12.986185</td>
+      <td>33.767070</td>
+    </tr>
+    <tr>
+      <th>5_1</th>
+      <td>12.815115</td>
+      <td>34.050548</td>
+    </tr>
+    <tr>
+      <th>6_1</th>
+      <td>12.493029</td>
+      <td>34.067843</td>
+    </tr>
+    <tr>
+      <th>7_1</th>
+      <td>13.414963</td>
+      <td>33.543729</td>
+    </tr>
+    <tr>
+      <th>8_1</th>
+      <td>10.816080</td>
+      <td>33.598875</td>
+    </tr>
+    <tr>
+      <th>9_1</th>
+      <td>13.173418</td>
+      <td>33.557892</td>
+    </tr>
+    <tr>
+      <th>10_1</th>
+      <td>13.326421</td>
+      <td>33.787375</td>
+    </tr>
+    <tr>
+      <th>11_1</th>
+      <td>10.237605</td>
+      <td>33.482746</td>
+    </tr>
+    <tr>
+      <th>12_1</th>
+      <td>12.285995</td>
+      <td>33.848199</td>
+    </tr>
+    <tr>
+      <th>13_1</th>
+      <td>11.025638</td>
+      <td>33.578878</td>
+    </tr>
+    <tr>
+      <th>14_1</th>
+      <td>12.762660</td>
+      <td>33.339035</td>
+    </tr>
+    <tr>
+      <th>15_1</th>
+      <td>10.291070</td>
+      <td>33.559307</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
 ## Scanpath Distances
 
 ##### Let us describe the core idea of extrator-classes in this module. Each class calculates the "expected paths" for each path-group which are further used in distance functions. That is the resulting features for each group are simply the distances between two scanpaths: expected and given one.
@@ -518,7 +1111,26 @@ data
 import eyetracking.features.scanpath_dist as eye_dist
 ```
 
-##### See the example of calculating some basic distances (Euclidean, Eye and Mannan). Note that the primary key (`path_pk`) is set to 'group' so there is a separate expected path for each unique group. The primary key (`pk`) is also set to 'SUBJ' and 'group' which defines the way to distinguish between unique paths.
+##### As for now, there are two ways to compute the expected path. 
+- The first one simply aligns the paths by time and takes the pointwise mean at each timestamp. This method is used by passing `'mean'` to `expected_paths_method`
+- The second algorithm seeks to find the so-called Fermat-Weber point (geometric median) of the series at each timestamp. This point basically minimizes the sum of distances from each observation. Use it by passing `'fwp'` to `expected_paths_method`.
+
+##### See the example of calculating some basic distances. 
+**Note:** primary key `path_pk` is set to be `'group'` so there is a separate expected path for each unique group. Primary key `pk` is also set to `['SUBJ', 'group']` which determines the way to distinguish between unique paths.
+
+##### Explanation of distances used in this illustation:
+- Euclidean distance is simply the sum of pairwise distances of two sequences at each timestamp:
+$$
+\text{EUC}(p, q) = \sum_{i=1}^n ||p_i - q_i||_2 \quad \text{ ($p$ and $q$ are alligned)}
+$$
+- EyeDist distance is calculated as follows:
+$$
+\text{EYE}(p, q) = \frac{1}{\max\{n, m\}} \left(\sum_{i=1}^n \min_{1 \leq j \leq m} ||p_i - q_j||_2^2 + \sum_{j=1}^m \min_{1 \leq i \leq n} ||q_j - p_i||_2^2\right)
+$$
+- Mannan distance is somewhat a more complex version of EyeDist since it considers the weighted distance:
+$$
+\text{MAN}(p, q) = \frac{1}{4 \cdot n \cdot m} \left(m \cdot \sum_{i=1}^n \min_{1 \leq j \leq m} ||p_i - q_j||_2^2 + n \cdot \sum_{j=1}^m \min_{1 \leq i \leq n} ||q_j - p_i||_2^2  \right)
+$$
 
 
 ```python
@@ -535,15 +1147,14 @@ transformer = eye_dist.SimpleDistances(
 transformer.fit_transform(data)
 ```
 
-    100%|██████████| 15/15 [00:00<00:00, 174.15it/s]
-    100%|██████████| 15/15 [00:03<00:00,  4.56it/s]
-    100%|██████████| 15/15 [00:03<00:00,  4.60it/s]
+    100%|██████████| 15/15 [00:00<00:00, 68.10it/s]
+    100%|██████████| 15/15 [00:12<00:00,  1.21it/s]
+    100%|██████████| 15/15 [00:10<00:00,  1.39it/s]
 
 
 
 
 
-<div>
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
@@ -650,9 +1261,7 @@ transformer.fit_transform(data)
 
 
 
-##### Note that the expected paths are recalculated for each new distance class when the `fit` method is called, which takes up most of the runtime. To speed up the process, you can get the expected paths from the previous class and use them with the new class. It is important that the primary keys for the new class match those of the previous class from which you obtained the expected paths.
-
-##### The same principle can be applied to the filling path (`fill_path`), which is used when no expected path is found for a particular group when `transform` is called. It is calculated as the mean of all known expected paths (basically the expected path over the expected paths).
+##### Note that the expected paths are recalculated for each new distance class when the `fit` method is called, which takes up most of the runtime. To speed up the process, one can grep the expected paths from the previous class and reuse it with the new class. It is important that the primary keys for the new class match those of the previous class from which you obtained the expected paths.
 
 
 ```python
@@ -680,6 +1289,8 @@ expected_paths
 
 
 
+##### The same logic can be applied to the filling path (`fill_path`), which is used when no expected path is found for a particular group whenever `transform` is called. It is calculated as the mean of all known expected paths (basically the expected path over the expected paths with `expected_paths_method` set to `'mean'`).
+
 
 ```python
 fill_path = transformer.fill_path
@@ -689,7 +1300,6 @@ fill_path
 
 
 
-<div>
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
@@ -761,109 +1371,6 @@ fill_path
 
 
 
-##### Let's calculate some complex distance such like MultiMatch which outputs as many as 5 scanpath features. Besides x and y coordinates one has to pass fixations duration column as well. The rest is pretty much the same except we pass precalculated expected and filling paths to optimze the inference.
-
-##### ScanMatch encodes the spatial and temporal characteristics of each scanpath into a sequence of symbols. The visual space is divided into a grid, and each grid cell is assigned a unique symbol. As the eye moves through different regions, the sequence of visited grid cells generates a symbolic representation of the scanpath. Two hyperparameters are temporal bin for quantifying fixations (`t_bin`) and substitute cost matrix (`sub_mat`) which must be of shape 20x20 for this method.  
-
-
-```python
-scanmatch = eye_dist.ScanMatchDist(
-    t_bin=30,
-    sub_mat=np.random.random((20, 20)),
-    x='norm_pos_x',
-    y='norm_pos_y',
-    duration='duration',
-    path_pk=['group'],
-    pk=['SUBJ', 'group'],
-    expected_paths=expected_paths,
-    fill_path=fill_path,
-    return_df=True
-)
-
-scanmatch.fit_transform(data)
-```
-
-    100%|██████████| 15/15 [00:03<00:00,  4.55it/s]
-
-
-
-
-
-<div>
-<table border="1" class="dataframe">
-  <thead>
-    <tr style="text-align: right;">
-      <th></th>
-      <th>scan_match_dist</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th>1_1</th>
-      <td>0.933843</td>
-    </tr>
-    <tr>
-      <th>2_1</th>
-      <td>0.352993</td>
-    </tr>
-    <tr>
-      <th>3_1</th>
-      <td>0.620893</td>
-    </tr>
-    <tr>
-      <th>4_1</th>
-      <td>0.691871</td>
-    </tr>
-    <tr>
-      <th>5_1</th>
-      <td>0.926866</td>
-    </tr>
-    <tr>
-      <th>6_1</th>
-      <td>0.891209</td>
-    </tr>
-    <tr>
-      <th>7_1</th>
-      <td>0.239042</td>
-    </tr>
-    <tr>
-      <th>8_1</th>
-      <td>0.584023</td>
-    </tr>
-    <tr>
-      <th>9_1</th>
-      <td>0.399081</td>
-    </tr>
-    <tr>
-      <th>10_1</th>
-      <td>0.694188</td>
-    </tr>
-    <tr>
-      <th>11_1</th>
-      <td>0.775750</td>
-    </tr>
-    <tr>
-      <th>12_1</th>
-      <td>0.239042</td>
-    </tr>
-    <tr>
-      <th>13_1</th>
-      <td>0.791370</td>
-    </tr>
-    <tr>
-      <th>14_1</th>
-      <td>0.738963</td>
-    </tr>
-    <tr>
-      <th>15_1</th>
-      <td>0.928938</td>
-    </tr>
-  </tbody>
-</table>
-</div>
-
-
-
 ##### There are also methods in `scanpath_complex` module that return features not in the form of numbers that can be used for inference. This is usually some kind of structure (for instance, a matrix) that can be used for analyzing data or further feature extracting.
 
 
@@ -873,7 +1380,7 @@ import eyetracking.features.scanpath_complex as eye_complex
 
 ##### Let's see one of the possible usecases. 
 
-##### We get the list of scanpaths of form `(x_coord, y_coord)` in order to calculate the pairwise distance matrix. One can use his own custom metric or those implemented in `scanpath_dist`.
+##### We get the list of scanpaths of form `(x_coord, y_coord)` in order to calculate the pairwise distance matrix. One can use custom metric or those already implemented in `scanpath_dist`.
 
 
 ```python
@@ -894,13 +1401,13 @@ euc_matrix = eye_complex.get_dist_matrix(list_of_scanpaths, dist_metric=eye_dist
 euc_matrix
 ```
 
-    100%|██████████| 15/15 [00:00<00:00, 3816.01it/s]
+    100%|██████████| 15/15 [00:00<00:00, 972.63it/s]
 
 
 
 
 
-<div>
+
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
@@ -1223,13 +1730,12 @@ eye_matrix = eye_complex.get_dist_matrix(list_of_scanpaths, dist_metric=eye_dist
 eye_matrix
 ```
 
-    100%|██████████| 15/15 [00:08<00:00,  1.85it/s]
+    100%|██████████| 15/15 [00:09<00:00,  1.52it/s]
 
 
 
 
 
-<div>
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
@@ -1550,6 +2056,44 @@ eye_matrix
 
 ##### The compromise matrix serves as a summary that captures the most common structure or pattern shared across all the individual distance matrices. It is used in applications where you need to summarize information from multiple sources (in our case these are different metrics), providing a single matrix that best represents the consensus of all input matrices.
 
+##### Some elaboration on how compromise matrix is built:
+
+- Given a weight vector $\mathbf{w} = [w_1, w_2, \dots, w_n]$ where $w_i \geq 0$ and $\sum_{i=1}^{n} w_i = 1$, the **centering matrix** $\Theta$ which centers the data is defined as:
+
+$$
+\Theta = I_n - \mathbf{1}_n \mathbf{w}^T
+$$
+$$
+\text{where } I_n \text{ is the identity matrix of size } n \times n,\, \mathbf{1}_n \text{ is a column vector of ones of size } n \times 1
+$$
+
+- For a given distance matrix $D$ and weight vector $\mathbf{w}$, the **cross-product matrix** $S$ is calculated as:
+
+$$
+S = -\frac{1}{2} \Theta D \Theta^T
+$$
+$$
+\text{where } D \text{ is the distance matrix}, \, \Theta \text{ is the centering matrix from previous step}
+$$
+
+- The **RV coefficient** measures the similarity between two cross-product matrices $S_1$ and $S_2$. It is defined as:
+
+$$
+\text{RV}(S_1, S_2) = \frac{\text{Tr}(S_1 S_2^T)}{\sqrt{\text{Tr}(S_1 S_1^T) \cdot \text{Tr}(S_2 S_2^T)}}
+$$
+$$
+\text{where } \text{Tr}(\cdot) \text{ is the trace (sum of diagonal elements) of a matrix}
+$$
+
+- Finally, to obtain the compromise matrix, we first compute the **similarity matrix** using the RV coefficients between all pairs of cross-product matrices. Then, we perform **eigen-decomposition** on this similarity matrix to find the principal eigenvector $\mathbf{w}\,$:
+
+$$
+S_{\text{compromise}} = \sum_{i=1}^{k} w_i S_i
+$$
+$$
+\text{ where} w_i \text{ is the weight from the principal eigenvector}, \, S_i \text{ is the cross-product matrix for the $i$-th distance matrix}
+$$
+
 
 ```python
 eye_complex.get_compromise_matrix([euc_matrix, eye_matrix])
@@ -1558,7 +2102,6 @@ eye_complex.get_compromise_matrix([euc_matrix, eye_matrix])
 
 
 
-<div>
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
@@ -1862,12 +2405,14 @@ eye_complex.get_compromise_matrix([euc_matrix, eye_matrix])
 
 ```python
 def sim(p, q) -> float:
-    return 1 / eye_dist.calc_eye_dist(p, q)
+    return 1 / eye_dist.calc_euc_dist(p, q)
 
 sim_matrix = eye_complex.get_sim_matrix(list_of_scanpaths, sim_metric=sim)
 pd.DataFrame(sim_matrix)
 ```
 
+
+
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
@@ -1892,939 +2437,582 @@ pd.DataFrame(sim_matrix)
   <tbody>
     <tr>
       <th>0</th>
-      <td>0.000113</td>
-      <td>0.610177</td>
-      <td>0.596714</td>
-      <td>0.628669</td>
-      <td>0.300533</td>
-      <td>0.434329</td>
-      <td>0.410506</td>
-      <td>0.497459</td>
-      <td>0.550898</td>
-      <td>0.531282</td>
-      <td>0.639914</td>
-      <td>0.790514</td>
-      <td>0.534857</td>
-      <td>0.173974</td>
-      <td>0.404507</td>
+      <td>1.000000</td>
+      <td>0.502305</td>
+      <td>0.502068</td>
+      <td>0.502114</td>
+      <td>0.501972</td>
+      <td>0.503174</td>
+      <td>0.502557</td>
+      <td>0.502106</td>
+      <td>0.502038</td>
+      <td>0.502223</td>
+      <td>0.501899</td>
+      <td>0.502997</td>
+      <td>0.502416</td>
+      <td>0.506219</td>
+      <td>0.502989</td>
     </tr>
     <tr>
       <th>1</th>
-      <td>0.610177</td>
-      <td>0.000113</td>
-      <td>0.594073</td>
+      <td>0.502305</td>
       <td>1.000000</td>
-      <td>0.658233</td>
-      <td>0.378114</td>
-      <td>0.313958</td>
-      <td>0.519474</td>
-      <td>0.573987</td>
-      <td>0.435145</td>
-      <td>0.487189</td>
-      <td>0.560248</td>
-      <td>0.324009</td>
-      <td>0.135466</td>
-      <td>0.252434</td>
+      <td>0.502357</td>
+      <td>0.502338</td>
+      <td>0.502204</td>
+      <td>0.503152</td>
+      <td>0.502475</td>
+      <td>0.502224</td>
+      <td>0.502194</td>
+      <td>0.502356</td>
+      <td>0.502155</td>
+      <td>0.502824</td>
+      <td>0.502291</td>
+      <td>0.505995</td>
+      <td>0.502840</td>
     </tr>
     <tr>
       <th>2</th>
-      <td>0.596714</td>
-      <td>0.594073</td>
-      <td>0.000113</td>
-      <td>0.747054</td>
-      <td>0.599457</td>
-      <td>0.506166</td>
-      <td>0.563857</td>
-      <td>0.870255</td>
-      <td>0.482085</td>
-      <td>0.461480</td>
-      <td>0.534687</td>
-      <td>0.637071</td>
-      <td>0.536292</td>
-      <td>0.171048</td>
-      <td>0.482146</td>
+      <td>0.502068</td>
+      <td>0.502357</td>
+      <td>1.000000</td>
+      <td>0.501698</td>
+      <td>0.501828</td>
+      <td>0.503369</td>
+      <td>0.502634</td>
+      <td>0.502123</td>
+      <td>0.501775</td>
+      <td>0.502086</td>
+      <td>0.501578</td>
+      <td>0.502868</td>
+      <td>0.502427</td>
+      <td>0.505912</td>
+      <td>0.503068</td>
     </tr>
     <tr>
       <th>3</th>
-      <td>0.628669</td>
+      <td>0.502114</td>
+      <td>0.502338</td>
+      <td>0.501698</td>
       <td>1.000000</td>
-      <td>0.747054</td>
-      <td>0.000113</td>
-      <td>0.766210</td>
-      <td>0.587598</td>
-      <td>0.459901</td>
-      <td>0.514625</td>
-      <td>0.553303</td>
-      <td>0.436374</td>
-      <td>0.465630</td>
-      <td>0.805251</td>
-      <td>0.339306</td>
-      <td>0.150324</td>
-      <td>0.392734</td>
+      <td>0.501833</td>
+      <td>0.503227</td>
+      <td>0.502602</td>
+      <td>0.502066</td>
+      <td>0.501877</td>
+      <td>0.502205</td>
+      <td>0.501675</td>
+      <td>0.502947</td>
+      <td>0.502382</td>
+      <td>0.506518</td>
+      <td>0.502875</td>
     </tr>
     <tr>
       <th>4</th>
-      <td>0.300533</td>
-      <td>0.658233</td>
-      <td>0.599457</td>
-      <td>0.766210</td>
-      <td>0.000113</td>
-      <td>0.446841</td>
-      <td>0.236833</td>
-      <td>0.448293</td>
-      <td>0.485945</td>
-      <td>0.392338</td>
-      <td>0.429789</td>
-      <td>0.496681</td>
-      <td>0.328114</td>
-      <td>0.147507</td>
-      <td>0.269558</td>
+      <td>0.501972</td>
+      <td>0.502204</td>
+      <td>0.501828</td>
+      <td>0.501833</td>
+      <td>1.000000</td>
+      <td>0.503020</td>
+      <td>0.502397</td>
+      <td>0.501970</td>
+      <td>0.501781</td>
+      <td>0.502160</td>
+      <td>0.501722</td>
+      <td>0.502705</td>
+      <td>0.502265</td>
+      <td>0.505916</td>
+      <td>0.502900</td>
     </tr>
     <tr>
       <th>5</th>
-      <td>0.434329</td>
-      <td>0.378114</td>
-      <td>0.506166</td>
-      <td>0.587598</td>
-      <td>0.446841</td>
-      <td>0.000113</td>
-      <td>0.437904</td>
-      <td>0.368250</td>
-      <td>0.578109</td>
-      <td>0.525135</td>
-      <td>0.611741</td>
-      <td>0.433852</td>
-      <td>0.402006</td>
-      <td>0.163781</td>
-      <td>0.300130</td>
+      <td>0.503174</td>
+      <td>0.503152</td>
+      <td>0.503369</td>
+      <td>0.503227</td>
+      <td>0.503020</td>
+      <td>1.000000</td>
+      <td>0.503462</td>
+      <td>0.503081</td>
+      <td>0.503161</td>
+      <td>0.503298</td>
+      <td>0.502989</td>
+      <td>0.503330</td>
+      <td>0.503174</td>
+      <td>0.506289</td>
+      <td>0.503113</td>
     </tr>
     <tr>
       <th>6</th>
-      <td>0.410506</td>
-      <td>0.313958</td>
-      <td>0.563857</td>
-      <td>0.459901</td>
-      <td>0.236833</td>
-      <td>0.437904</td>
-      <td>0.000113</td>
-      <td>0.424246</td>
-      <td>0.361010</td>
-      <td>0.337823</td>
-      <td>0.404716</td>
-      <td>0.377623</td>
-      <td>0.271711</td>
-      <td>0.131206</td>
-      <td>0.260353</td>
+      <td>0.502557</td>
+      <td>0.502475</td>
+      <td>0.502634</td>
+      <td>0.502602</td>
+      <td>0.502397</td>
+      <td>0.503462</td>
+      <td>1.000000</td>
+      <td>0.502455</td>
+      <td>0.502422</td>
+      <td>0.502578</td>
+      <td>0.502394</td>
+      <td>0.503132</td>
+      <td>0.502508</td>
+      <td>0.506109</td>
+      <td>0.503164</td>
     </tr>
     <tr>
       <th>7</th>
-      <td>0.497459</td>
-      <td>0.519474</td>
-      <td>0.870255</td>
-      <td>0.514625</td>
-      <td>0.448293</td>
-      <td>0.368250</td>
-      <td>0.424246</td>
-      <td>0.000113</td>
-      <td>0.431607</td>
-      <td>0.476741</td>
-      <td>0.614004</td>
-      <td>0.559689</td>
-      <td>0.493166</td>
-      <td>0.144470</td>
-      <td>0.363910</td>
+      <td>0.502106</td>
+      <td>0.502224</td>
+      <td>0.502123</td>
+      <td>0.502066</td>
+      <td>0.501970</td>
+      <td>0.503081</td>
+      <td>0.502455</td>
+      <td>1.000000</td>
+      <td>0.501888</td>
+      <td>0.502084</td>
+      <td>0.501980</td>
+      <td>0.502815</td>
+      <td>0.502218</td>
+      <td>0.505386</td>
+      <td>0.502963</td>
     </tr>
     <tr>
       <th>8</th>
-      <td>0.550898</td>
-      <td>0.573987</td>
-      <td>0.482085</td>
-      <td>0.553303</td>
-      <td>0.485945</td>
-      <td>0.578109</td>
-      <td>0.361010</td>
-      <td>0.431607</td>
-      <td>0.000113</td>
-      <td>0.659049</td>
-      <td>0.660081</td>
-      <td>0.643340</td>
-      <td>0.546822</td>
-      <td>0.192459</td>
-      <td>0.323988</td>
+      <td>0.502038</td>
+      <td>0.502194</td>
+      <td>0.501775</td>
+      <td>0.501877</td>
+      <td>0.501781</td>
+      <td>0.503161</td>
+      <td>0.502422</td>
+      <td>0.501888</td>
+      <td>1.000000</td>
+      <td>0.502147</td>
+      <td>0.501771</td>
+      <td>0.502771</td>
+      <td>0.502178</td>
+      <td>0.506386</td>
+      <td>0.502804</td>
     </tr>
     <tr>
       <th>9</th>
-      <td>0.531282</td>
-      <td>0.435145</td>
-      <td>0.461480</td>
-      <td>0.436374</td>
-      <td>0.392338</td>
-      <td>0.525135</td>
-      <td>0.337823</td>
-      <td>0.476741</td>
-      <td>0.659049</td>
-      <td>0.000113</td>
-      <td>0.611242</td>
-      <td>0.631493</td>
-      <td>0.568341</td>
-      <td>0.230248</td>
-      <td>0.433907</td>
+      <td>0.502223</td>
+      <td>0.502356</td>
+      <td>0.502086</td>
+      <td>0.502205</td>
+      <td>0.502160</td>
+      <td>0.503298</td>
+      <td>0.502578</td>
+      <td>0.502084</td>
+      <td>0.502147</td>
+      <td>1.000000</td>
+      <td>0.502024</td>
+      <td>0.502957</td>
+      <td>0.502404</td>
+      <td>0.506445</td>
+      <td>0.502877</td>
     </tr>
     <tr>
       <th>10</th>
-      <td>0.639914</td>
-      <td>0.487189</td>
-      <td>0.534687</td>
-      <td>0.465630</td>
-      <td>0.429789</td>
-      <td>0.611741</td>
-      <td>0.404716</td>
-      <td>0.614004</td>
-      <td>0.660081</td>
-      <td>0.611242</td>
-      <td>0.000113</td>
-      <td>0.596621</td>
-      <td>0.702427</td>
-      <td>0.211193</td>
-      <td>0.507753</td>
+      <td>0.501899</td>
+      <td>0.502155</td>
+      <td>0.501578</td>
+      <td>0.501675</td>
+      <td>0.501722</td>
+      <td>0.502989</td>
+      <td>0.502394</td>
+      <td>0.501980</td>
+      <td>0.501771</td>
+      <td>0.502024</td>
+      <td>1.000000</td>
+      <td>0.502601</td>
+      <td>0.502266</td>
+      <td>0.505436</td>
+      <td>0.502705</td>
     </tr>
     <tr>
       <th>11</th>
-      <td>0.790514</td>
-      <td>0.560248</td>
-      <td>0.637071</td>
-      <td>0.805251</td>
-      <td>0.496681</td>
-      <td>0.433852</td>
-      <td>0.377623</td>
-      <td>0.559689</td>
-      <td>0.643340</td>
-      <td>0.631493</td>
-      <td>0.596621</td>
-      <td>0.000113</td>
-      <td>0.501592</td>
-      <td>0.153756</td>
-      <td>0.374281</td>
+      <td>0.502997</td>
+      <td>0.502824</td>
+      <td>0.502868</td>
+      <td>0.502947</td>
+      <td>0.502705</td>
+      <td>0.503330</td>
+      <td>0.503132</td>
+      <td>0.502815</td>
+      <td>0.502771</td>
+      <td>0.502957</td>
+      <td>0.502601</td>
+      <td>1.000000</td>
+      <td>0.502775</td>
+      <td>0.506218</td>
+      <td>0.503145</td>
     </tr>
     <tr>
       <th>12</th>
-      <td>0.534857</td>
-      <td>0.324009</td>
-      <td>0.536292</td>
-      <td>0.339306</td>
-      <td>0.328114</td>
-      <td>0.402006</td>
-      <td>0.271711</td>
-      <td>0.493166</td>
-      <td>0.546822</td>
-      <td>0.568341</td>
-      <td>0.702427</td>
-      <td>0.501592</td>
-      <td>0.000113</td>
-      <td>0.178085</td>
-      <td>0.360779</td>
+      <td>0.502416</td>
+      <td>0.502291</td>
+      <td>0.502427</td>
+      <td>0.502382</td>
+      <td>0.502265</td>
+      <td>0.503174</td>
+      <td>0.502508</td>
+      <td>0.502218</td>
+      <td>0.502178</td>
+      <td>0.502404</td>
+      <td>0.502266</td>
+      <td>0.502775</td>
+      <td>1.000000</td>
+      <td>0.505733</td>
+      <td>0.502828</td>
     </tr>
     <tr>
       <th>13</th>
-      <td>0.173974</td>
-      <td>0.135466</td>
-      <td>0.171048</td>
-      <td>0.150324</td>
-      <td>0.147507</td>
-      <td>0.163781</td>
-      <td>0.131206</td>
-      <td>0.144470</td>
-      <td>0.192459</td>
-      <td>0.230248</td>
-      <td>0.211193</td>
-      <td>0.153756</td>
-      <td>0.178085</td>
-      <td>0.000113</td>
-      <td>0.148701</td>
+      <td>0.506219</td>
+      <td>0.505995</td>
+      <td>0.505912</td>
+      <td>0.506518</td>
+      <td>0.505916</td>
+      <td>0.506289</td>
+      <td>0.506109</td>
+      <td>0.505386</td>
+      <td>0.506386</td>
+      <td>0.506445</td>
+      <td>0.505436</td>
+      <td>0.506218</td>
+      <td>0.505733</td>
+      <td>1.000000</td>
+      <td>0.505565</td>
     </tr>
     <tr>
       <th>14</th>
-      <td>0.404507</td>
-      <td>0.252434</td>
-      <td>0.482146</td>
-      <td>0.392734</td>
-      <td>0.269558</td>
-      <td>0.300130</td>
-      <td>0.260353</td>
-      <td>0.363910</td>
-      <td>0.323988</td>
-      <td>0.433907</td>
-      <td>0.507753</td>
-      <td>0.374281</td>
-      <td>0.360779</td>
-      <td>0.148701</td>
-      <td>0.000113</td>
+      <td>0.502989</td>
+      <td>0.502840</td>
+      <td>0.503068</td>
+      <td>0.502875</td>
+      <td>0.502900</td>
+      <td>0.503113</td>
+      <td>0.503164</td>
+      <td>0.502963</td>
+      <td>0.502804</td>
+      <td>0.502877</td>
+      <td>0.502705</td>
+      <td>0.503145</td>
+      <td>0.502828</td>
+      <td>0.505565</td>
+      <td>1.000000</td>
     </tr>
   </tbody>
 </table>
 </div>
 
 
-##### There are 4 methods implemented in `scanpath_complex` for similarity matrix reordering. For example, we can use `dimensionality_reduction_order` for the matrix calculated above. This function applies a dimensionality reduction technique, such as Multi-Dimensional Scaling (MDS), to the input similarity matrix. The goal is to project the items into a lower-dimensional space (typically 1D) where the order of items reflects their dissimilarities as closely as possible. The indices of items are then reordered according to their positions in this lower-dimensional space, resulting in an ordering that preserves the structure of the original similarities.
-
 
 ##### There are 4 methods implemented in `scanpath_complex` for similarity matrix reordering. For example, we can use `dimensionality_reduction_order` for the matrix calculated above. This function applies a dimensionality reduction technique, such as Multi-Dimensional Scaling (MDS), to the input similarity matrix. The goal is to project the items into a lower-dimensional space (typically 1D) where the order of items reflects their dissimilarities as closely as possible. The indices of items are then reordered according to their positions in this lower-dimensional space, resulting in an ordering that preserves the structure of the original similarities.
-
-
-```python
-import seaborn as sns
-
-sns.heatmap(sim_matrix)
-```
-
-
-
-    
-![png](output_28_1.png)
-    
-
 
 
 ```python
 mds_reordered_matrix = eye_complex.dimensionality_reduction_order(sim_matrix)
-sns.heatmap(mds_reordered_matrix)
-```
-
-
-
-    
-![png](output_29_1.png)
-    
-
-
-
-## Scanpath Measures
-
-##### This module offers classes and methods which calculate various measures of scanpaths. 
-
-
-```python
-import eyetracking.features.measures as eye_measures
-```
-
-##### Let's calculate some basic measures in order to demonstrate the usecase process.
-
-##### The HurstExponent class estimates the Hurst exponent of a time series using Rescaled Range (R/S) analysis. The Hurst exponent is a measure of the long-term memory of time series data, indicating whether the data is trending, mean-reverting, or behaving in a random walk. Parameter `n_iters` regulates the number of iterations for the R/S analysis, while `fill_strategy` is the strategy to adjust data to the power of 2.
-
-
-```python
-hurst_exponent = eye_measures.HurstExponent(
-    var=['norm_pos_x', 'norm_pos_y'],
-    n_iters=10,
-    fill_strategy='reduce',
-    pk=['SUBJ', 'group'],
-    return_df=True
-)
-
-hurst_exponent.fit_transform(data)
+pd.DataFrame(mds_reordered_matrix)
 ```
 
 
 
 
-<div>
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
       <th></th>
-      <th>he_['norm_pos_x', 'norm_pos_y']</th>
+      <th>0</th>
+      <th>1</th>
+      <th>2</th>
+      <th>3</th>
+      <th>4</th>
+      <th>5</th>
+      <th>6</th>
+      <th>7</th>
+      <th>8</th>
+      <th>9</th>
+      <th>10</th>
+      <th>11</th>
+      <th>12</th>
+      <th>13</th>
+      <th>14</th>
     </tr>
   </thead>
   <tbody>
     <tr>
       <th>0</th>
-      <td>0.001590</td>
+      <td>1.000000</td>
+      <td>0.502338</td>
+      <td>0.502824</td>
+      <td>0.502204</td>
+      <td>0.502475</td>
+      <td>0.503152</td>
+      <td>0.502357</td>
+      <td>0.505995</td>
+      <td>0.502291</td>
+      <td>0.502840</td>
+      <td>0.502155</td>
+      <td>0.502194</td>
+      <td>0.502356</td>
+      <td>0.502305</td>
+      <td>0.502224</td>
     </tr>
     <tr>
       <th>1</th>
-      <td>0.001716</td>
+      <td>0.502338</td>
+      <td>1.000000</td>
+      <td>0.502947</td>
+      <td>0.501833</td>
+      <td>0.502602</td>
+      <td>0.503227</td>
+      <td>0.501698</td>
+      <td>0.506518</td>
+      <td>0.502382</td>
+      <td>0.502875</td>
+      <td>0.501675</td>
+      <td>0.501877</td>
+      <td>0.502205</td>
+      <td>0.502114</td>
+      <td>0.502066</td>
     </tr>
     <tr>
       <th>2</th>
-      <td>0.000698</td>
+      <td>0.502824</td>
+      <td>0.502947</td>
+      <td>1.000000</td>
+      <td>0.502705</td>
+      <td>0.503132</td>
+      <td>0.503330</td>
+      <td>0.502868</td>
+      <td>0.506218</td>
+      <td>0.502775</td>
+      <td>0.503145</td>
+      <td>0.502601</td>
+      <td>0.502771</td>
+      <td>0.502957</td>
+      <td>0.502997</td>
+      <td>0.502815</td>
     </tr>
     <tr>
       <th>3</th>
-      <td>0.001475</td>
+      <td>0.502204</td>
+      <td>0.501833</td>
+      <td>0.502705</td>
+      <td>1.000000</td>
+      <td>0.502397</td>
+      <td>0.503020</td>
+      <td>0.501828</td>
+      <td>0.505916</td>
+      <td>0.502265</td>
+      <td>0.502900</td>
+      <td>0.501722</td>
+      <td>0.501781</td>
+      <td>0.502160</td>
+      <td>0.501972</td>
+      <td>0.501970</td>
     </tr>
     <tr>
       <th>4</th>
-      <td>0.001473</td>
+      <td>0.502475</td>
+      <td>0.502602</td>
+      <td>0.503132</td>
+      <td>0.502397</td>
+      <td>1.000000</td>
+      <td>0.503462</td>
+      <td>0.502634</td>
+      <td>0.506109</td>
+      <td>0.502508</td>
+      <td>0.503164</td>
+      <td>0.502394</td>
+      <td>0.502422</td>
+      <td>0.502578</td>
+      <td>0.502557</td>
+      <td>0.502455</td>
     </tr>
     <tr>
       <th>5</th>
-      <td>0.002331</td>
+      <td>0.503152</td>
+      <td>0.503227</td>
+      <td>0.503330</td>
+      <td>0.503020</td>
+      <td>0.503462</td>
+      <td>1.000000</td>
+      <td>0.503369</td>
+      <td>0.506289</td>
+      <td>0.503174</td>
+      <td>0.503113</td>
+      <td>0.502989</td>
+      <td>0.503161</td>
+      <td>0.503298</td>
+      <td>0.503174</td>
+      <td>0.503081</td>
     </tr>
     <tr>
       <th>6</th>
-      <td>0.001375</td>
+      <td>0.502357</td>
+      <td>0.501698</td>
+      <td>0.502868</td>
+      <td>0.501828</td>
+      <td>0.502634</td>
+      <td>0.503369</td>
+      <td>1.000000</td>
+      <td>0.505912</td>
+      <td>0.502427</td>
+      <td>0.503068</td>
+      <td>0.501578</td>
+      <td>0.501775</td>
+      <td>0.502086</td>
+      <td>0.502068</td>
+      <td>0.502123</td>
     </tr>
     <tr>
       <th>7</th>
-      <td>0.001384</td>
+      <td>0.505995</td>
+      <td>0.506518</td>
+      <td>0.506218</td>
+      <td>0.505916</td>
+      <td>0.506109</td>
+      <td>0.506289</td>
+      <td>0.505912</td>
+      <td>1.000000</td>
+      <td>0.505733</td>
+      <td>0.505565</td>
+      <td>0.505436</td>
+      <td>0.506386</td>
+      <td>0.506445</td>
+      <td>0.506219</td>
+      <td>0.505386</td>
     </tr>
     <tr>
       <th>8</th>
-      <td>0.001553</td>
+      <td>0.502291</td>
+      <td>0.502382</td>
+      <td>0.502775</td>
+      <td>0.502265</td>
+      <td>0.502508</td>
+      <td>0.503174</td>
+      <td>0.502427</td>
+      <td>0.505733</td>
+      <td>1.000000</td>
+      <td>0.502828</td>
+      <td>0.502266</td>
+      <td>0.502178</td>
+      <td>0.502404</td>
+      <td>0.502416</td>
+      <td>0.502218</td>
     </tr>
     <tr>
       <th>9</th>
-      <td>0.001521</td>
+      <td>0.502840</td>
+      <td>0.502875</td>
+      <td>0.503145</td>
+      <td>0.502900</td>
+      <td>0.503164</td>
+      <td>0.503113</td>
+      <td>0.503068</td>
+      <td>0.505565</td>
+      <td>0.502828</td>
+      <td>1.000000</td>
+      <td>0.502705</td>
+      <td>0.502804</td>
+      <td>0.502877</td>
+      <td>0.502989</td>
+      <td>0.502963</td>
     </tr>
     <tr>
       <th>10</th>
-      <td>0.001682</td>
+      <td>0.502155</td>
+      <td>0.501675</td>
+      <td>0.502601</td>
+      <td>0.501722</td>
+      <td>0.502394</td>
+      <td>0.502989</td>
+      <td>0.501578</td>
+      <td>0.505436</td>
+      <td>0.502266</td>
+      <td>0.502705</td>
+      <td>1.000000</td>
+      <td>0.501771</td>
+      <td>0.502024</td>
+      <td>0.501899</td>
+      <td>0.501980</td>
     </tr>
     <tr>
       <th>11</th>
-      <td>0.001679</td>
+      <td>0.502194</td>
+      <td>0.501877</td>
+      <td>0.502771</td>
+      <td>0.501781</td>
+      <td>0.502422</td>
+      <td>0.503161</td>
+      <td>0.501775</td>
+      <td>0.506386</td>
+      <td>0.502178</td>
+      <td>0.502804</td>
+      <td>0.501771</td>
+      <td>1.000000</td>
+      <td>0.502147</td>
+      <td>0.502038</td>
+      <td>0.501888</td>
     </tr>
     <tr>
       <th>12</th>
-      <td>0.001560</td>
+      <td>0.502356</td>
+      <td>0.502205</td>
+      <td>0.502957</td>
+      <td>0.502160</td>
+      <td>0.502578</td>
+      <td>0.503298</td>
+      <td>0.502086</td>
+      <td>0.506445</td>
+      <td>0.502404</td>
+      <td>0.502877</td>
+      <td>0.502024</td>
+      <td>0.502147</td>
+      <td>1.000000</td>
+      <td>0.502223</td>
+      <td>0.502084</td>
     </tr>
     <tr>
       <th>13</th>
-      <td>0.005400</td>
+      <td>0.502305</td>
+      <td>0.502114</td>
+      <td>0.502997</td>
+      <td>0.501972</td>
+      <td>0.502557</td>
+      <td>0.503174</td>
+      <td>0.502068</td>
+      <td>0.506219</td>
+      <td>0.502416</td>
+      <td>0.502989</td>
+      <td>0.501899</td>
+      <td>0.502038</td>
+      <td>0.502223</td>
+      <td>1.000000</td>
+      <td>0.502106</td>
     </tr>
     <tr>
       <th>14</th>
-      <td>0.002474</td>
-    </tr>
-  </tbody>
-</table>
-</div>
-
-
-
-##### We can also calculate the entropy of a 2D spatial distribution. This class firstly divides the space into a grid and then calculates the entropy based on the resulting distribution of points within the grid which measures the randomness or unpredictability of the spatial distribution.
-
-
-```python
-gridded_entropy = eye_measures.GriddedDistributionEntropy(
-    x='norm_pos_x',
-    y='norm_pos_y',
-    pk=['SUBJ', 'group'],
-    return_df=True
-)
-
-gridded_entropy.fit_transform(data)
-```
-
-
-
-
-<div>
-<table border="1" class="dataframe">
-  <thead>
-    <tr style="text-align: right;">
-      <th></th>
-      <th>grid_entropy</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th>1_1</th>
-      <td>3.960535</td>
-    </tr>
-    <tr>
-      <th>2_1</th>
-      <td>3.829708</td>
-    </tr>
-    <tr>
-      <th>3_1</th>
-      <td>4.002632</td>
-    </tr>
-    <tr>
-      <th>4_1</th>
-      <td>3.997430</td>
-    </tr>
-    <tr>
-      <th>5_1</th>
-      <td>3.972908</td>
-    </tr>
-    <tr>
-      <th>6_1</th>
-      <td>4.002764</td>
-    </tr>
-    <tr>
-      <th>7_1</th>
-      <td>4.139917</td>
-    </tr>
-    <tr>
-      <th>8_1</th>
-      <td>4.158252</td>
-    </tr>
-    <tr>
-      <th>9_1</th>
-      <td>3.799890</td>
-    </tr>
-    <tr>
-      <th>10_1</th>
-      <td>4.022404</td>
-    </tr>
-    <tr>
-      <th>11_1</th>
-      <td>4.164256</td>
-    </tr>
-    <tr>
-      <th>12_1</th>
-      <td>4.023588</td>
-    </tr>
-    <tr>
-      <th>13_1</th>
-      <td>3.972001</td>
-    </tr>
-    <tr>
-      <th>14_1</th>
-      <td>3.930190</td>
-    </tr>
-    <tr>
-      <th>15_1</th>
-      <td>4.148421</td>
-    </tr>
-  </tbody>
-</table>
-</div>
-
-
-
-##### There are more complex features as well. 
-
-
-##### One of them is RQA (Recurrence Quantification Analysis) for time-series or spatial data. The metrics calculated include Recurrence (REC), Determinism (DET), Laminarity (LAM), and Center of Recurrence Mass (CORM). These measures help to quantify the complexity and structure of the recurrence patterns within the data. In this example we use a default euclidean metric as `metric`. Parameters `rho` and `min_length` correspond for RQA matrix threshold radius and threshold length of its diagonal. In `measures` we specify the required features to calculate.
-
-#####
-
-
-```python
-rqa_measures = eye_measures.RQAMeasures(
-    metric=lambda p, q: np.linalg.norm(p - q),
-    rho=0.10,
-    min_length=1,
-    measures=["rec", "corm"],
-    x='norm_pos_x',
-    y='norm_pos_y',
-    pk=['SUBJ', 'group'],
-    return_df=True
-)
-
-rqa_measures.fit_transform(data)
-```
-
-
-
-
-<div>
-<table border="1" class="dataframe">
-  <thead>
-    <tr style="text-align: right;">
-      <th></th>
-      <th>rec</th>
-      <th>corm</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th>1_1</th>
-      <td>11.811201</td>
-      <td>33.640767</td>
-    </tr>
-    <tr>
-      <th>2_1</th>
-      <td>12.874153</td>
-      <td>34.330960</td>
-    </tr>
-    <tr>
-      <th>3_1</th>
-      <td>11.805156</td>
-      <td>33.379707</td>
-    </tr>
-    <tr>
-      <th>4_1</th>
-      <td>12.986185</td>
-      <td>33.767070</td>
-    </tr>
-    <tr>
-      <th>5_1</th>
-      <td>12.815115</td>
-      <td>34.050548</td>
-    </tr>
-    <tr>
-      <th>6_1</th>
-      <td>12.493029</td>
-      <td>34.067843</td>
-    </tr>
-    <tr>
-      <th>7_1</th>
-      <td>13.414963</td>
-      <td>33.543729</td>
-    </tr>
-    <tr>
-      <th>8_1</th>
-      <td>10.816080</td>
-      <td>33.598875</td>
-    </tr>
-    <tr>
-      <th>9_1</th>
-      <td>13.173418</td>
-      <td>33.557892</td>
-    </tr>
-    <tr>
-      <th>10_1</th>
-      <td>13.326421</td>
-      <td>33.787375</td>
-    </tr>
-    <tr>
-      <th>11_1</th>
-      <td>10.237605</td>
-      <td>33.482746</td>
-    </tr>
-    <tr>
-      <th>12_1</th>
-      <td>12.285995</td>
-      <td>33.848199</td>
-    </tr>
-    <tr>
-      <th>13_1</th>
-      <td>11.025638</td>
-      <td>33.578878</td>
-    </tr>
-    <tr>
-      <th>14_1</th>
-      <td>12.762660</td>
-      <td>33.339035</td>
-    </tr>
-    <tr>
-      <th>15_1</th>
-      <td>10.291070</td>
-      <td>33.559307</td>
-    </tr>
-  </tbody>
-</table>
-</div>
-
-
-
-##### SaccadeUnlikelihood class calculates the cumulative Negative Log-Likelihood (NLL) of saccades in a scanpath based on a saccade transition model. The model differentiates between progressive and regressive saccades, each characterized by its own asymmetric Gaussian distribution. The default distributions parameters used in this case are derived from Potsdam Sentence Corpus.  
-
-
-```python
-saccade_unl = eye_measures.SaccadeUnlikelihood(
-    mu_p=1,
-    sigma_p1=0.5,
-    sigma_p2=1,
-    mu_r=1,
-    sigma_r1=0.3,
-    sigma_r2=0.7,
-    psi=0.9,
-    x='norm_pos_x',
-    y='norm_pos_y',
-    pk=['SUBJ', 'group'],
-    return_df=True
-)
-
-saccade_unl.fit_transform(data)
-```
-
-
-
-
-<div>
-<table border="1" class="dataframe">
-  <thead>
-    <tr style="text-align: right;">
-      <th></th>
-      <th>saccade_nll</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th>1_1</th>
-      <td>5855.969515</td>
-    </tr>
-    <tr>
-      <th>2_1</th>
-      <td>5162.866221</td>
-    </tr>
-    <tr>
-      <th>3_1</th>
-      <td>9246.306051</td>
-    </tr>
-    <tr>
-      <th>4_1</th>
-      <td>7201.777450</td>
-    </tr>
-    <tr>
-      <th>5_1</th>
-      <td>6378.480145</td>
-    </tr>
-    <tr>
-      <th>6_1</th>
-      <td>3425.953969</td>
-    </tr>
-    <tr>
-      <th>7_1</th>
-      <td>4950.269975</td>
-    </tr>
-    <tr>
-      <th>8_1</th>
-      <td>5591.412520</td>
-    </tr>
-    <tr>
-      <th>9_1</th>
-      <td>6492.712042</td>
-    </tr>
-    <tr>
-      <th>10_1</th>
-      <td>5770.656154</td>
-    </tr>
-    <tr>
-      <th>11_1</th>
-      <td>7163.822825</td>
-    </tr>
-    <tr>
-      <th>12_1</th>
-      <td>4257.228198</td>
-    </tr>
-    <tr>
-      <th>13_1</th>
-      <td>4480.162030</td>
-    </tr>
-    <tr>
-      <th>14_1</th>
-      <td>1950.917958</td>
-    </tr>
-    <tr>
-      <th>15_1</th>
-      <td>3704.882425</td>
-    </tr>
-  </tbody>
-</table>
-</div>
-
-
-
-## Statistical Features
-
-##### Attributes of saccades, fixations, as well as microsaccades and regressions such as max length, mean acceleration, and other are available in `stats` module of `eyetracking.features`. You can calculate statistics using any aggregation function supported by `pandas`.
-
-
-```python
-import eyetracking.features.stats as eye_stats
-```
-
-##### Prepare desired statistics about saccades:
-
-
-```python
-sac_feats_stats = {
-    'length': ['min', 'max'],
-    'speed': ['mean', 'kurtosis'],
-    'acceleration': ['mean']
-}
-```
-
-##### Also, one would like to see the similarity of object and its group. We have people ('SUBJ') which are divided into groups ('group', here we have a single group, but there could be many groups, for example, age-based). Thus, we can calculate shift features, which are a difference of object's feature value and its group's mean value.
-
-##### Prepare saccade statistics which we want to calculate shift features for:
-
-
-```python
-sac_feats_stats_shift = {'length': ['max'],
-                         'acceleration': ['mean']}
-```
-
-##### Define transformer for saccades:
-
-
-```python
-sf = eye_stats.SaccadeFeatures(x='norm_pos_x',
-                               y='norm_pos_y',
-                               t='timestamp',
-                               pk=['SUBJ', 'group'],
-                               features_stats=sac_feats_stats,
-                               shift_features=sac_feats_stats_shift,
-                               shift_pk=['group'])
-```
-
-
-```python
-sf.fit_transform(data)
-```
-
-
-
-
-<div>
-<table border="1" class="dataframe">
-  <thead>
-    <tr style="text-align: right;">
-      <th></th>
-      <th>sac_length_min</th>
-      <th>sac_length_max</th>
-      <th>sac_length_max_shift</th>
-      <th>sac_acceleration_mean</th>
-      <th>sac_acceleration_mean_shift</th>
-      <th>sac_speed_mean</th>
-      <th>sac_speed_kurtosis</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th>1_1</th>
-      <td>0.006033</td>
-      <td>0.735187</td>
-      <td>0.000000</td>
-      <td>3.200016</td>
-      <td>-0.412047</td>
-      <td>1.036293</td>
-      <td>4.289506</td>
-    </tr>
-    <tr>
-      <th>2_1</th>
-      <td>0.004946</td>
-      <td>0.695758</td>
-      <td>-0.039428</td>
-      <td>4.411436</td>
-      <td>0.799373</td>
-      <td>1.188990</td>
-      <td>3.949788</td>
-    </tr>
-    <tr>
-      <th>3_1</th>
-      <td>0.002494</td>
-      <td>0.691093</td>
-      <td>-0.044094</td>
-      <td>3.351796</td>
-      <td>-0.260267</td>
-      <td>1.073377</td>
-      <td>2.275953</td>
-    </tr>
-    <tr>
-      <th>4_1</th>
-      <td>0.004396</td>
-      <td>0.637963</td>
-      <td>-0.097223</td>
-      <td>3.246972</td>
-      <td>-0.365090</td>
-      <td>0.999678</td>
-      <td>4.342265</td>
-    </tr>
-    <tr>
-      <th>5_1</th>
-      <td>0.004814</td>
-      <td>0.693513</td>
-      <td>-0.041673</td>
-      <td>3.874696</td>
-      <td>0.262634</td>
-      <td>1.111982</td>
-      <td>4.788790</td>
-    </tr>
-    <tr>
-      <th>6_1</th>
-      <td>0.014949</td>
-      <td>0.659511</td>
-      <td>-0.075676</td>
-      <td>4.518683</td>
-      <td>0.906621</td>
-      <td>1.423984</td>
-      <td>2.408947</td>
-    </tr>
-    <tr>
-      <th>7_1</th>
-      <td>0.003880</td>
-      <td>0.579964</td>
-      <td>-0.155222</td>
-      <td>4.047229</td>
-      <td>0.435167</td>
-      <td>1.190862</td>
-      <td>2.696679</td>
-    </tr>
-    <tr>
-      <th>8_1</th>
-      <td>0.012126</td>
-      <td>0.661617</td>
-      <td>-0.073569</td>
-      <td>4.614863</td>
-      <td>1.002801</td>
-      <td>1.307412</td>
-      <td>1.579665</td>
-    </tr>
-    <tr>
-      <th>9_1</th>
-      <td>0.006906</td>
-      <td>0.656098</td>
-      <td>-0.079089</td>
-      <td>2.537365</td>
-      <td>-1.074698</td>
-      <td>0.872490</td>
-      <td>6.404846</td>
-    </tr>
-    <tr>
-      <th>10_1</th>
-      <td>0.002115</td>
-      <td>0.656778</td>
-      <td>-0.078408</td>
-      <td>1.736126</td>
-      <td>-1.875936</td>
-      <td>0.707411</td>
-      <td>6.400686</td>
-    </tr>
-    <tr>
-      <th>11_1</th>
-      <td>0.008301</td>
-      <td>0.673268</td>
-      <td>-0.061919</td>
-      <td>3.719054</td>
-      <td>0.106992</td>
-      <td>1.186794</td>
-      <td>2.141173</td>
-    </tr>
-    <tr>
-      <th>12_1</th>
-      <td>0.004982</td>
-      <td>0.648675</td>
-      <td>-0.086511</td>
-      <td>3.103430</td>
-      <td>-0.508633</td>
-      <td>1.051155</td>
-      <td>6.032897</td>
-    </tr>
-    <tr>
-      <th>13_1</th>
-      <td>0.014569</td>
-      <td>0.673546</td>
-      <td>-0.061641</td>
-      <td>5.627082</td>
-      <td>2.015020</td>
-      <td>1.587480</td>
-      <td>1.892242</td>
-    </tr>
-    <tr>
-      <th>14_1</th>
-      <td>0.013864</td>
-      <td>0.670388</td>
-      <td>-0.064799</td>
-      <td>2.511618</td>
-      <td>-1.100445</td>
-      <td>0.942285</td>
-      <td>5.053431</td>
-    </tr>
-    <tr>
-      <th>15_1</th>
-      <td>0.017111</td>
-      <td>0.730887</td>
-      <td>-0.004300</td>
-      <td>3.800426</td>
-      <td>0.188364</td>
-      <td>1.232593</td>
-      <td>3.360688</td>
+      <td>0.502224</td>
+      <td>0.502066</td>
+      <td>0.502815</td>
+      <td>0.501970</td>
+      <td>0.502455</td>
+      <td>0.503081</td>
+      <td>0.502123</td>
+      <td>0.505386</td>
+      <td>0.502218</td>
+      <td>0.502963</td>
+      <td>0.501980</td>
+      <td>0.501888</td>
+      <td>0.502084</td>
+      <td>0.502106</td>
+      <td>1.000000</td>
     </tr>
   </tbody>
 </table>
@@ -2847,7 +3035,6 @@ extractor = Extractor(
             expected_paths_method="fwp",
         ),
         eye_measures.GriddedDistributionEntropy(),
-        eye_measures.SaccadeUnlikelihood(),
         eye_stats.SaccadeFeatures(
             features_stats=sac_feats_stats,
             shift_features=sac_feats_stats_shift,
@@ -2867,15 +3054,13 @@ extractor = Extractor(
 extractor.fit_transform(data)
 ```
 
-    100%|██████████| 15/15 [00:00<00:00, 2763.90it/s]
-    100%|██████████| 15/15 [00:02<00:00,  5.15it/s]
-    100%|██████████| 15/15 [00:02<00:00,  5.09it/s]
+    100%|██████████| 15/15 [00:00<00:00, 1597.34it/s]
+    100%|██████████| 15/15 [00:04<00:00,  3.01it/s]
+    100%|██████████| 15/15 [00:05<00:00,  2.80it/s]
 
 
 
 
-
-<div>
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
@@ -2884,7 +3069,6 @@ extractor.fit_transform(data)
       <th>eye_dist</th>
       <th>man_dist</th>
       <th>grid_entropy</th>
-      <th>saccade_nll</th>
       <th>sac_length_min</th>
       <th>sac_length_max</th>
       <th>sac_length_max_shift</th>
@@ -2901,7 +3085,6 @@ extractor.fit_transform(data)
       <td>0.058312</td>
       <td>0.015358</td>
       <td>3.960535</td>
-      <td>5855.969515</td>
       <td>0.006033</td>
       <td>0.735187</td>
       <td>0.000000</td>
@@ -2916,7 +3099,6 @@ extractor.fit_transform(data)
       <td>0.064941</td>
       <td>0.017263</td>
       <td>3.829708</td>
-      <td>5162.866221</td>
       <td>0.004946</td>
       <td>0.695758</td>
       <td>-0.039428</td>
@@ -2931,7 +3113,6 @@ extractor.fit_transform(data)
       <td>0.071679</td>
       <td>0.017920</td>
       <td>4.002632</td>
-      <td>9246.306051</td>
       <td>0.002494</td>
       <td>0.691093</td>
       <td>-0.044094</td>
@@ -2946,7 +3127,6 @@ extractor.fit_transform(data)
       <td>0.058348</td>
       <td>0.015121</td>
       <td>3.997430</td>
-      <td>7201.777450</td>
       <td>0.004396</td>
       <td>0.637963</td>
       <td>-0.097223</td>
@@ -2961,7 +3141,6 @@ extractor.fit_transform(data)
       <td>0.066644</td>
       <td>0.017448</td>
       <td>3.972908</td>
-      <td>6378.480145</td>
       <td>0.004814</td>
       <td>0.693513</td>
       <td>-0.041673</td>
@@ -2976,7 +3155,6 @@ extractor.fit_transform(data)
       <td>0.051765</td>
       <td>0.014200</td>
       <td>4.002764</td>
-      <td>3425.953969</td>
       <td>0.014949</td>
       <td>0.659511</td>
       <td>-0.075676</td>
@@ -2991,7 +3169,6 @@ extractor.fit_transform(data)
       <td>0.067186</td>
       <td>0.017750</td>
       <td>4.139917</td>
-      <td>4950.269975</td>
       <td>0.003880</td>
       <td>0.579964</td>
       <td>-0.155222</td>
@@ -3006,7 +3183,6 @@ extractor.fit_transform(data)
       <td>0.068108</td>
       <td>0.018178</td>
       <td>4.158252</td>
-      <td>5591.412520</td>
       <td>0.012126</td>
       <td>0.661617</td>
       <td>-0.073569</td>
@@ -3021,7 +3197,6 @@ extractor.fit_transform(data)
       <td>0.061571</td>
       <td>0.016137</td>
       <td>3.799890</td>
-      <td>6492.712042</td>
       <td>0.006906</td>
       <td>0.656098</td>
       <td>-0.079089</td>
@@ -3036,7 +3211,6 @@ extractor.fit_transform(data)
       <td>0.050267</td>
       <td>0.013282</td>
       <td>4.022404</td>
-      <td>5770.656154</td>
       <td>0.002115</td>
       <td>0.656778</td>
       <td>-0.078408</td>
@@ -3051,7 +3225,6 @@ extractor.fit_transform(data)
       <td>0.063494</td>
       <td>0.016458</td>
       <td>4.164256</td>
-      <td>7163.822825</td>
       <td>0.008301</td>
       <td>0.673268</td>
       <td>-0.061919</td>
@@ -3066,7 +3239,6 @@ extractor.fit_transform(data)
       <td>0.061822</td>
       <td>0.016428</td>
       <td>4.023588</td>
-      <td>4257.228198</td>
       <td>0.004982</td>
       <td>0.648675</td>
       <td>-0.086511</td>
@@ -3081,7 +3253,6 @@ extractor.fit_transform(data)
       <td>0.051667</td>
       <td>0.014180</td>
       <td>3.972001</td>
-      <td>4480.162030</td>
       <td>0.014569</td>
       <td>0.673546</td>
       <td>-0.061641</td>
@@ -3096,7 +3267,6 @@ extractor.fit_transform(data)
       <td>0.045353</td>
       <td>0.012841</td>
       <td>3.930190</td>
-      <td>1950.917958</td>
       <td>0.013864</td>
       <td>0.670388</td>
       <td>-0.064799</td>
@@ -3111,7 +3281,6 @@ extractor.fit_transform(data)
       <td>0.046960</td>
       <td>0.013304</td>
       <td>4.148421</td>
-      <td>3704.882425</td>
       <td>0.017111</td>
       <td>0.730887</td>
       <td>-0.004300</td>
@@ -3126,7 +3295,7 @@ extractor.fit_transform(data)
 
 
 
-##### Extractor class can be easily integrated into the `sklearn Pipeline` as it uses the sklearn API fully.
+##### Extractor class can be easily integrated into the `sklearn Pipeline` as it fully follows the sklearn API.
 
 ##### In this example, the pipeline calls the extractor to calculate the desired features first and then passes them to the model. Note that the extractor can save additional features from the input `DataFrame` before passing them to the model, if needed.
 
@@ -3149,12 +3318,12 @@ target = data.drop_duplicates(subset=['SUBJ'])['ANSWER'].reset_index(drop=True)
 predictions = pipeline.fit(data, target).predict(data)
 ```
 
-    100%|██████████| 15/15 [00:00<00:00, 2965.01it/s]
-    100%|██████████| 15/15 [00:03<00:00,  4.99it/s]
-    100%|██████████| 15/15 [00:02<00:00,  5.16it/s]
-    100%|██████████| 15/15 [00:00<00:00, 2789.14it/s]
-    100%|██████████| 15/15 [00:02<00:00,  5.08it/s]
-    100%|██████████| 15/15 [00:03<00:00,  4.98it/s]
+    100%|██████████| 15/15 [00:00<00:00, 1671.26it/s]
+    100%|██████████| 15/15 [00:05<00:00,  2.98it/s]
+    100%|██████████| 15/15 [00:04<00:00,  3.00it/s]
+    100%|██████████| 15/15 [00:00<00:00, 1675.44it/s]
+    100%|██████████| 15/15 [00:05<00:00,  2.62it/s]
+    100%|██████████| 15/15 [00:05<00:00,  2.68it/s]
 
 
 
