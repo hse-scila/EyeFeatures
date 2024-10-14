@@ -248,6 +248,18 @@ class IDT(BaseFixationPreprocessor):
         )
 
         fixations_df = fixations_df[fixations_df["fixation_id"] != 0]
+        diameters = []
+        centers = []
+
+        for i in set(fixations):
+            if i != 0:
+                points = fixations_df.loc[
+                    fixations_df["fixation_id"] == i,
+                    fixations_df.columns.isin([self.x, self.y]),
+                ].values
+                x, y, radius = _get_MEC(np.unique(points, axis=0))
+                diameters.append(radius * 2)
+                centers.append(np.array([x, y]))
 
         fixations_df = fixations_df.groupby(by=["fixation_id"]).agg(
             {
@@ -260,6 +272,9 @@ class IDT(BaseFixationPreprocessor):
                 "dispersion": "max",  # just for API, window has same values
             }
         )
+
+        fixations_df["diameters"] = diameters
+        fixations_df["centers"] = centers
 
         # default features
         feats = (
@@ -421,6 +436,18 @@ class IHMM(BaseFixationPreprocessor):
         )
 
         fixations_df = fixations_df[fixations_df["fixation_id"] != 0]
+        diameters = []
+        centers = []
+
+        for i in set(fixations):
+            if i != 0:
+                points = fixations_df.loc[
+                    fixations_df["fixation_id"] == i,
+                    fixations_df.columns.isin([self.x, self.y]),
+                ].values
+                x, y, radius = _get_MEC(np.unique(points, axis=0))
+                diameters.append(radius * 2)
+                centers.append(np.array([x, y]))
 
         fixations_df = fixations_df.groupby(by=["fixation_id"]).agg(
             {
@@ -432,6 +459,9 @@ class IHMM(BaseFixationPreprocessor):
                 "distance_max": "max",
             }
         )
+
+        fixations_df["diameters"] = diameters
+        fixations_df["centers"] = centers
 
         # default features
         feats = (

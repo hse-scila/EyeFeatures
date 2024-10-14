@@ -1,12 +1,18 @@
+import io
+
 import numpy as np
 import pandas as pd
 from typing import List, Tuple, Dict, Union
 import plotly.graph_objects as go
+from PIL import Image
 
 from eyetracking.utils import _select_regressions
 
 
 def _built_figure(fig_dict: Dict, element_count: int, animation_duration: int = 500):   # animation_duration in ms
+    """
+    Function for building a layout for plot
+    """
     fig_dict["layout"]["width"] = 600
     fig_dict["layout"]["height"] = 600
     fig_dict["layout"]["updatemenus"] = [
@@ -68,7 +74,36 @@ def tracker_animation(
     aoi_c: Dict[str, str] = None,
     tracker_color: str = "red",
     animation_duration: int = 500,
+    save_gif: str = None,
+    frames_count: int = 1
 ):
+    """
+    Function for tracker animation
+    :param data_: DataFrame with fixations.
+    :param x: x coordinate of fixation.
+    :param y: y coordinate of fixation.
+    :param path_color: color of saccades.
+    :param path_width: width of saccades.
+    :param points_color: color of points.
+    :param points_width: width of points.
+    :param add_regression: whether to add regressions.
+    :param regression_color: color of regressions.
+    :param meta_data: list of columns that will be used for meta data.
+    :param rule: must be either 1) tuple of quadrants direction to classify
+            regressions, 1st quadrant being upper-right square of plane and counting
+            anti-clockwise or 2) tuple of angles in degrees (0 <= angle <= 360).
+    :param deviation: if None, then `rule` is interpreted as quadrants. Otherwise,
+            `rule` is interpreted as angles. If integer, then is a +-deviation for all angles.
+            If tuple of integers, then must be of the same length as `rule`, each value being
+            a corresponding deviation for each angle. Angle = 0 is positive x-axis direction,
+            rotating anti-clockwise.
+    :param aoi: AOI of fixations.
+    :param aoi_c: colormap for AOI.
+    :param tracker_color: color of tracker.
+    :param animation_duration: duration of animation.
+    :param save_gif: path to save animation.
+    :param frames_count: TODO.
+    """
     data = data_.reset_index(drop=True)
     X = data[x].values
     Y = data[y].values
@@ -213,7 +248,7 @@ def tracker_animation(
             "name": "tracker",
         }
     )
-
+    gif_list = []
     for i in range(len(indexes)):
         frame = {"data": [], "name": str(i)}
         if add_regression:
@@ -234,6 +269,10 @@ def tracker_animation(
             }
         )
         fig_dict["frames"].append(frame)
+        if not (save_gif is None):
+            img = Image.open(io.BytesIO(go.Figure(frame).to_image(format="png")))
+            for _ in range(frames_count):
+                gif_list.append(img)
         slider_step = {
             "args": [
                 [str(i)],
@@ -251,8 +290,11 @@ def tracker_animation(
     fig_dict["layout"]["sliders"] = [sliders_dict]
     fig = go.Figure(fig_dict)
     fig.show()
+    if not (save_gif is None):
+        gif_list[0].save(save_gif, save_all=True, append_images=gif_list[1:], durarion=1000, loop=0, fps=1)
 
 def scanpath_animation(
+
     data_: pd.DataFrame,
     x: str,
     y: str,
@@ -265,7 +307,32 @@ def scanpath_animation(
     rule: Tuple[int, ...] = None,
     deviation: Union[int, Tuple[int, ...]] = None,
     animation_duration: int = 500,
+    save_gif: str = None,
+    frames_count: int = 1
 ):
+    """
+    Function for tracker animation
+    :param data_: DataFrame with fixations.
+    :param x: x coordinate of fixation.
+    :param y: y coordinate of fixation.
+    :param path_color: color of saccades.
+    :param path_width: width of saccades.
+    :param points_color: color of points.
+    :param points_width: width of points.
+    :param add_regression: whether to add regressions.
+    :param regression_color: color of regressions.
+    :param rule: must be either 1) tuple of quadrants direction to classify
+            regressions, 1st quadrant being upper-right square of plane and counting
+            anti-clockwise or 2) tuple of angles in degrees (0 <= angle <= 360).
+    :param deviation: if None, then `rule` is interpreted as quadrants. Otherwise,
+            `rule` is interpreted as angles. If integer, then is a +-deviation for all angles.
+            If tuple of integers, then must be of the same length as `rule`, each value being
+            a corresponding deviation for each angle. Angle = 0 is positive x-axis direction,
+            rotating anti-clockwise.
+    :param animation_duration: duration of animation.
+    :param save_gif: path to save animation.
+    :param frames_count: TODO.
+    """
     data = data_.reset_index(drop=True)
     X = data[x].values
     Y = data[y].values
@@ -320,8 +387,9 @@ def scanpath_animation(
                 reg_ind.append(i)
         data["is_reg"] = [1 if z in reg_ind else 0 for z in data.index]
 
+    gif_list = []
     for i in range(1, len(indexes)):
-        frame = {"data": [], "name": str(i)}
+        frame = {"data": [], "name": str(i), "layout": {"xaxis": {}, "yaxis": {}}}
         color = path_color
         name = "saccedes"
         if add_regression and (data.loc[i - 1, "is_reg"] == data.loc[i, "is_reg"] == 1):
@@ -338,7 +406,13 @@ def scanpath_animation(
                     }
         frame["data"].extend(graph)
         frame["data"].append(new_edge)
+        frame["layout"]["xaxis"] = dict(range=[x_min - 0.1, x_max + 0.1], automargin=False)
+        frame["layout"]["yaxis"] = dict(range=[y_min - 0.1, y_max + 0.1], automargin=False)
         fig_dict["frames"].append(frame)
+        if not (save_gif is None):
+            img = Image.open(io.BytesIO(go.Figure(frame).to_image(format="png")))
+            for _ in range(frames_count):
+                gif_list.append(img)
         graph.append(new_edge)
         slider_step = {
             "args": [
@@ -357,3 +431,5 @@ def scanpath_animation(
     fig_dict["layout"]["sliders"] = [sliders_dict]
     fig = go.Figure(fig_dict)
     fig.show()
+    if not (save_gif is None):
+        gif_list[0].save(save_gif, save_all=True, append_images=gif_list[1:], durarion=1000, fps=1,  loop=0)

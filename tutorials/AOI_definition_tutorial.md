@@ -1,5 +1,5 @@
 # AOI definition tutorial
-This tutorial describes methods and utilities for AOI definition. Firstly, we will import all AOI methods and load the dataset.\
+This tutorial describes methods and utilities for AOI definition. This module has 4 main methods of AOI definition, a class for choosing the best method for each instance, and a matcher of AOI, which provide consistence of zoning. Firstly, we will import all AOI methods and load the dataset.
 > Tip: The dataset should include preprocessed data with fixations. If the data isn't preprocessed, and you want to learn how to do this, then explore the preprocessing tutorial.
 
 
@@ -241,12 +241,21 @@ aoi_color = {"aoi_0" : "blue", "aoi_1" : "green", "aoi_2" : "red"}
 scanpath_visualization(record, x=x, y=y, aoi="AOI", show_hull=True, with_axes=True, only_points=True, show_legend=True, aoi_c=aoi_color)
 ```
 
+
+    
 ![png](images/aoi_tutorial_pic_01.png)
     
 
 
 ## Threshold-based
 This method defines AOI by using kernel density estimation and pre-thresholding it. Each maximum in the windows is the center of the AOI. This method also needs the parameter ```window_size``` (the parameter of the sliding window where the method finds the density maximum).
+Steps of the algorithm:
+1) Split the graph into a grid and compute density for each sector via gaussian kernel density estimation
+2) Prethreshold it
+3) Find the local maxima. Every maximum is a center of area of interest
+4) Start to define AOI for each fixation
+5) If ```algorithm_type``` is default, then it starts KMeans. Otherwise, if ```algorithm_type='basic'```, then it starts to search for the for the nearest fixation with AOI and assigns this label to the target fixation
+6) Repeat for all instances
 
 
 ```python
@@ -260,14 +269,39 @@ record = result_tb[(result_tb['SUBJ_NAME'] == "s04") & (result_tb['TEXT'] == "ch
 scanpath_visualization(record, x=x, y=y, aoi=aoi, show_hull=True, with_axes=True, only_points=True, show_legend=True, aoi_c=aoi_color)
 ```
 
+
+    
 ![png](images/aoi_tutorial_pic_02.png)
     
 
 
-You can also try other AOI definition methods.
+You can also try other methods. Let's take a look for some of them: <br>
+### Gradient-based
+This algorithm is based on gradient computing. Steps of the algorithm:
+1) Split the graph into a grid and compute density for each sector via gaussian kernel density estimation.
+2) Prethreshold it.
+3) Find the local maxima. Every maximum is a center of area of interest.
+4) Compute the gradient and magnitude.
+5) Add all 8 points around of each maximum to the queue.
+6) Get a point from the queue. Search among 8 points around the point with the greatest magnitude, which has AOI. Assign this label to the target point.
+7) Add all 8 points with around the target point to the queue.
+8) Repeat 5-8 until all points will get the AOI label.
+
+### Overlap clustering
+For overlap clustering, you should provide diameters and centers of the fixations
+1) Build the clusters. Each fixation is the particular cluster. 
+2) Find fixations, which are located inside other fixations, we consider this like one cluster.
+3) Start to merge the clusters.
+4) Find the cluster with the highest number of fixations in it (let it be the cluster <b>A</b>).
+5) Find all clusters that intersect with <b>A</b> and merge them to <b>A</b>.
+6) Repeat 4-5 until there are no clusters left.
+<br>
+<br>
+This article a has more detailed description of the algorithms above: https://www.hci.uni-tuebingen.de/assets/pdf/publications/WF042019.pdf
 
 ## AOI extractor
 The AOI extractor gets a list of the AOI methods and selects for AOI splitting with minimal entropy. It also supports Sklearn clustering methods. The extractor has an ```instance_column``` parameter. This is to separate particular instances, not records.
+
 
 
 ```python
@@ -287,6 +321,8 @@ record = result_extr[(result_extr['SUBJ_NAME'] == "s01") & (result_extr['TEXT'] 
 scanpath_visualization(record, x=x, y=y, aoi=aoi, show_hull=True, with_axes=True, only_points=True, show_legend=True, aoi_c=aoi_color)
 ```
 
+
+    
 ![png](images/aoi_tutorial_pic_03.png)
     
 
@@ -323,12 +359,17 @@ sns.barplot(x=check_count.index, y=check_count.values)
 
     <Axes: xlabel='None'>
 
+
+
+
+    
 ![png](images/aoi_tutorial_pic_04.png)
     
 
 
 ## AOI Matcher 
 Sometimes AOI methods shuffle AOI labels. The correct order of the AOI names and features is necessary for ML/DL. That is why the AOI matcher exists. Let's match the AOI.
+> Remark: The best AOI definition is considered to be the one with the lowest Shannon entropy.  $-\sum\limits_{i=1}^{n}p_i\ln(p_i)$  $p_i = \frac{fixation\hspace{5}in\hspace{5}this\hspace{5}aoi}{all \hspace{5} fixation}$ and n is the number of clusters
 
 
 ```python
@@ -435,7 +476,7 @@ result_match.head()
 The ```n_aoi``` parameter needs to limit the count of AOI for each record. It helps to avoid columns with ```NaN``` values.
 
 ## Pipeline
-One of the most important features is the ability to use this in the Sklearn pipeline.
+One of the most important features is the ability to use this in the Sklearn pipeline. Let's try it:
 
 
 ```python
@@ -455,6 +496,8 @@ record = prep_data[(prep_data['SUBJ_NAME'] == "s01") & (prep_data['TEXT'] == "ch
 scanpath_visualization(record, x=x, y=y, aoi=aoi, show_hull=True, with_axes=True, only_points=True, show_legend=True, aoi_c=aoi_color)
 ```
 
+
+    
 ![png](images/aoi_tutorial_pic_05.png)
     
 
