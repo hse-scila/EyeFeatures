@@ -13,12 +13,6 @@ import warnings
 warnings.simplefilter("ignore")
 ```
 
-
-```python
-import sys
-sys.path.append('/home/perkyfever/study/projects/eyelib/EyeFeatures')
-```
-
 ## Getting simple dataset to work with. 
 
 
@@ -59,7 +53,20 @@ data
 
 
 
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
 
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
@@ -369,6 +376,22 @@ data
 ```
 
 
+
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
@@ -531,6 +554,9 @@ $$
 \text{Length(Saccade}_i\text{)} = ||\text{Fixation}_{i+1} - \text{Fixation}_{i} ||_{2}\, \quad \text{Speed(Saccade}_i\text{)} = \frac{\text{Length(Saccade}_i\text{)}}{\text{Time}_{i+1} - \text{Time}_{i}}, \quad 
 \text{Acceleration(Saccade}_i\text{)} = \frac{1}{2} \frac{\text{Speed(Saccade}_i\text{)} }{\text{Time}_{i+1} - \text{Time}_{i}}
 $$
+ 
+ 
+Reference: <i>Salvucci, D. D., & Goldberg, J. H. (Year). Identifying fixations and saccades in eye-tracking protocols. https://doi.org/10.1145/355017.355028 </i>
 
 
 ```python
@@ -576,6 +602,20 @@ sf.fit_transform(data)
 
 
 
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
@@ -786,6 +826,21 @@ hurst_exponent.fit_transform(data)
 
 
 
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
@@ -874,6 +929,8 @@ $$
 S = -\sum_{i=1}^g\sum_{j=1}^g P_{jk}\log(P_{jk})
 $$
 
+Reference: <i> Melnyk, K., Friedman, L., & Komogortsev, O. V. (2024). What can entropy metrics tell us about the characteristics of ocular fixation trajectories? PLoS ONE, 19(1), e0291823. https://doi.org/10.1371/journal.pone.0291823 </i>
+
 
 ```python
 gridded_entropy = eye_measures.GriddedDistributionEntropy(
@@ -888,6 +945,21 @@ gridded_entropy.fit_transform(data)
 
 
 
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
@@ -993,6 +1065,8 @@ $$
 \text{CORM} = \frac{100 \cdot \sum_{i=1}^{n-1} \sum_{j=i+1}^n (j-i) R_{ij}}{(n-1) \cdot \sum_{i=1}^n \sum_{j=i+1}^n R_{ij}}
 $$
 
+Reference: <i> Anderson, N. C., Bischof, W. F., Laidlaw, K. E. W., Foulsham, T., Kingstone, A., & Cristino, F. (2013). Recurrence quantification analysis of eye movements. Behavior Research Methods, 45(3), 842–856. https://doi.org/10.3758/s13428-012-0299-5 </i>
+
 
 ```python
 rqa_measures = eye_measures.RQAMeasures(
@@ -1012,6 +1086,20 @@ rqa_measures.fit_transform(data)
 
 
 
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
@@ -1106,6 +1194,8 @@ rqa_measures.fit_transform(data)
 
 ##### Let us describe the core idea of extrator-classes in this module. Each class calculates the "expected paths" for each path-group which are further used in distance functions. That is the resulting features for each group are simply the distances between two scanpaths: expected and given one.
 
+Reference: <i> Fahimi, R., & Bruce, N. D. B. (2020). On metrics for measuring scanpath similarity. © The Psychonomic Society, Inc. https://doi.org/10.3758/s13428-020-01441-0   </i>
+
 
 ```python
 import eyetracking.features.scanpath_dist as eye_dist
@@ -1155,6 +1245,20 @@ transformer.fit_transform(data)
 
 
 
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
@@ -1300,6 +1404,20 @@ fill_path
 
 
 
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
@@ -1407,7 +1525,20 @@ euc_matrix
 
 
 
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
 
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
@@ -1736,6 +1867,20 @@ eye_matrix
 
 
 
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
@@ -2102,6 +2247,20 @@ eye_complex.get_compromise_matrix([euc_matrix, eye_matrix])
 
 
 
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
@@ -2413,6 +2572,21 @@ pd.DataFrame(sim_matrix)
 
 
 
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
@@ -2722,6 +2896,20 @@ pd.DataFrame(mds_reordered_matrix)
 
 
 
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
@@ -3061,6 +3249,21 @@ extractor.fit_transform(data)
 
 
 
+
+<div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
