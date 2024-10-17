@@ -369,8 +369,7 @@ sns.barplot(x=check_count.index, y=check_count.values)
 
 ## AOI Matcher
 Sometimes AOI methods shuffle AOI labels. The correct order of the AOI names and features is necessary for ML/DL. That is why the AOI matcher exists. Let's match the AOI.
-> Remark: The best AOI definition is considered to be the one with the lowest Shannon entropy.  $-\sum\limits_{i=1}^{n}p_i\ln(p_i)$  $p_i = \frac{fixation\_in\_this\_aoi}{all\_fixation}$ and n is the number of clusters
-
+> Remark: The best AOI definition is considered to be the one with the lowest Shannon entropy. $$-\sum\limits_{i=1}^{n}p_i\ln{p_i}$$ $$p_i = \frac{fixation \: in \: this \: aoi}{all \: fixation}$$ > and n is the number of clusters
 
 ```python
 from eyetracking.preprocessing.aoi_extraction import AOIMatcher
