@@ -422,7 +422,7 @@ def _car2pol(x: np.array, f_x: np.array) -> Tuple[np.array, np.array]:
 
 def _encode_car(x: np.array, t: np.array) -> Tuple[np.array, np.array]:
     rho = t
-    phi = np.cos(_rescale(x))
+    phi = np.arccos(_rescale(x))
     return rho, phi
 
 

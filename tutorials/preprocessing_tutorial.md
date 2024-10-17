@@ -543,6 +543,6 @@ As you can see, usage of filters smoothed scanpath and resulted in smaller numbe
 ### References
 
 1. [Sample dataset](https://www.inb.uni-luebeck.de/index.php?id=515), static images.
-2. Fixation extraction algorithms are taken from [Salvucci, Goldberg paper](https://www.researchgate.net/publication/220811146_Identifying_fixations_and_saccades_in_eye-tracking_protocols).
+2. [Salvucci & Goldberg (2000)](https://www.researchgate.net/publication/220811146_Identifying_fixations_and_saccades_in_eye-tracking_protocols). Identifying saccades and fixations in eye-tracking protocols. Served as the source of fixation extraction algorithms
 3. Savitzkiy-Golay, FIR, IIR classes are wrappers of `scipy.signal` methods.
 4. About [Wiener filter](https://en.wikipedia.org/wiki/Wiener_filter) on Wikipedia.

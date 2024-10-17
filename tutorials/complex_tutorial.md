@@ -1,7 +1,8 @@
 ## EyeFeatures: fixations complex analysis
 
-`complex` module of the library allows to get features which are represented as tensors (like vectors and matrices). Look at preprocessing and features tutorial to get grasp of simpler eyetracking attributes.
+`complex` module of the library allows to get features represented as tensors (like vectors and matrices). Look at preprocessing and features tutorial first to get grasp of simpler eyetracking attributes. Here will be shown several use-cases.
 
+Let's take Paris dataset - it contains data about people reading texts, including eyetracking data.
 
 ```python
 import os
@@ -169,7 +170,7 @@ y = 'norm_pos_y'
 t = 'timestamp'
 ```
 
-Let's pick subject #6:
+Let's pick subject #6 as an example on which we will apply `complex` module's methods.
 
 
 ```python
@@ -184,16 +185,19 @@ len(data1)
 
 
 
-Alongside with algorithms described in previous tutorials, there is a toolkit for MFT, GADF/GASF and Hilbert Curve.
+Methods to be discussed:
 
+1. Hilbert curve.
+2. Markov Transitional Field.
+3. Gramian Angular Field.
 
 ```python
 import eyetracking.features.complex as eye_complex
 ```
 
-### Hilbert Curve
+### 1. Hilbert Curve
 
-Using a mapping from (x,y) point to the length on Hilbert Curve:
+Hilbert Curve is a way to describe 2D space using 1D object. It provides a bijection (unique mapping) of 2D plane on a 1D line, constructed as a limit of piecewise linear curves, $n$-th curve having a length of $2^n - \frac{1}{2^n}$. On practice, we fix some $p$ and consider $p$-th Hilbert Curve and map each $(x,y)$ point to the closest point on it, where higher $p$ means that more space is filled with a curve which results in more accurate encoding.
 
 
 ```python
@@ -243,9 +247,11 @@ hilbert_points_enc.reshape((2 ** p, 2 ** p))
 
 
 
-### Markov Transition Field
+### 2. Markov Transition Field
 
-Get MTF for y-coordinate of observed subject:
+Given time series $X = \{x_1, .., x_n\}$, we define its quantile bins as $Q = \{q_1, ..., q_m\}$ and assign each $x_i$ with the corresponding bin $q_j$, $f: X \mapsto \{1, ..., m\}$. Then, we construct an $m\times m$ weighted adjacency matrix $W$, such that $W_{ij}$ is number of transitions from $q_i$ to $q_j$. After we normalize rows of $W$ such that $\forall i \in \{1, ..., m\}: \sum_{j=1}^{m}W_{ij} = 1$, we have $W_{ij} = P(x_k \in q_i|x_{k - 1} \in q_j)$, probability of transitioning from bin $i$ to bin $j$ in one step, which is a definition of Markov Transitional Matrix (MTM).
+
+The problem of MTM is that it does not capture the time domain information, i.e. timestamps of $X$. Instead, define Markov Transitional Field (MTF) as a $n \times n$ matrix $M$, where $M_{ij} = W_{f(x_i), f(x_j)}$, the probability of going from bin $f(x_i)$ to bin $f(x_j)$ in $k = |i - j|$ steps.
 
 
 ```python
@@ -299,7 +305,26 @@ plt.imshow(mtf_max[1, :, :], cmap='rainbow');
 
 ### Gramian Angular Field
 
-There are two methods to compute GAF: either using sine of difference or cosine of sum of angles in polar coordinates. Also, transformation from cartesian coordinates to polar ones could be done using two different methods: 'regular' (using arctan) and 'cosine' (taking cosine of amplitude of time-series).
+Given time series $X = \{x_1, ..., x_n\}$ of $n$ real-valued observations, GAF is build using the following procedure:
+1. Series is rescaled to $[0, 1]$ using min-max scaling (or assumed to be already scaled, look at `scale` parameter of `get_gaf` method):
+
+$$\tilde{x}_i = \frac{x_i - \min X}{\max X - \min X}$$
+
+2. Scaled time series $\tilde{X}$ is converted to polar coordinates using one of two methods ($t_i$ is corresponding timestamp):
+
+    * Trigonometric formula (`to_polar='regular'`)
+    $$r_i = \sqrt{\tilde{x}_i^2 + t_i^2}, \ \phi_i = arctan\left(\frac{t_i}{\tilde{x}_i}\right)$$
+
+    * Cosine formula (`to_polar='cosine'`)
+    $$r_i = \frac{t_i}{n}, \ \phi_i = arccos(\tilde{x}_i)$$
+3. Then matrix $M$ is constructed, again with one of two ways:
+    * Cosine of sum (`field_type='sum'`)
+    $$(M)_{ij} = \cos(\phi_i + \phi_j)$$
+
+    * Sine of difference (`field_type='difference'`)
+    $$(M)_{ij} = \sin(\phi_i - \phi_j)$$
+
+Let's visualize the fields.
 
 
 ```python
@@ -331,3 +356,7 @@ for i in range(2):
 ![png](images/complex_output_26_0.png)
     
 
+### References
+
+1. [Hilbert Curve](https://en.wikipedia.org/wiki/Hilbert_curve). [Hilbert Curve encoding algorithm](https://people.math.sc.edu/Burkardt/py_src/hilbert_curve/hilbert_curve.py).
+2. [Zhiguang Wang & Tim Oates (2015)](https://www.researchgate.net/publication/282181246_Spatially_Encoding_Temporal_Correlations_to_Classify_Temporal_Data_Using_Convolutional_Neural_Networks). Spatial Encoding Temporal Correlations to Classify Temporal Data Using Convolutional Neural Networks. Served as a resource of MFT and GAF description.
