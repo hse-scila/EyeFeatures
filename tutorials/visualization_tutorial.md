@@ -199,7 +199,7 @@ scanpath_visualization(record, x, y, shape_column=duration, aoi=aoi, aoi_c=aoi_c
 To sum up, it is possible to change the AOI color, the width of the saccades, add a path to save the plot, etc.
 <br>
 All these types of plots are available, like a particular function with a lower count of parameters: ```baseline_visualization```, ```aoi_visualization```, ```saccade_visualization```.
-> Remark: Most of the visualization methods were taken from this article: https://dl.acm.org/doi/pdf/10.1145/3591130
+> Remark: Most of the visualization methods were taken from this article [[1]](#links)
 
 ## Get visualizations
 If we want to use plot images for DL, we can use ```get_visualizations``` for it. It returns a ndarray of RGB (or gray) values of the image plot of each record. ```pk``` parameter needs to split records. ```pattern``` is a name for a possible visualization (```baseline```, ```aoi```, ```saccades```).
@@ -272,7 +272,7 @@ scanpath_animation(record, x=x, y=y, add_regression=True, rule=(2,), animation_d
 ```
 
 ![png](images/visualization_tutorial_pic_05.png)
-![Alt Text](images/scanpath.gif)
+![Alt text](images/scanpath.gif)
 
 ## Tracker animation
 You can also animate the movement of the tracker on screen. This function has the same parameters as the previous function, but this also can color the fixations due to the label in the AOI columns. Moreover, you can add extra data to the fixation, for example, duration.
@@ -284,5 +284,7 @@ tracker_animation(record, x=x, y=y, add_regression=True, rule=(2,), animation_du
 ```
 
 ![png](images/visualization_tutorial_pic_06.png)
-![Alt Text](images/tracker.gif)
+![Alt text](images/tracker.gif)
 
+## Links
+* [[1]](#links) SEAN ANTHONY BYRNE, MoMiLab, VIRMARIE MAQUILING, ADAM PETER FREDERICK REYNOLDS, LUCA POLONIO, NORA CASTNER, ENKELEJDA KASNECI. Exploring the Effects of Scanpath Feature Engineering for Supervised Image Classification Models. 2023. https://doi.org/10.1145/3591130

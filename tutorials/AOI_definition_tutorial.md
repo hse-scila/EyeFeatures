@@ -297,7 +297,7 @@ For overlap clustering, you should provide diameters and centers of the fixation
 6) Repeat 4-5 until there are no clusters left.
 <br>
 <br>
-This article a has more detailed description of the algorithms above: https://www.hci.uni-tuebingen.de/assets/pdf/publications/WF042019.pdf
+This article a has more detailed description of the algorithms above [[1]](#links)
 
 ## AOI extractor
 The AOI extractor gets a list of the AOI methods and selects for AOI splitting with minimal entropy. It also supports Sklearn clustering methods. The extractor has an ```instance_column``` parameter. This is to separate particular instances, not records.
@@ -367,9 +367,9 @@ sns.barplot(x=check_count.index, y=check_count.values)
     
 
 
-## AOI Matcher 
+## AOI Matcher
 Sometimes AOI methods shuffle AOI labels. The correct order of the AOI names and features is necessary for ML/DL. That is why the AOI matcher exists. Let's match the AOI.
-> Remark: The best AOI definition is considered to be the one with the lowest Shannon entropy.  $-\sum\limits_{i=1}^{n}p_i\ln(p_i)$  $p_i = \frac{fixation\hspace{5}in\hspace{5}this\hspace{5}aoi}{all \hspace{5} fixation}$ and n is the number of clusters
+> Remark: The best AOI definition is considered to be the one with the lowest Shannon entropy.  $-\sum\limits_{i=1}^{n}p_i\ln(p_i)$  $p_i = \frac{fixation\_in\_this\_aoi}{all\_fixation}$ and n is the number of clusters
 
 
 ```python
@@ -501,3 +501,7 @@ scanpath_visualization(record, x=x, y=y, aoi=aoi, show_hull=True, with_axes=True
 ![png](images/aoi_tutorial_pic_05.png)
     
 
+
+## Links
+* [[1]](#links) Wolfgang Fuhl. “Image-based extraction of eye features for
+robust eye tracking”. 2019. [Online] Available: https://www.hci.uni-tuebingen.de/assets/pdf/publications/WF042019.pdf
