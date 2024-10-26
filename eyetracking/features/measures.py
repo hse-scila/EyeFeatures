@@ -1,21 +1,69 @@
+from abc import ABC, abstractmethod
+from functools import partial
 from typing import Callable, List, Literal, Union
 
 import numpy as np
 import pandas as pd
 from numba import jit
-from scipy.fftpack import ifft, fft2
+from scipy.fftpack import fft2, ifft
 from scipy.spatial.distance import euclidean, pdist, squareform
-from scipy.stats import entropy, skew, kurtosis
+from scipy.stats import entropy, kurtosis, skew
 
-from eyetracking.features.complex import get_rqa
+from eyetracking.features.complex import get_rqa, hilbert_huang_transform
 from eyetracking.features.extractor import BaseTransformer
 from eyetracking.utils import _split_dataframe
-from eyetracking.features.complex import hilbert_huang_transform
-
-from functools import partial
 
 
-class HurstExponent(BaseTransformer):
+class MeasureTransformer(ABC, BaseTransformer):
+    def __init__(
+        self,
+        x: str = None,
+        y: str = None,
+        aoi: str = None,
+        pk: List[str] = None,
+        return_df: bool = True,
+        feature_name: str = "feature",
+    ):
+        super().__init__(x=x, y=y, pk=pk, return_df=return_df)
+        self.aoi = aoi
+        self.feature_name = feature_name
+
+    def _check_init(self, X_len: int):
+        assert X_len != 0, "Error: there are no fixations"
+
+    @abstractmethod
+    @jit(forceobj=True, looplift=True)
+    def calculate_feature(self, X: pd.DataFrame) -> float:
+        raise NotImplementedError("Abstract method called")
+
+    @jit(forceobj=True, looplift=True)
+    def fit(self, X: pd.DataFrame, y=None):
+        return self
+
+    @jit(forceobj=True, looplift=True)
+    def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
+        self._check_init(X_len=X.shape[0])
+
+        group_names = []
+        gathered_features = []
+        columns_names = [self.feature_name]
+
+        if self.pk is None:
+            group_names.append("all")
+            gathered_features.append([self.calculate_feature(X)])
+        else:
+            X_splited = _split_dataframe(X, self.pk)
+            for group, current_X in X_splited:
+                group_names.append(group)
+                gathered_features.append([self.calculate_feature(current_X)])
+
+        features_df = pd.DataFrame(
+            data=gathered_features, columns=columns_names, index=group_names
+        )
+        return features_df if self.return_df else features_df.values
+
+
+class HurstExponent(MeasureTransformer):
     def __init__(
         self,
         n_iters=10,
@@ -38,7 +86,7 @@ class HurstExponent(BaseTransformer):
         :param eps: division epsilon.
         :param return_df: Return pd.Dataframe object else np.ndarray.
         """
-        super().__init__(pk=pk, return_df=return_df)
+        super().__init__(pk=pk, return_df=return_df, feature_name="hurst_exponent")
         self.var = var
         self.n_iters = n_iters
         self.fill_strategy = fill_strategy
@@ -56,10 +104,6 @@ class HurstExponent(BaseTransformer):
         assert self.fill_strategy in fill_strategies, (
             f"Error: 'fill_strategy' must be one of " f"{','.join(fill_strategies)}."
         )
-
-    @jit(forceobj=True, looplift=True)
-    def fit(self, X: pd.DataFrame, y=None):
-        return self
 
     @jit(forceobj=True, looplift=True)
     def _make_pow2(self, x: np.array) -> np.array:
@@ -84,7 +128,8 @@ class HurstExponent(BaseTransformer):
             raise NotImplementedError
 
     @jit(forceobj=True, looplift=True)
-    def _compute_hurst(self, x):
+    def calculate_features(self, X=pd.DataFrame) -> float:
+        x = X[self.var].values / 1000
         x = self._make_pow2(x)
         n = len(x)
 
@@ -114,29 +159,6 @@ class HurstExponent(BaseTransformer):
 
         return grad[1]
 
-    @jit(forceobj=True, looplift=True)
-    def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
-        self._check_init(X_len=len(X))
-
-        x = X[self.var].values / 1000
-
-        features_names = [f"he_{self.var}"]
-
-        if self.pk is None:
-            grad = self._compute_hurst(x)
-            gathered_features = [[grad]]
-        else:
-            groups = X[self.pk].drop_duplicates().values
-            gathered_features = []
-            for group in groups:
-                current_X = X[pd.DataFrame(X[self.pk] == group).all(axis=1)]
-                x = current_X[self.var].values / 1000
-                grad = self._compute_hurst(x.copy())
-                gathered_features.append([grad])
-
-        features_df = pd.DataFrame(data=gathered_features, columns=features_names)
-        return features_df if self.return_df else features_df.values
-
 
 class ShannonEntropy(BaseTransformer):
     def __init__(
@@ -151,10 +173,6 @@ class ShannonEntropy(BaseTransformer):
     def _check_init(self, X_len: int):
         assert self.aoi is not None, "Error: Provide aoi column"
         assert X_len != 0, "Error: there are no fixations"
-
-    @jit(forceobj=True, looplift=True)
-    def fit(self, X: pd.DataFrame, y=None):
-        return self
 
     @jit(forceobj=True, looplift=True)
     def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
@@ -199,55 +217,26 @@ class ShannonEntropy(BaseTransformer):
         return features_df if self.return_df else features_df.values
 
 
-class SpectralEntropy(BaseTransformer):
+class SpectralEntropy(MeasureTransformer):
     def __init__(
         self,
         aoi: str = None,
         pk: List[str] = None,
         return_df: bool = True,
     ):
-        super().__init__(pk=pk, return_df=return_df)
+        super().__init__(pk=pk, return_df=return_df, feature_name="spectral_entropy")
         self.aoi = aoi
 
-    def _check_init(self, X_len: int):
-        assert X_len != 0, "Error: there are no fixations"
-
     @jit(forceobj=True, looplift=True)
-    def fit(self, X: pd.DataFrame, y=None):
-        return self
-
-    @jit(forceobj=True, looplift=True)
-    def spectral_entropy(self, X: pd.DataFrame) -> float:
+    def calculate_feature(self, X: pd.DataFrame) -> float:
         coords = [self.x, self.y]
         transformed_seq = ifft(X[coords].values)
         power_spectrum_seq = np.linalg.norm(transformed_seq, axis=1) ** 2
         proba_distribution = power_spectrum_seq / np.sum(power_spectrum_seq)
         return entropy(proba_distribution)
 
-    @jit(forceobj=True, looplift=True)
-    def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
-        self._check_init(X_len=X.shape[0])
 
-        columns_names = ["spec_entropy"]
-        gathered_features = []
-        group_names = []
-
-        if self.pk is None:
-            group_names.append("all")
-            gathered_features.append([self.spectral_entropy(X)])
-        else:
-            X_splited = _split_dataframe(X, self.pk)
-            for group, current_X in X_splited:
-                group_names.append(group)
-                gathered_features.append([self.spectral_entropy(current_X)])
-
-        features_df = pd.DataFrame(
-            data=gathered_features, columns=columns_names, index=group_names
-        )
-        return features_df if self.return_df else features_df.values
-
-
-class FuzzyEntropy(BaseTransformer):
+class FuzzyEntropy(MeasureTransformer):
     """
     :param m: embedding dimension
     :param r: tolerance threshold for matches acceptance (usually std)
@@ -261,17 +250,14 @@ class FuzzyEntropy(BaseTransformer):
         pk: List[str] = None,
         return_df: bool = True,
     ):
-        super().__init__(pk=pk, return_df=return_df)
+        super().__init__(pk=pk, return_df=return_df, feature_name="fuzzy")
         self.m = m
         self.r = r
         self.aoi = aoi
         self.eps = 1e-7
 
-    def _check_init(self, X_len: int):
-        assert X_len != 0, "Error: there are no fixations"
-
     @jit(forceobj=True, looplift=True)
-    def fuzzy_entropy(self, X: pd.DataFrame) -> float:
+    def calculate_feature(self, X: pd.DataFrame) -> float:
         n = 2 * len(X)
         phi_m = np.zeros(2)
         coords = [self.x, self.y]
@@ -287,34 +273,8 @@ class FuzzyEntropy(BaseTransformer):
 
         return np.log(phi_m[0] / (phi_m[1] + self.eps))
 
-    @jit(forceobj=True, looplift=True)
-    def fit(self, X: pd.DataFrame, y=None):
-        return self
 
-    @jit(forceobj=True, looplift=True)
-    def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
-        self._check_init(X_len=X.shape[0])
-
-        columns_names = ["fuzzy_entropy"]
-        gathered_features = []
-        group_names = []
-
-        if self.pk is None:
-            group_names.append("all")
-            gathered_features.append([self.fuzzy_entropy(X)])
-        else:
-            X_splited = _split_dataframe(X, self.pk)
-            for group, current_X in X_splited:
-                group_names.append(group)
-                gathered_features.append([self.fuzzy_entropy(current_X)])
-
-        features_df = pd.DataFrame(
-            data=gathered_features, columns=columns_names, index=group_names
-        )
-        return features_df if self.return_df else features_df.values
-
-
-class SampleEntropy(BaseTransformer):
+class SampleEntropy(MeasureTransformer):
     """
     :param m: embedding dimension
     :param r: tolerance threshold for matches acceptance (usually std)
@@ -330,17 +290,16 @@ class SampleEntropy(BaseTransformer):
         pk: List[str] = None,
         return_df: bool = True,
     ):
-        super().__init__(x=x, y=y, pk=pk, return_df=return_df)
+        super().__init__(
+            x=x, y=y, pk=pk, return_df=return_df, feature_name="sample_entropy"
+        )
         self.m = m
         self.r = r
         self.aoi = aoi
         self.eps = 1e-7
 
-    def _check_init(self, X_len: int):
-        assert X_len != 0, "Error: there are no fixations"
-
     @jit(forceobj=True, looplift=True)
-    def sample_entropy(self, X: pd.DataFrame) -> float:
+    def calculate_feature(self, X: pd.DataFrame) -> float:
         n = 2 * len(X)
         coords = [self.x, self.y]
         X_coord = X[coords].values.flatten()
@@ -352,34 +311,8 @@ class SampleEntropy(BaseTransformer):
         A = np.sum(np.sum(dist_matrix < self.r, axis=0) - 1)
         return -np.log(A / (B + self.eps))
 
-    @jit(forceobj=True, looplift=True)
-    def fit(self, X: pd.DataFrame, y=None):
-        return self
 
-    @jit(forceobj=True, looplift=True)
-    def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
-        self._check_init(X_len=X.shape[0])
-
-        columns_names = ["sample_entropy"]
-        gathered_features = []
-        group_names = []
-
-        if self.pk is None:
-            group_names.append("all")
-            gathered_features.append([self.sample_entropy(X)])
-        else:
-            X_splited = _split_dataframe(X, self.pk)
-            for group, current_X in X_splited:
-                group_names.append(group)
-                gathered_features.append([self.sample_entropy(current_X)])
-
-        features_df = pd.DataFrame(
-            data=gathered_features, columns=columns_names, index=group_names
-        )
-        return features_df if self.return_df else features_df.values
-
-
-class IncrementalEntropy(BaseTransformer):
+class IncrementalEntropy(MeasureTransformer):
     def __init__(
         self,
         x: str = None,
@@ -388,14 +321,13 @@ class IncrementalEntropy(BaseTransformer):
         pk: List[str] = None,
         return_df: bool = True,
     ):
-        super().__init__(x=x, y=y, pk=pk, return_df=return_df)
+        super().__init__(
+            x=x, y=y, pk=pk, return_df=return_df, feature_name="incremental_entropy"
+        )
         self.aoi = aoi
 
-    def _check_init(self, X_len: int):
-        assert X_len != 0, "Error: there are no fixations"
-
     @jit(forceobj=True, looplift=True)
-    def incremental_entropy(self, X: pd.DataFrame) -> float:
+    def calculate_features(self, X: pd.DataFrame) -> float:
         n = len(X)
         coords = [self.x, self.y]
         X_coord = X[coords].values.flatten()
@@ -407,34 +339,8 @@ class IncrementalEntropy(BaseTransformer):
 
         return incremental_entropies.mean()
 
-    @jit(forceobj=True, looplift=True)
-    def fit(self, X: pd.DataFrame, y=None):
-        return self
 
-    @jit(forceobj=True, looplift=True)
-    def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
-        self._check_init(X_len=X.shape[0])
-
-        columns_names = ["increment_entropy"]
-        gathered_features = []
-        group_names = []
-
-        if self.pk is None:
-            group_names.append("all")
-            gathered_features.append([self.incremental_entropy(X)])
-        else:
-            X_splited = _split_dataframe(X, self.pk)
-            for group, current_X in X_splited:
-                group_names.append(group)
-                gathered_features.append([self.incremental_entropy(current_X)])
-
-        features_df = pd.DataFrame(
-            data=gathered_features, columns=columns_names, index=group_names
-        )
-        return features_df if self.return_df else features_df.values
-
-
-class GriddedDistributionEntropy(BaseTransformer):
+class GriddedDistributionEntropy(MeasureTransformer):
     """
     :param grid_size: the number of bins (grid cells) for creating the histogram
     """
@@ -448,7 +354,9 @@ class GriddedDistributionEntropy(BaseTransformer):
         pk: List[str] = None,
         return_df: bool = True,
     ):
-        super().__init__(x=x, y=y, pk=pk, return_df=return_df)
+        super().__init__(
+            x=x, y=y, pk=pk, return_df=return_df, feature_name="gridded_entropy"
+        )
         self.grid_size = grid_size
         self.aoi = aoi
 
@@ -456,7 +364,7 @@ class GriddedDistributionEntropy(BaseTransformer):
         assert X_len != 0, "Error: there are no fixations"
 
     @jit(forceobj=True, looplift=True)
-    def gridded_distribution_entropy(self, X: pd.DataFrame) -> float:
+    def calculate_features(self, X: pd.DataFrame) -> float:
         coords = [self.x, self.y]
         X_coord = X[coords].values
         H, edges = np.histogramdd(X_coord, bins=self.grid_size)
@@ -464,34 +372,8 @@ class GriddedDistributionEntropy(BaseTransformer):
         P = P[P > 0]
         return -np.sum(P * np.log(P))
 
-    @jit(forceobj=True, looplift=True)
-    def fit(self, X: pd.DataFrame, y=None):
-        return self
 
-    @jit(forceobj=True, looplift=True)
-    def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
-        self._check_init(X_len=X.shape[0])
-
-        columns_names = ["grid_entropy"]
-        gathered_features = []
-        group_names = []
-
-        if self.pk is None:
-            group_names.append("all")
-            gathered_features.append([self.gridded_distribution_entropy(X)])
-        else:
-            X_splited = _split_dataframe(X, self.pk)
-            for group, current_X in X_splited:
-                group_names.append(group)
-                gathered_features.append([self.gridded_distribution_entropy(current_X)])
-
-        features_df = pd.DataFrame(
-            data=gathered_features, columns=columns_names, index=group_names
-        )
-        return features_df if self.return_df else features_df.values
-
-
-class PhaseEntropy(BaseTransformer):
+class PhaseEntropy(MeasureTransformer):
     """
     :param m: embedding dimension
     :param tau: time delay for phase space reconstruction, the lag between each point in the phase space vectors.
@@ -507,16 +389,15 @@ class PhaseEntropy(BaseTransformer):
         pk: List[str] = None,
         return_df: bool = True,
     ):
-        super().__init__(x=x, y=y, pk=pk, return_df=return_df)
+        super().__init__(
+            x=x, y=y, pk=pk, return_df=return_df, feature_name="phase_entropy"
+        )
         self.m = m
         self.tau = tau
         self.aoi = aoi
 
-    def _check_init(self, X_len: int):
-        assert X_len != 0, "Error: there are no fixations"
-
     @jit(forceobj=True, looplift=True)
-    def phase_entropy(self, X: pd.DataFrame) -> float:
+    def calculate_features(self, X: pd.DataFrame) -> float:
         n = 2 * len(X)
         coords = [self.x, self.y]
         X_coord = X[coords].values.flatten()
@@ -531,34 +412,8 @@ class PhaseEntropy(BaseTransformer):
         prob_dist = prob_dist[prob_dist > 0]
         return -np.sum(prob_dist * np.log(prob_dist))
 
-    @jit(forceobj=True, looplift=True)
-    def fit(self, X: pd.DataFrame, y=None):
-        return self
 
-    @jit(forceobj=True, looplift=True)
-    def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
-        self._check_init(X_len=X.shape[0])
-
-        columns_names = ["phase_entropy"]
-        gathered_features = []
-        group_names = []
-
-        if self.pk is None:
-            group_names.append("all")
-            gathered_features.append([self.phase_entropy(X)])
-        else:
-            X_splited = _split_dataframe(X, self.pk)
-            for group, current_X in X_splited:
-                group_names.append(group)
-                gathered_features.append([self.phase_entropy(current_X)])
-
-        features_df = pd.DataFrame(
-            data=gathered_features, columns=columns_names, index=group_names
-        )
-        return features_df if self.return_df else features_df.values
-
-
-class LyapunovExponent(BaseTransformer):
+class LyapunovExponent(MeasureTransformer):
     """
     :param m: embedding dimension
     :param tau: time delay for phase space reconstruction
@@ -576,14 +431,13 @@ class LyapunovExponent(BaseTransformer):
         pk: List[str] = None,
         return_df: bool = True,
     ):
-        super().__init__(x=x, y=y, pk=pk, return_df=return_df)
+        super().__init__(
+            x=x, y=y, pk=pk, return_df=return_df, feature_name="lyapunov_exponent"
+        )
         self.m = m
         self.tau = tau
         self.T = T
         self.aoi = aoi
-
-    def _check_init(self, X_len: int):
-        assert X_len != 0, "Error: there are no fixations"
 
     @jit(forceobj=True, looplift=True)
     def build_embedding(self, X: np.ndarray) -> np.ndarray:
@@ -595,7 +449,7 @@ class LyapunovExponent(BaseTransformer):
         )
 
     @jit(forceobj=True, looplift=True)
-    def largest_lyapunov_exponent(self, X: pd.DataFrame) -> float:
+    def calculate_features(self, X: pd.DataFrame) -> float:
         coords = [self.x, self.y]
         X_coord = X[coords].values.flatten()
         X_emb = self.build_embedding(X_coord)
@@ -619,34 +473,8 @@ class LyapunovExponent(BaseTransformer):
 
         return np.mean(divergence) / self.T if divergence else np.inf
 
-    @jit(forceobj=True, looplift=True)
-    def fit(self, X: pd.DataFrame, y=None):
-        return self
 
-    @jit(forceobj=True, looplift=True)
-    def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
-        self._check_init(X_len=X.shape[0])
-
-        columns_names = ["lyap_exp"]
-        gathered_features = []
-        group_names = []
-
-        if self.pk is None:
-            group_names.append("all")
-            gathered_features.append([self.largest_lyapunov_exponent(X)])
-        else:
-            X_splited = _split_dataframe(X, self.pk)
-            for group, current_X in X_splited:
-                group_names.append(group)
-                gathered_features.append([self.largest_lyapunov_exponent(current_X)])
-
-        features_df = pd.DataFrame(
-            data=gathered_features, columns=columns_names, index=group_names
-        )
-        return features_df if self.return_df else features_df.values
-
-
-class FractalDimension(BaseTransformer):
+class FractalDimension(MeasureTransformer):
     """
     :param m: embedding dimension
     :param tau: time delay for phase space reconstruction
@@ -662,13 +490,12 @@ class FractalDimension(BaseTransformer):
         pk: List[str] = None,
         return_df: bool = True,
     ):
-        super().__init__(x=x, y=y, pk=pk, return_df=return_df)
+        super().__init__(
+            x=x, y=y, pk=pk, return_df=return_df, feature_name="fractal_dim"
+        )
         self.m = m
         self.tau = tau
         self.aoi = aoi
-
-    def _check_init(self, X_len: int):
-        assert X_len != 0, "Error: there are no fixations"
 
     @jit(forceobj=True, looplift=True)
     def build_embedding(self, X: np.ndarray) -> np.ndarray:
@@ -680,7 +507,7 @@ class FractalDimension(BaseTransformer):
         )
 
     @jit(forceobj=True, looplift=True)
-    def box_counting_dimension(self, X: pd.DataFrame) -> float:
+    def calculate_features(self, X: pd.DataFrame) -> float:
         coords = [self.x, self.y]
         X_coord = X[coords].values.flatten()
         X_emb = self.build_embedding(X_coord)
@@ -697,34 +524,8 @@ class FractalDimension(BaseTransformer):
         coeffs = np.polyfit(np.log(box_sizes), np.log(counts), 1)
         return -coeffs[0]
 
-    @jit(forceobj=True, looplift=True)
-    def fit(self, X: pd.DataFrame, y=None):
-        return self
 
-    @jit(forceobj=True, looplift=True)
-    def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
-        self._check_init(X_len=X.shape[0])
-
-        columns_names = ["fractal_dim"]
-        gathered_features = []
-        group_names = []
-
-        if self.pk is None:
-            group_names.append("all")
-            gathered_features.append([self.box_counting_dimension(X)])
-        else:
-            X_splited = _split_dataframe(X, self.pk)
-            for group, current_X in X_splited:
-                group_names.append(group)
-                gathered_features.append([self.box_counting_dimension(current_X)])
-
-        features_df = pd.DataFrame(
-            data=gathered_features, columns=columns_names, index=group_names
-        )
-        return features_df if self.return_df else features_df.values
-
-
-class CorrelationDimension(BaseTransformer):
+class CorrelationDimension(MeasureTransformer):
     """
     :param m: embedding dimension
     :param tau: time delay for phase space reconstruction
@@ -742,15 +543,12 @@ class CorrelationDimension(BaseTransformer):
         pk: List[str] = None,
         return_df: bool = True,
     ):
-        super().__init__(x=x, y=y, pk=pk, return_df=return_df)
+        super().__init__(x=x, y=y, pk=pk, return_df=return_df, feature_name="corr_dim")
         self.m = m
         self.tau = tau
         self.r = r
         self.aoi = aoi
         self.eps = 1e-7
-
-    def _check_init(self, X_len: int):
-        assert X_len != 0, "Error: there are no fixations"
 
     @jit(forceobj=True, looplift=True)
     def build_embedding(self, X: np.ndarray) -> np.ndarray:
@@ -762,7 +560,7 @@ class CorrelationDimension(BaseTransformer):
         )
 
     @jit(forceobj=True, looplift=True)
-    def correlation_dimension(self, X: pd.DataFrame) -> float:
+    def calculate_features(self, X: pd.DataFrame) -> float:
         coords = [self.x, self.y]
         X_coord = X[coords].values.flatten()
         X_emb = self.build_embedding(X_coord)
@@ -772,32 +570,6 @@ class CorrelationDimension(BaseTransformer):
 
         corr_dim = np.log(self.eps + count / len(dist_matrix)) / np.log(self.r)
         return corr_dim
-
-    @jit(forceobj=True, looplift=True)
-    def fit(self, X: pd.DataFrame, y=None):
-        return self
-
-    @jit(forceobj=True, looplift=True)
-    def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
-        self._check_init(X_len=X.shape[0])
-
-        columns_names = ["corr_dim"]
-        gathered_features = []
-        group_names = []
-
-        if self.pk is None:
-            group_names.append("all")
-            gathered_features.append([self.correlation_dimension(X)])
-        else:
-            X_splited = _split_dataframe(X, self.pk)
-            for group, current_X in X_splited:
-                group_names.append(group)
-                gathered_features.append([self.correlation_dimension(current_X)])
-
-        features_df = pd.DataFrame(
-            data=gathered_features, columns=columns_names, index=group_names
-        )
-        return features_df if self.return_df else features_df.values
 
 
 class RQAMeasures(BaseTransformer):
@@ -912,7 +684,7 @@ class RQAMeasures(BaseTransformer):
         return features_df if self.return_df else features_df.values
 
 
-class SaccadeUnlikelihood(BaseTransformer):
+class SaccadeUnlikelihood(MeasureTransformer):
     """
     Calculates cumulative negative log-likelihood of all the saccades in a scanpath with respect to the saccade transition model.
     Default distribution parameters are derived from Potsdam Sentence Corpus.
@@ -941,7 +713,9 @@ class SaccadeUnlikelihood(BaseTransformer):
         pk: List[str] = None,
         return_df: bool = True,
     ):
-        super().__init__(x=x, y=y, pk=pk, return_df=return_df)
+        super().__init__(
+            x=x, y=y, pk=pk, return_df=return_df, feature_name="saccade_nll"
+        )
         self.mu_p = mu_p
         self.sigma_p1 = sigma_p1
         self.sigma_p2 = sigma_p2
@@ -950,13 +724,6 @@ class SaccadeUnlikelihood(BaseTransformer):
         self.sigma_r2 = sigma_r2
         self.psi = psi
         self.aoi = aoi
-
-    def _check_init(self, X_len: int):
-        assert X_len != 0, "Error: there are no fixations"
-
-    @jit(forceobj=True, looplift=True)
-    def fit(self, X: pd.DataFrame, y=None):
-        return self
 
     @staticmethod
     @jit(forceobj=True, looplift=True)
@@ -988,7 +755,7 @@ class SaccadeUnlikelihood(BaseTransformer):
         return progression_proba + regression_proba
 
     @jit(forceobj=True, looplift=True)
-    def calculate_nll(self, X: pd.DataFrame) -> List[float]:
+    def calculate_features(self, X: pd.DataFrame) -> List[float]:
         nll = 0
         coords = [self.x, self.y]
         X_sac_len = np.linalg.norm(X[coords].diff().values[1:], axis=1)
@@ -996,28 +763,6 @@ class SaccadeUnlikelihood(BaseTransformer):
             p_s = self.calculate_saccade_proba(s_len)
             nll -= np.log(p_s)
         return nll
-
-    @jit(forceobj=True, looplift=True)
-    def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
-        self._check_init(X_len=X.shape[0])
-
-        columns_names = ["saccade_nll"]
-        gathered_features = []
-        group_names = []
-
-        if self.pk is None:
-            group_names.append("all")
-            gathered_features.append([self.calculate_nll(X)])
-        else:
-            X_splited = _split_dataframe(X, self.pk)
-            for group, current_X in X_splited:
-                group_names.append(group)
-                gathered_features.append([self.calculate_nll(current_X)])
-
-        features_df = pd.DataFrame(
-            data=gathered_features, columns=columns_names, index=group_names
-        )
-        return features_df if self.return_df else features_df.values
 
 
 class HHTFeatures(BaseTransformer):
