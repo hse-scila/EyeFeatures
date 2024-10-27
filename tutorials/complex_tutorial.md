@@ -192,7 +192,7 @@ Methods to be discussed:
 3. Gramian Angular Field.
 
 ```python
-import eyetracking.features.complex as eye_complex
+import eyefeatures.features.complex as eye_complex
 ```
 
 ### 1. Hilbert Curve

@@ -1,23 +1,13 @@
-import warnings
-from typing import Callable, Dict, List, Optional, Tuple, Union
+from typing import Callable, Dict, Optional, Tuple, Union
 
-import numpy as np
-import pandas as pd
 import pytorch_lightning as pl
 import torch
-import torchmetrics
-from numpy.typing import NDArray
-from scipy.stats import gaussian_kde
-from sklearn.model_selection import train_test_split
 from torch import nn
 from torch.nn import functional as F
 from torch_geometric.nn import GCNConv, GINConv, global_mean_pool
 from tqdm import tqdm
 
-from eyetracking.features.complex import get_heatmaps
-
-# from ..features.complex import get_heatmaps
-# from utils import get_heatmaps
+from eyefeatures.features.complex import get_heatmaps
 
 
 class VGGBlock(nn.Module):
@@ -133,7 +123,6 @@ class InceptionBlock(nn.Module):
         ch5x5: int,
         pool_proj: int,
     ):
-
         super(InceptionBlock, self).__init__()
 
         self.branch1x1 = nn.Conv2d(in_channels, ch1x1, kernel_size=1)
@@ -246,7 +235,6 @@ def create_simple_CNN(
                     Increase resolution or consider reducing the number of layers/removing stride/adding padding."""
                     )
         else:
-
             module = _blocks[block_type](in_channels=in_channels, **params)
             in_channels = sum(
                 [params.get(key) for key in ["ch1x1", "ch3x3", "ch5x5", "pool_proj"]]

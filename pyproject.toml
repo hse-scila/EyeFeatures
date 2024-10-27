@@ -1,0 +1,57 @@
+[tool.poetry]
+name = "eyefeatures"
+version = "0.1.0"
+description = "Preprocessing, visualization, statistical analysis, feature engineering, and machine learning of eye movement data."
+authors = ["Vagiz Daudov <vagiz.0282@gmail.com>"]
+readme = "README.md"
+packages = [{include = "eyefeatures"}]
+
+[tool.poetry.dependencies]
+python = ">=3.12,<3.13"
+matplotlib = "3.8.4"
+numba = "0.60.0"
+numpy = "1.26.0"
+pandas = "2.2.2"
+scikit-learn = "1.5.1"
+scikit_multilearn = "0.2.0"
+scipy = "1.14.1"
+tqdm = "4.66.4"
+pyemd = "1.0.0"
+gudhi = "3.10.1"
+
+[too.poetry.group.dev]
+optional = true
+
+[tool.poetry.group.dev.dependencies]
+black = "23.7.0"
+isort = "5.12.0"
+flake8 = "6.1"
+
+[tool.poetry.group.deep]
+optional = true
+
+[tool.poetry.group.deep.dependencies]
+pytorch_lightning = "2.4.0"
+torch = "2.4.0"
+torch_geometric = "2.5.3"
+torchmetrics = "1.4.1"
+
+[tool.poetry.group.test]
+optional = true
+
+[tool.poetry.group.test.dependencies]
+jupyterlab = "4.2.5"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+
+[project]
+license = {file = "LICENSE"}
+authors = [
+    {name = "Kondaurov Zakhar"},
+    {name = "Tikhonov Daniil"},
+    {name = "Anton Surkov"},
+    {name = "Vagiz Daudov", email = "vagiz.0282@gmail.com"}
+]

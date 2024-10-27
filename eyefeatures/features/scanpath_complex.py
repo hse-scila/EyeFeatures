@@ -12,7 +12,7 @@ from scipy.sparse.linalg import eigsh
 from sklearn.manifold import MDS
 from tqdm import tqdm
 
-from eyetracking.utils import Types, _split_dataframe
+from eyefeatures.utils import Types, _split_dataframe
 
 
 def _target_norm(fwp: np.ndarray, fixations: np.ndarray) -> float:

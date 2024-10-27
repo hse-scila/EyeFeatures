@@ -182,9 +182,8 @@ def get_object(df: pd.DataFrame):
 
 Let's use EyeFeatures toolkit to get a grasp of how our object's scanpath looks like.
 
-
 ```python
-from eyetracking.visualization.static_visualization import scanpath_visualization
+from eyefeatures.visualization.static_visualization import scanpath_visualization
 ```
 
 
@@ -213,9 +212,8 @@ $$a(i) = \left[\frac{d((x_i, y_i), (x_{i + 1}, y_{i + 1}))}{t_{i + 1} - t_i} \le
 
 Let's use IDT since it is a common choice among eyetracking software products.
 
-
 ```python
-from eyetracking.preprocessing.fixation_extraction import IDT
+from eyefeatures.preprocessing.fixation_extraction import IDT
 ```
 
 IDT has two parameters: `min_duration` of fixation and `max_dispersion` of gazes within fixation. They provide a great control over the desired results.
@@ -485,15 +483,14 @@ where
 
 Filters are often applied before fixation extraction. Let's do it using `sklearn`'s pipeline.
 
-
 ```python
-from eyetracking.preprocessing.smoothing import WienerFilter, SavGolFilter
+from eyefeatures.preprocessing.smoothing import WienerFilter, SavGolFilter
 from sklearn.pipeline import Pipeline
 
 pipe = Pipeline(steps=[
-    ("wf_filter", WienerFilter(x=x, y=y, t=t, pk=pk, K='auto')),          # Wiener filter
+    ("wf_filter", WienerFilter(x=x, y=y, t=t, pk=pk, K='auto')),  # Wiener filter
     ("sg_filter", SavGolFilter(x=x, y=y, t=t, pk=pk, window_length=10)),  # Savitzkiy-Golay filter
-    ("preprocessor", preprocessor)                                        # IDT algorithm
+    ("preprocessor", preprocessor)  # IDT algorithm
 ])
 
 fixations_smooth = pipe.fit_transform(data)

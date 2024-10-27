@@ -541,9 +541,8 @@ data
 
 ##### **Note**: One can calculate statistics using any aggregation function supported by `pandas`.
 
-
 ```python
-import eyetracking.features.stats as eye_stats
+import eyefeatures.features.stats as eye_stats
 ```
 
 ##### Here's an example of how saccades can be computed: desired features should be represented as a dictionary, with saccade properties as keys and lists of statistics as values.
@@ -788,11 +787,10 @@ sf.fit_transform(data)
 
 ## Scanpath Measures
 
-##### This module offers classes and methods which calculate various measures of scanpaths. 
-
+##### This module offers classes and methods which calculate various measures of scanpaths.
 
 ```python
-import eyetracking.features.measures as eye_measures
+import eyefeatures.features.measures as eye_measures
 ```
 
 ##### Let's calculate some basic measures in order to demonstrate the usecase process.
@@ -1196,9 +1194,8 @@ rqa_measures.fit_transform(data)
 
 Reference: <i> Fahimi, R., & Bruce, N. D. B. (2020). On metrics for measuring scanpath similarity. © The Psychonomic Society, Inc. https://doi.org/10.3758/s13428-020-01441-0   </i>
 
-
 ```python
-import eyetracking.features.scanpath_dist as eye_dist
+import eyefeatures.features.scanpath_dist as eye_dist
 ```
 
 ##### As for now, there are two ways to compute the expected path. 
@@ -1491,9 +1488,8 @@ fill_path
 
 ##### There are also methods in `scanpath_complex` module that return features not in the form of numbers that can be used for inference. This is usually some kind of structure (for instance, a matrix) that can be used for analyzing data or further feature extracting.
 
-
 ```python
-import eyetracking.features.scanpath_complex as eye_complex
+import eyefeatures.features.scanpath_complex as eye_complex
 ```
 
 ##### Let's see one of the possible usecases. 
@@ -3212,9 +3208,8 @@ pd.DataFrame(mds_reordered_matrix)
 
 ##### Finally, we can combine several extractor classes into one `Extractor` class to calculate all the features at once.
 
-
 ```python
-from eyetracking.features.extractor import Extractor
+from eyefeatures.features.extractor import Extractor
 
 extractor = Extractor(
     features=[

@@ -9,9 +9,9 @@ from scipy.fftpack import fft2, ifft
 from scipy.spatial.distance import euclidean, pdist, squareform
 from scipy.stats import entropy, kurtosis, skew
 
-from eyetracking.features.complex import get_rqa, hilbert_huang_transform
-from eyetracking.features.extractor import BaseTransformer
-from eyetracking.utils import _split_dataframe
+from eyefeatures.features.complex import get_rqa, hilbert_huang_transform
+from eyefeatures.features.extractor import BaseTransformer
+from eyefeatures.utils import _split_dataframe
 
 
 class MeasureTransformer(ABC, BaseTransformer):

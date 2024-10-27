@@ -8,8 +8,8 @@ from numpy.typing import NDArray
 from scipy.stats import gaussian_kde
 from sklearn.base import BaseEstimator, TransformerMixin
 
-from eyetracking.preprocessing._utils import _get_distance
-from eyetracking.utils import _get_angle, _get_angle3, _split_dataframe
+from eyefeatures.preprocessing._utils import _get_distance
+from eyefeatures.utils import _get_angle, _get_angle3, _split_dataframe
 
 
 class BasePreprocessor(BaseEstimator, TransformerMixin):

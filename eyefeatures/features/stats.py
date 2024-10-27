@@ -6,8 +6,8 @@ import pandas as pd
 from numba import jit
 from numpy.typing import NDArray
 
-from eyetracking.features.extractor import BaseTransformer
-from eyetracking.utils import (_calc_dt, _get_id, _select_regressions,
+from eyefeatures.features.extractor import BaseTransformer
+from eyefeatures.utils import (_calc_dt, _get_id, _select_regressions,
                                _split_dataframe)
 
 
@@ -238,9 +238,9 @@ class StatsTransformer(BaseTransformer):
                     feat_stats: List[str] = self.features_stats[feat_nm]
 
                     for stat in feat_stats:  # memoize stats for each feat
-                        self.shift_mem[group_id][feat_nm + aoi_str][stat] = (
-                            feat_arr.apply(stat)
-                        )
+                        self.shift_mem[group_id][feat_nm + aoi_str][
+                            stat
+                        ] = feat_arr.apply(stat)
 
         # calc mean for each stat (by groups) to use for unknown groups on transform
         self.shift_fill = dict()
@@ -276,7 +276,6 @@ class StatsTransformer(BaseTransformer):
         column_nms = []
 
         if self.pk is None:
-
             for aoi_nm in self.aoi_nms:
                 feats: List[Tuple[str, pd.Series]] = self._calc_with_aoi(
                     feat_nms, X, aoi_nm

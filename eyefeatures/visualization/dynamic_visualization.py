@@ -1,15 +1,17 @@
 import io
+from typing import Dict, List, Tuple, Union
 
 import numpy as np
 import pandas as pd
-from typing import List, Tuple, Dict, Union
 import plotly.graph_objects as go
 from PIL import Image
 
-from eyetracking.utils import _select_regressions
+from eyefeatures.utils import _select_regressions
 
 
-def _built_figure(fig_dict: Dict, element_count: int, animation_duration: int = 500):   # animation_duration in ms
+def _built_figure(
+    fig_dict: Dict, element_count: int, animation_duration: int = 500
+):  # animation_duration in ms
     """
     Function for building a layout for plot
     """
@@ -57,6 +59,7 @@ def _built_figure(fig_dict: Dict, element_count: int, animation_duration: int = 
         }
     ]
 
+
 def tracker_animation(
     data_: pd.DataFrame,
     x: str,
@@ -75,7 +78,7 @@ def tracker_animation(
     tracker_color: str = "red",
     animation_duration: int = 500,
     save_gif: str = None,
-    frames_count: int = 1
+    frames_count: int = 1,
 ):
     """
     Function for tracker animation
@@ -291,10 +294,17 @@ def tracker_animation(
     fig = go.Figure(fig_dict)
     fig.show()
     if not (save_gif is None):
-        gif_list[0].save(save_gif, save_all=True, append_images=gif_list[1:], durarion=1000, loop=0, fps=1)
+        gif_list[0].save(
+            save_gif,
+            save_all=True,
+            append_images=gif_list[1:],
+            durarion=1000,
+            loop=0,
+            fps=1,
+        )
+
 
 def scanpath_animation(
-
     data_: pd.DataFrame,
     x: str,
     y: str,
@@ -308,7 +318,7 @@ def scanpath_animation(
     deviation: Union[int, Tuple[int, ...]] = None,
     animation_duration: int = 500,
     save_gif: str = None,
-    frames_count: int = 1
+    frames_count: int = 1,
 ):
     """
     Function for tracker animation
@@ -361,16 +371,23 @@ def scanpath_animation(
         "steps": [],
     }
 
-    fig_dict["layout"]["xaxis"] = dict(range=[x_min - 0.1, x_max + 0.1], automargin=False)
-    fig_dict["layout"]["yaxis"] = dict(range=[y_min - 0.1, y_max + 0.1], automargin=False)
+    fig_dict["layout"]["xaxis"] = dict(
+        range=[x_min - 0.1, x_max + 0.1], automargin=False
+    )
+    fig_dict["layout"]["yaxis"] = dict(
+        range=[y_min - 0.1, y_max + 0.1], automargin=False
+    )
 
     fig_dict["data"].extend(
-        [{
-            "x": [],
-            "y": [],
-            "mode": "lines",
-            "line": dict(color=path_color, width=path_width),
-        } for _ in range(len(indexes))]
+        [
+            {
+                "x": [],
+                "y": [],
+                "mode": "lines",
+                "line": dict(color=path_color, width=path_width),
+            }
+            for _ in range(len(indexes))
+        ]
     )
 
     graph = []
@@ -396,18 +413,22 @@ def scanpath_animation(
             color = regression_color
             name = "regression"
         new_edge = {
-                    "x": [data.loc[i - 1, x], data.loc[i, x]],
-                    "y": [data.loc[i - 1, y], data.loc[i, y]],
-                    "mode": "lines+markers",
-                    "line": dict(color=color, width=path_width),
-                    "marker": dict(color=points_color, size=points_width),
-                    "name": name,
-                    "showlegend": False,
-                    }
+            "x": [data.loc[i - 1, x], data.loc[i, x]],
+            "y": [data.loc[i - 1, y], data.loc[i, y]],
+            "mode": "lines+markers",
+            "line": dict(color=color, width=path_width),
+            "marker": dict(color=points_color, size=points_width),
+            "name": name,
+            "showlegend": False,
+        }
         frame["data"].extend(graph)
         frame["data"].append(new_edge)
-        frame["layout"]["xaxis"] = dict(range=[x_min - 0.1, x_max + 0.1], automargin=False)
-        frame["layout"]["yaxis"] = dict(range=[y_min - 0.1, y_max + 0.1], automargin=False)
+        frame["layout"]["xaxis"] = dict(
+            range=[x_min - 0.1, x_max + 0.1], automargin=False
+        )
+        frame["layout"]["yaxis"] = dict(
+            range=[y_min - 0.1, y_max + 0.1], automargin=False
+        )
         fig_dict["frames"].append(frame)
         if not (save_gif is None):
             img = Image.open(io.BytesIO(go.Figure(frame).to_image(format="png")))
@@ -432,4 +453,11 @@ def scanpath_animation(
     fig = go.Figure(fig_dict)
     fig.show()
     if not (save_gif is None):
-        gif_list[0].save(save_gif, save_all=True, append_images=gif_list[1:], durarion=1000, fps=1,  loop=0)
+        gif_list[0].save(
+            save_gif,
+            save_all=True,
+            append_images=gif_list[1:],
+            durarion=1000,
+            fps=1,
+            loop=0,
+        )

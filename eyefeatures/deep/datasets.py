@@ -14,10 +14,10 @@ from torch.utils.data import DataLoader, Dataset
 from torch_geometric.data import Data
 from tqdm import tqdm
 
-from eyetracking.features.complex import get_heatmaps
-from eyetracking.preprocessing.base import BaseFixationPreprocessor
-from eyetracking.utils import _split_dataframe
-from eyetracking.visualization.static_visualization import get_visualizations
+from eyefeatures.features.complex import get_heatmaps
+from eyefeatures.preprocessing.base import BaseFixationPreprocessor
+from eyefeatures.utils import _split_dataframe
+from eyefeatures.visualization.static_visualization import get_visualizations
 
 
 def iterative_split(
@@ -262,10 +262,13 @@ def create_graph_data_from_dataframe(
     """
 
     # Get edge list and cumulative features
-    edge_list, edge_features, node_mapping, cumulative_node_features = (
-        create_edge_list_and_cumulative_features(
-            df, add_duration, x_col, y_col, xlim, ylim, shape, directed
-        )
+    (
+        edge_list,
+        edge_features,
+        node_mapping,
+        cumulative_node_features,
+    ) = create_edge_list_and_cumulative_features(
+        df, add_duration, x_col, y_col, xlim, ylim, shape, directed
     )
 
     # Combine cumulative features into a feature matrix
@@ -333,7 +336,6 @@ class Dataset2D(Dataset):
         upload_to_cuda: bool = False,
         transforms=None,
     ):
-
         self.pmk = pk
         self.X = torch.cat(
             [
@@ -363,7 +365,6 @@ class Dataset2D(Dataset):
         return self.X.shape[0]
 
     def __getitem__(self, idx: int):
-
         if self.transforms is None:
             X = self.X[idx, :, :, :]
             label = self.y[idx]
@@ -420,7 +421,6 @@ class DatasetTimeSeries(Dataset):
         transforms=None,
         max_length=10,
     ):
-
         self.pmk = pk
         self.X = _get_features(X, features, x, y, t=None, pk=pk)
         if not isinstance(Y, pd.Series):
@@ -439,7 +439,6 @@ class DatasetTimeSeries(Dataset):
         return len(self.X)
 
     def __getitem__(self, idx: int):
-
         if self.transforms is None:
             X = self.X[idx]
             label = self.Y[idx]

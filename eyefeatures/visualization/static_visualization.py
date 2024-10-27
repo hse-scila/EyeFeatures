@@ -11,7 +11,7 @@ from scipy.spatial import ConvexHull
 from sklearn.base import BaseEstimator, TransformerMixin
 from tqdm import tqdm
 
-from eyetracking.utils import _select_regressions, _split_dataframe
+from eyefeatures.utils import _select_regressions, _split_dataframe
 
 
 def _cmap_generation(n: int):
@@ -119,9 +119,9 @@ def scanpath_visualization(
     if shape_column is not None:
         intervals = np.linspace(0, data[shape_column].max(), 6)
         for i in range(1, len(intervals)):
-            legend[marks[i - 1]] = (
-                f"[{round(intervals[i - 1], 2)}, {round(intervals[i], 2)})"
-            )
+            legend[
+                marks[i - 1]
+            ] = f"[{round(intervals[i - 1], 2)}, {round(intervals[i], 2)})"
             data.loc[
                 (data[shape_column] >= intervals[i - 1])
                 & (data[shape_column] < intervals[i]),
@@ -219,7 +219,6 @@ def scanpath_visualization(
 
         if not is_vectors:
             for i in range(len(X) - 1):
-
                 plt.plot(
                     [X.iloc[i], X.iloc[i + 1]],
                     [Y.iloc[i], Y.iloc[i + 1]],
@@ -326,7 +325,6 @@ def scanpath_visualization(
 
 
 class Visualization(BaseEstimator, TransformerMixin):
-
     def __init__(
         self,
         x: str,

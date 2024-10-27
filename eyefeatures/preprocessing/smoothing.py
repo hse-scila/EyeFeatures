@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 from scipy.signal import firwin, iirfilter, lfilter, savgol_filter
 
-from eyetracking.preprocessing.base import BaseSmoothingPreprocessor
+from eyefeatures.preprocessing.base import BaseSmoothingPreprocessor
 
 
 # ======== SMOOTHING PREPROCESSORS ========

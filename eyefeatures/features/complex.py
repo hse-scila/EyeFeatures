@@ -1,16 +1,15 @@
 from typing import Callable, List, Literal, Tuple, Union
 
+import gudhi as gd
 import numpy as np
 import pandas as pd
 from numba import jit, prange
 from numpy.typing import NDArray
+from PyEMD.EMD2d import EMD2D
 from scipy.signal import convolve2d
 from scipy.stats import gaussian_kde
 
-from eyetracking.utils import _rec2square, _split_dataframe
-
-import gudhi as gd
-from PyEMD.EMD2d import EMD2D
+from eyefeatures.utils import _rec2square, _split_dataframe
 
 
 # =========================== HEATMAPS ===========================

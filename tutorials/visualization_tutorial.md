@@ -2,9 +2,8 @@
 ## Static visualization
 The tutorial covers the basic visualization options from EyeFeatures. First of all, we are importing all the methods that we need.
 
-
 ```python
-from eyetracking.visualization.static_visualization import scanpath_visualization, get_visualizations
+from eyefeatures.visualization.static_visualization import scanpath_visualization, get_visualizations
 import pandas as pd
 ```
 
@@ -18,7 +17,7 @@ Now, let's load example data with the prepared AOI definition and look at the co
 
 
 ```python
-data = pd.read_csv('../eyetracking/test_data/em-y35-fasttext_AOI.csv')
+data = pd.read_csv('../eyefeatures/test_data/em-y35-fasttext_AOI.csv')
 x = "norm_pos_x"
 y = "norm_pos_y"
 aoi = "AOI"
@@ -251,9 +250,8 @@ res[0]
 ## Dynamic visualization
 Visualization module also has some dynamic visualization with animations. It could be useful for deep learning like static visualization, but it can be used to interpretation of data. Let's import all function and build our first animation of scanpath:
 
-
 ```python
-from eyetracking.visualization.dynamic_visualization import *
+from eyefeatures.visualization.dynamic_visualization import *
 ```
 
 ### Scanpath animation

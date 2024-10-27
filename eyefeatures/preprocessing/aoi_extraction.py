@@ -7,9 +7,9 @@ from numba import jit
 from scipy.ndimage import maximum_filter, prewitt, sobel
 from sklearn.base import BaseEstimator, ClusterMixin, TransformerMixin
 
-from eyetracking.features.measures import ShannonEntropy
-from eyetracking.preprocessing.base import BaseAOIPreprocessor
-from eyetracking.utils import _split_dataframe
+from eyefeatures.features.measures import ShannonEntropy
+from eyefeatures.preprocessing.base import BaseAOIPreprocessor
+from eyefeatures.utils import _split_dataframe
 
 # ======== AOI PREPROCESSORS ========
 
@@ -196,9 +196,9 @@ class ThresholdBased(BaseAOIPreprocessor):
         ), "Error: Can't find the maximum with such parameters"
 
         aoi_counts: Dict[str, int] = dict()  # Dict[aoi name] = count of points in aoi
-        aoi_points: Dict[str, List[Tuple[float, float]]] = (
-            dict()
-        )  # Dict[aoi name] = list of points
+        aoi_points: Dict[
+            str, List[Tuple[float, float]]
+        ] = dict()  # Dict[aoi name] = list of points
 
         axis_x = X_grid.T[0]
         axis_y = Y_grid[0]
@@ -361,9 +361,9 @@ class GradientBased(BaseAOIPreprocessor):
             magnitude_sobel, 2, mode="constant", constant_values=-1
         )
 
-        queue_of_centers: List[List[Tuple[int, int]]] = (
-            []
-        )  # List of points to add for each aoi
+        queue_of_centers: List[
+            List[Tuple[int, int]]
+        ] = []  # List of points to add for each aoi
         for i in range(loc_max_coord.shape[0]):  # Initial centers for each AOI
             centers[f"aoi_{i}"] = (
                 X_grid[loc_max_coord[i][0]][0],

@@ -6,10 +6,10 @@ import scipy
 from numba import jit
 from tqdm import tqdm
 
-from eyetracking.features.extractor import BaseTransformer
-from eyetracking.features.scanpath_complex import (_get_fill_path,
+from eyefeatures.features.extractor import BaseTransformer
+from eyefeatures.features.scanpath_complex import (_get_fill_path,
                                                    get_expected_path)
-from eyetracking.utils import Types, _split_dataframe
+from eyefeatures.utils import Types, _split_dataframe
 
 
 class DistanceTransformer(BaseTransformer):

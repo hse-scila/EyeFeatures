@@ -5,8 +5,8 @@ import pandas as pd
 import scipy
 from numba import jit
 
-from eyetracking.preprocessing._utils import _get_distance, _get_MEC
-from eyetracking.preprocessing.base import BaseFixationPreprocessor
+from eyefeatures.preprocessing._utils import _get_distance, _get_MEC
+from eyefeatures.preprocessing.base import BaseFixationPreprocessor
 
 
 # ======== FIXATION PREPROCESSORS ========

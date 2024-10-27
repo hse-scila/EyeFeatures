@@ -2,12 +2,12 @@
 This tutorial describes methods and utilities for AOI definition. This module has 4 main methods of AOI definition, a class for choosing the best method for each instance, and a matcher of AOI, which provide consistence of zoning. Firstly, we will import all AOI methods and load the dataset.
 > Tip: The dataset should include preprocessed data with fixations. If the data isn't preprocessed, and you want to learn how to do this, then explore the preprocessing tutorial.
 
-
 ```python
-from eyetracking.preprocessing.aoi_extraction import ThresholdBased, ShapeBased
-from eyetracking.visualization.static_visualization import scanpath_visualization
+from eyefeatures.preprocessing.aoi_extraction import ThresholdBased, ShapeBased
+from eyefeatures.visualization.static_visualization import scanpath_visualization
 import os, requests
 import pandas as pd
+
 
 def load_data():
     '''
@@ -19,20 +19,20 @@ def load_data():
     if not os.path.exists("data/em-y35-fasttext.csv"):
         url = "https://zenodo.org/records/4655840/files/em-y35-fasttext.csv?download=1"
         response = requests.get(url, stream=True)
-    
+
         os.makedirs("data", exist_ok=True)
         with open("data/em-y35-fasttext.csv", "wb") as handle:
             for data in response.iter_content(chunk_size=1024):
                 handle.write(data)
-    
+
     df = pd.read_csv("data/em-y35-fasttext.csv")
-    df.X = df.X/df.X.max()
-    df.Y = df.Y/df.Y.max()
+    df.X = df.X / df.X.max()
+    df.Y = df.Y / df.Y.max()
     df = df.rename(columns={'FDUR': 'duration', 'X': 'norm_pos_x', 'Y': 'norm_pos_y'})
     X = df[['SUBJ_NAME', 'TEXT', 'norm_pos_x', 'norm_pos_y', 'duration']]
     Y = df[['SUBJ_NAME', 'TEXT', 'TEXT_TYPE', 'TEXT_TYPE_2']].drop_duplicates()
-    other_features = df.drop(columns = ['SUBJ_NAME', 'TEXT', 'norm_pos_x', 'norm_pos_y', 'duration'])
-    
+    other_features = df.drop(columns=['SUBJ_NAME', 'TEXT', 'norm_pos_x', 'norm_pos_y', 'duration'])
+
     return X, Y, other_features
 ```
 
@@ -302,11 +302,9 @@ This article a has more detailed description of the algorithms above [[1]](#link
 ## AOI extractor
 The AOI extractor gets a list of the AOI methods and selects for AOI splitting with minimal entropy. It also supports Sklearn clustering methods. The extractor has an ```instance_column``` parameter. This is to separate particular instances, not records.
 
-
-
 ```python
 from sklearn.cluster import KMeans
-from eyetracking.preprocessing.aoi_extraction import AOIExtractor
+from eyefeatures.preprocessing.aoi_extraction import AOIExtractor
 
 methods = [ThresholdBased(threshold=0.0, window_size=6), KMeans(n_clusters=3)]
 extractor = AOIExtractor(x=x, y=y, methods=methods, pk=pk,
@@ -372,8 +370,9 @@ Sometimes AOI methods shuffle AOI labels. The correct order of the AOI names and
 > Remark: The best AOI definition is considered to be the one with the lowest Shannon entropy.
 
 ```python
-from eyetracking.preprocessing.aoi_extraction import AOIMatcher
-matcher = AOIMatcher(x=x, y=y, pk=pk, 
+from eyefeatures.preprocessing.aoi_extraction import AOIMatcher
+
+matcher = AOIMatcher(x=x, y=y, pk=pk,
                      instance_columns=["TEXT"], aoi=aoi, n_aoi=3)
 result_match = matcher.transform(result_extr)
 result_match.head()
