@@ -182,9 +182,8 @@ def get_object(df: pd.DataFrame):
 
 Let's use EyeFeatures toolkit to get a grasp of how our object's scanpath looks like.
 
-
 ```python
-from eyetracking.visualization.static_visualization import scanpath_visualization
+from eyefeatures.visualization.static_visualization import scanpath_visualization
 ```
 
 
@@ -200,16 +199,21 @@ scanpath_visualization(get_object(data), x, y, with_axes=True, path_width=1)
 
 ### 1. Fixation Extraction
 
-While squashing gazes, we would like to extract fixations and keep the path trajectory. `eyetracking.preprocessing.fixation_extraction` has three algorithms for that:
-* IVT  - velocity threshold identification algorithm.
-* IDT  - dispersion threshold identification algorithm.
-* IHMM - hidden Markov model identification algorithm.
+While squashing gazes, we would like to extract fixations and keep the path trajectory. Thus, the general approach is as follows: mark each gaze with $0$ (not a part of fixation) or $1$ (a part of fixation), then squash consecutive ones into single fixation.  Here we denote $n$ fixations as triplets $\{(x_i, y_i, t_i)\}_{i=1}^{n}$ - x coordinate, y coordinate, timestamp. `eyetracking.preprocessing.fixation_extraction` has three algorithms for fixations extraction:
+
+1. IVT  - velocity threshold identification algorithm. Gazes that have velocity below threshold are considered to be fixations, since high velocities are attributes of saccades. If $a$ is an algorithm and $d$ some metric in $\mathbb{R}^2$, then for single fixation:
+
+$$a(i) = \left[\frac{d((x_i, y_i), (x_{i + 1}, y_{i + 1}))}{t_{i + 1} - t_i} \leq T\right]$$
+
+2. IDT  - dispersion threshold identification algorithm. This algorithm uses sliding window to find consecutive gazes with dispersion less than `max_dispersion` and duration more than `min_duration`. These heuristics ensure that extracted fixations have small variance and their duration is long enough.
+
+
+3. IHMM - hidden Markov model identification algorithm. Algorithm finds a sequence of fixations that maximizes the log probability of observing given velocities of gazes under conditions of Hidden Markov Model. More formally, denote velocity of $i$-th gaze as $\displaystyle v_i = \frac{d((x_i, y_i), (x_{i + 1}, y_{i + 1}))}{t_{i + 1} - t_i}$ - this is observed process, while hidden process is sequence of zeros and ones $\{s_i\}_{i=1}^{n}$, as discussed previously, $1$ indicating fixation. We fix some prior distribution of velocities (normal is taken as empirical rule) and transition matrix, then, under assumption of Markov process, i.e. $P(s_i = b|v_{i - 1}, ..., v_1) = P(s_i = b|v_{i - 1}, ..., v_{i - k})$ for some $k \geq 1$, probability is maximized in greedy manner.
 
 Let's use IDT since it is a common choice among eyetracking software products.
 
-
 ```python
-from eyetracking.preprocessing.fixation_extraction import IDT
+from eyefeatures.preprocessing.fixation_extraction import IDT
 ```
 
 IDT has two parameters: `min_duration` of fixation and `max_dispersion` of gazes within fixation. They provide a great control over the desired results.
@@ -459,22 +463,34 @@ scanpath_visualization(get_object(fixations), x, y, with_axes=True, path_width=1
 ### 2. Filtering gazes.
 
 `eyetracking.preprocessing.smoothing` provides 4 filters to smooth gazes before the process of fixation extraction:
-* Savitzkiy-Golay filter.
-* FIR filter.
-* IIR filter.
-* Wiener filter.
+1. Savitzkiy-Golay filter - fits $k$-degree polynomial using $k$ last points in sequence using OLS.
+2. FIR filter - weighted sum of $k$ previous values (convolution of signals).
+3. IIR filter - similar to FIR filter but with two convolution signals.
+4. Wiener filter. This filter assumes the following model of distortion:
+
+$$g(x) = f(x) * h(x) + s(x)$$
+
+where $f$ is true signal, $h$ is distortion signal, $*$ is convolution operation, $s$ is noise, and $g$ is distorted signal (observed signal). Wiener's approach considers input signal and noise as random variables and finds such estimator $\hat{f}$ which minimizes the variance of $\hat{f} - f$. It could be shown that in the underlined model the minimum is achieved (in frequency domain) at:
+
+$$\hat{F}(x) = \frac{\overline{H(x)}}{|H(x)|^2 + K}G(x)$$
+
+where
+* $\hat{F}(x)$ - Fourier-image of $f$.
+* $H(x)$ - Fourier-image of distorting function $h$.
+* $\overline{\cdot}$ - complex inverse.
+* $|\cdot|$ - complex modulus.
+* $K$ - approximation constant.
 
 Filters are often applied before fixation extraction. Let's do it using `sklearn`'s pipeline.
 
-
 ```python
-from eyetracking.preprocessing.smoothing import WienerFilter, SavGolFilter
+from eyefeatures.preprocessing.smoothing import WienerFilter, SavGolFilter
 from sklearn.pipeline import Pipeline
 
 pipe = Pipeline(steps=[
-    ("wf_filter", WienerFilter(x=x, y=y, t=t, pk=pk, K='auto')),          # Wiener filter
+    ("wf_filter", WienerFilter(x=x, y=y, t=t, pk=pk, K='auto')),  # Wiener filter
     ("sg_filter", SavGolFilter(x=x, y=y, t=t, pk=pk, window_length=10)),  # Savitzkiy-Golay filter
-    ("preprocessor", preprocessor)                                        # IDT algorithm
+    ("preprocessor", preprocessor)  # IDT algorithm
 ])
 
 fixations_smooth = pipe.fit_transform(data)
@@ -520,3 +536,10 @@ len(get_object(fixations_smooth))
 
 
 As you can see, usage of filters smoothed scanpath and resulted in smaller number of fixations. Also, coordinates of fixations are more "compact", looking at axes on last two visualizations.
+
+### References
+
+1. [Sample dataset](https://www.inb.uni-luebeck.de/index.php?id=515), static images.
+2. [Salvucci & Goldberg (2000)](https://www.researchgate.net/publication/220811146_Identifying_fixations_and_saccades_in_eye-tracking_protocols). Identifying saccades and fixations in eye-tracking protocols. Served as the source of fixation extraction algorithms
+3. Savitzkiy-Golay, FIR, IIR classes are wrappers of `scipy.signal` methods.
+4. About [Wiener filter](https://en.wikipedia.org/wiki/Wiener_filter) on Wikipedia.

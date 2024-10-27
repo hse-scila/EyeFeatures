@@ -19,53 +19,52 @@ This class will be responsible for preprocessing of the data, as well as providi
 
 Let's choose dataset which creates 2d representations (more about complex data representations can be found in `Complex representations tutorial`), namely creates heatmap and RGB scanpath graph array for every scanpath stacking these representations along the 2nd (channel) dimension.
 
-
 ```python
-from eyetracking.data.data import Paris_experiment
-from eyetracking.deep.datasets import DatasetLightning2D
+from eyefeatures.data.data import Paris_experiment
+from eyefeatures.deep.datasets import DatasetLightning2D
 import pandas as pd
 
 X, Y, _ = Paris_experiment()
-Y = Y.drop(columns='TEXT_TYPE_2') #data contains 2 possible target variables, one of which we drop. 
-                                  #Support for multitasking is in development
+Y = Y.drop(columns='TEXT_TYPE_2')  # data contains 2 possible target variables, one of which we drop. 
+# Support for multitasking is in development
 
-Y['TEXT_TYPE'] = Y['TEXT_TYPE'].map({'f':0, 'a':1, 'm':2}).astype(int) #encoding str target to int
+Y['TEXT_TYPE'] = Y['TEXT_TYPE'].map({'f': 0, 'a': 1, 'm': 2}).astype(int)  # encoding str target to int
 
-Y = Y.sample(200) 
-X = pd.merge(X, Y, on=['SUBJ_NAME', 'TEXT']) #We remove all except first 200 scanpaths for speed
+Y = Y.sample(200)
+X = pd.merge(X, Y, on=['SUBJ_NAME', 'TEXT'])  # We remove all except first 200 scanpaths for speed
 
 dataset2d = DatasetLightning2D(
-                      X=X, 
-                      Y=Y, 
-                      x='norm_pos_x', 
-                      y='norm_pos_y', 
-                      pk=['SUBJ_NAME', 'TEXT'], #Primary keys which together determinate unique sample in common dataframe
-                      shape=(16, 16), #Required shape. Can be anything, but remember that bigger images require more computational resources
-                      representations=['heatmap', 'baseline_visualization'],
-                      test_size = 0.5, 
-                      batch_size= 8,
-                      split_type = 'simple' #Do not consider distribution of pk when spliting
-                      )
+    X=X,
+    Y=Y,
+    x='norm_pos_x',
+    y='norm_pos_y',
+    pk=['SUBJ_NAME', 'TEXT'],  # Primary keys which together determinate unique sample in common dataframe
+    shape=(16, 16),
+    # Required shape. Can be anything, but remember that bigger images require more computational resources
+    representations=['heatmap', 'baseline_visualization'],
+    test_size=0.5,
+    batch_size=8,
+    split_type='simple'  # Do not consider distribution of pk when spliting
+)
 ```
 
 # Creating model
 
-Now we need to define CNN model which will process this 4 channel "images". We do not define separate model class for CNN in our library but we provide implemetation of some basic layers like VGG, ResNet etc and utility `make_simple_CNN`. This function takes dictionary with parameters for each layer and creates sequential Convolutional neural network model. 
-
+Now we need to define CNN model which will process this 4 channel "images". We do not define separate model class for CNN in our library but we provide implemetation of some basic layers like VGG, ResNet etc and utility `make_simple_CNN`. This function takes dictionary with parameters for each layer and creates sequential Convolutional neural network model.
 
 ```python
-from eyetracking.deep.models import create_simple_CNN
+from eyefeatures.deep.models import create_simple_CNN
 
 CNN_model, output_shape = create_simple_CNN({
-                    1:{'type':'VGG_block', 
-                      'params':{'out_channels':10}},
-                    2:{'type':'VGG_block', 
-                      'params':{'out_channels':10}},
-                    3:{'type':'Resnet_block', 
-                      'params':{'out_channels':10}},
-                    4:{'type':'Resnet_block', 
-                      'params':{'out_channels':10}}
-                      }, in_channels=4, shape=(16,16))
+    1: {'type': 'VGG_block',
+        'params': {'out_channels': 10}},
+    2: {'type': 'VGG_block',
+        'params': {'out_channels': 10}},
+    3: {'type': 'Resnet_block',
+        'params': {'out_channels': 10}},
+    4: {'type': 'Resnet_block',
+        'params': {'out_channels': 10}}
+}, in_channels=4, shape=(16, 16))
 
 print(f"Output shape of our CNN will be {output_shape}")
 ```
@@ -80,14 +79,13 @@ print(f"Output shape of our CNN will be {output_shape}")
 
 Now we need to wrap this model into classifier
 
-
 ```python
-from eyetracking.deep.models import Classifier
+from eyefeatures.deep.models import Classifier
 
-CNN_classifier = Classifier(CNN_model, 
-                   n_classes=len(Y['TEXT_TYPE'].unique()), 
-                   classifier_hidden_layers=(25,) #add hidden layer with 25 neurons to classifier head
-                   )
+CNN_classifier = Classifier(CNN_model,
+                            n_classes=len(Y['TEXT_TYPE'].unique()),
+                            classifier_hidden_layers=(25,)  #add hidden layer with 25 neurons to classifier head
+                            )
 ```
 
     c:\Users\toxas\anaconda3\Lib\site-packages\torch\nn\modules\lazy.py:181: UserWarning: Lazy modules are a new feature under heavy development so changes to the API or functionality can happen at any moment.
@@ -473,43 +471,41 @@ From the graph we can see that model overfits, which is expected result, because
 
 In this section we will show how to train RNN model with Dataset for time series, which will present every sample as multidimensional time series [x position of fixation, y position of fixation, duration of fixation] and pad every batch.
 
-
 ```python
-from eyetracking.deep.datasets import DatasetLightningTimeSeries
-
+from eyefeatures.deep.datasets import DatasetLightningTimeSeries
 
 datasetTime = DatasetLightningTimeSeries(
-                      X=X, 
-                      Y=Y, 
-                      x='norm_pos_x', 
-                      y='norm_pos_y', 
-                      pk=['SUBJ_NAME', 'TEXT'], #Primary keys which together determinate unique sample in common dataframe
-                      features=[],# which additional features to add to coordinate features
-                      test_size = 0.5, 
-                      batch_size= 8,
-                      split_type = 'simple', #Do not consider distribution of pk when spliting
-                      max_length=10 # truncate input to first 10 fixations, shorter inputs are truncated
-                      )
+    X=X,
+    Y=Y,
+    x='norm_pos_x',
+    y='norm_pos_y',
+    pk=['SUBJ_NAME', 'TEXT'],  #Primary keys which together determinate unique sample in common dataframe
+    features=[],  # which additional features to add to coordinate features
+    test_size=0.5,
+    batch_size=8,
+    split_type='simple',  #Do not consider distribution of pk when spliting
+    max_length=10  # truncate input to first 10 fixations, shorter inputs are truncated
+)
 ```
 
-
 ```python
-from eyetracking.deep.models import SimpleRNN
+from eyefeatures.deep.models import SimpleRNN
+
 #create simple RNN of LSTM type
 RNN_model = SimpleRNN(
-        rnn_type='LSTM', 
-        input_size = 2, 
-        hidden_size = 64, 
-        num_layers=2, 
-        bidirectional=False, 
-        pre_rnn_linear_size=32
-        ) 
+    rnn_type='LSTM',
+    input_size=2,
+    hidden_size=64,
+    num_layers=2,
+    bidirectional=False,
+    pre_rnn_linear_size=32
+)
 #The next step is the same as for CNN model
-RNN_classifier = Classifier(RNN_model, 
-                   n_classes=len(Y['TEXT_TYPE'].unique()), 
-                   classifier_hidden_layers=(25,), #add hidden layer with 25 neurons to classifier head
-                   learning_rate = 0.01
-                   )
+RNN_classifier = Classifier(RNN_model,
+                            n_classes=len(Y['TEXT_TYPE'].unique()),
+                            classifier_hidden_layers=(25,),  #add hidden layer with 25 neurons to classifier head
+                            learning_rate=0.01
+                            )
 ```
 
     c:\Users\toxas\anaconda3\Lib\site-packages\torch\nn\modules\lazy.py:181: UserWarning: Lazy modules are a new feature under heavy development so changes to the API or functionality can happen at any moment.
@@ -604,38 +600,38 @@ Situation is similar here - RNN need more data to learn something and 10 first f
 
 We, also, can combine CNN and RNN as proposed in [Sims et al. 2020](https://dl.acm.org/doi/10.1145/3382507.3418828)
 
-
 ```python
-from eyetracking.deep.datasets import DatasetLightningTimeSeries2D
-from eyetracking.deep.models import VitNet
+from eyefeatures.deep.datasets import DatasetLightningTimeSeries2D
+from eyefeatures.deep.models import VitNet
 
 time2d_dataset = DatasetLightningTimeSeries2D(
-                            X=X, 
-                            Y=Y, 
-                            x='norm_pos_x', 
-                            y='norm_pos_y', 
-                            pk=['SUBJ_NAME', 'TEXT'], #Primary keys which together determinate unique sample in common dataframe
-                            features=[],# which additional features to add to coordinate features
-                            test_size = 0.5, 
-                            batch_size= 8,
-                            shape=(16, 16), #Required shape. Can be anything, but remember that bigger images require more computational resources
-                            representations=['heatmap', 'baseline_visualization'],
-                            split_type = 'simple', #Do not consider distribution of pk when spliting
-                            max_length=10 # truncate input to first 10 fixations
-                      )
+    X=X,
+    Y=Y,
+    x='norm_pos_x',
+    y='norm_pos_y',
+    pk=['SUBJ_NAME', 'TEXT'],  #Primary keys which together determinate unique sample in common dataframe
+    features=[],  # which additional features to add to coordinate features
+    test_size=0.5,
+    batch_size=8,
+    shape=(16, 16),
+    #Required shape. Can be anything, but remember that bigger images require more computational resources
+    representations=['heatmap', 'baseline_visualization'],
+    split_type='simple',  #Do not consider distribution of pk when spliting
+    max_length=10  # truncate input to first 10 fixations
+)
 
 VitNet_model = VitNet(
-                 CNN_model, 
-                 RNN_model, 
-                 fusion_mode = 'concat', 
-                 activation = None, 
-                 embed_dim = 32)
+    CNN_model,
+    RNN_model,
+    fusion_mode='concat',
+    activation=None,
+    embed_dim=32)
 
-VitNet_classifier = Classifier(VitNet_model, 
-                   n_classes=len(Y['TEXT_TYPE'].unique()), 
-                   classifier_hidden_layers=(25,), #add hidden layer with 25 neurons to classifier head
-                   learning_rate = 0.01
-                   )
+VitNet_classifier = Classifier(VitNet_model,
+                               n_classes=len(Y['TEXT_TYPE'].unique()),
+                               classifier_hidden_layers=(25,),  #add hidden layer with 25 neurons to classifier head
+                               learning_rate=0.01
+                               )
 
 ```
 
