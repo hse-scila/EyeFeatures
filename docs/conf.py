@@ -9,11 +9,11 @@ version = release = '0.1.0'
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 exclude_patterns = []
-extensions = []
+extensions = ['m2r2']
 language = 'en'
 # master_doc = 'index'
 pygments_style = 'sphinx'
-# source_suffix = '.rst'
+source_suffix = ['.rst', '.md']
 # templates_path = ['_templates']
 
 # -- Options for HTML output ----------------------------------------------
