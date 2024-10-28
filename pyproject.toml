@@ -19,6 +19,9 @@ tqdm = "4.66.4"
 pyemd = "1.0.0"
 gudhi = "3.10.1"
 
+[tool.poetry.group.docs.dependencies]
+m2r2 = "^0.3.3.post2"
+
 [too.poetry.group.dev]
 optional = true
 
