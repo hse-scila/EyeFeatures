@@ -9,7 +9,19 @@ version = release = '0.1.0'
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 exclude_patterns = []
-extensions = ['m2r2']
+extensions = [
+    'm2r2',
+    'sphinx.ext.autodoc',
+    'sphinx.ext.napoleon',  # Optional, for Google/NumPy style
+    'sphinx.ext.autosummary',  # Optional, for automatic summaries
+    'sphinx_autodoc_typehints'  # Optional, for type hints in docs
+]
+autodoc_default_options = {
+    'members': True,            # Include all members (functions, classes, etc.)
+    'undoc-members': True,       # Include members without docstrings
+    'private-members': True,     # Include private members with underscore prefix
+    'special-members': 'init', # Include init method in classes
+}
 language = 'en'
 # master_doc = 'index'
 pygments_style = 'sphinx'
