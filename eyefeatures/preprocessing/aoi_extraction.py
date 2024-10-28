@@ -17,27 +17,28 @@ from eyefeatures.utils import _split_dataframe
 class ShapeBased(BaseAOIPreprocessor):
     """
     Defines AOI using the specified shapes
+
     :param x: x coordinate of fixation.
     :param y: y coordinate of fixation.
     :param aoi_name: name of AOI column.
     :param pk: list of column names used to split pd.DataFrame.
-    :param shapes: list of shapes. It should be a list of tuple lists. Parameters for shape:
-    {
-    0: 'r', 'c', 'e': rectangle, circle, ellipse
-    For the rectangle:
-    1: coordinates of the lower left corner of the rectangle.
-    2: coordinates of the upper right corner of the rectangle.
-    For the circle:
-    1: coordinates of the center of the circle.
-    2: radius of the circle.
-    For the ellipse:
-    ((x - x')*cos(alpha) + (y - y')*sin(alpha))**2 / a**2 + (-(x - x')*sin(alpha) + (y - y')*cos(alpha))**2 / b**2 = c
-    1: coordinates of the center of the ellipse (x', y').
-    2: "a" in the ellipse equation
-    3: "b" in the ellipse equation
-    4: "c" in the ellipse equation
-    5: angle of inclination of th ellipse in radians (alpha)
-    }
+    :param shapes: list of shapes. It should be a list of tuple lists. Parameters for shape:\n
+                    \n
+                    0: 'r', 'c', 'e': rectangle, circle, ellipse\n
+                    For the rectangle:\n
+                    1: coordinates of the lower left corner of the rectangle.\n
+                    2: coordinates of the upper right corner of the rectangle.\n
+                    For the circle:\n
+                    1: coordinates of the center of the circle.\n
+                    2: radius of the circle.\n
+                    For the ellipse:\n
+                    ((x - x')*cos(alpha) + (y - y')*sin(alpha))**2 / a**2 + (-(x - x')*sin(alpha) + (y - y')*cos(alpha))**2 / b**2 = c\n
+                    1: coordinates of the center of the ellipse (x', y').\n
+                    2: "a" in the ellipse equation\n
+                    3: "b" in the ellipse equation\n
+                    4: "c" in the ellipse equation\n
+                    5: angle of inclination of th ellipse in radians (alpha)\n
+
     """
 
     def __init__(
@@ -129,6 +130,7 @@ class ThresholdBased(BaseAOIPreprocessor):
     """
     Defines the AOI for each fixation using density maximum and Kmeans. Finds local maximum, pre-threshold it, and uses
     it as a center of aoi
+
     :param x: x coordinate of fixation.
     :param y: y coordinate of fixation.
     :param window_size: size of search window.
@@ -137,7 +139,6 @@ class ThresholdBased(BaseAOIPreprocessor):
     :param aoi_name: name of AOI column.
     :param algorithm_type: type of clustering algorithm to use.
     :param threshold_dist:
-    :return: DataFrame with AOI column
     """
 
     def __init__(
@@ -196,9 +197,9 @@ class ThresholdBased(BaseAOIPreprocessor):
         ), "Error: Can't find the maximum with such parameters"
 
         aoi_counts: Dict[str, int] = dict()  # Dict[aoi name] = count of points in aoi
-        aoi_points: Dict[
-            str, List[Tuple[float, float]]
-        ] = dict()  # Dict[aoi name] = list of points
+        aoi_points: Dict[str, List[Tuple[float, float]]] = (
+            dict()
+        )  # Dict[aoi name] = list of points
 
         axis_x = X_grid.T[0]
         axis_y = Y_grid[0]
@@ -291,19 +292,19 @@ class GradientBased(BaseAOIPreprocessor):
     """
     Defines the AOI for each fixation using a gradient-based algorithm. Finds the local maximum, pre-threshold it, and
     uses it as a center of aoi. After that, uses the Sobel operator to compute the gradient magnitude for each point.
-    Next, defines the queue of areas of interest. Algorithm of aoi defining:
-    * Gets the point from the queue. It is a center;
-    * Looks at the points near the center;
-    * Tries to find the point with defined aoi and maximum gradient magnitude.
-    * Adds center to this aoi
-    * Repeats for all points in the matrix
+    Next, defines the queue of areas of interest. Algorithm of aoi defining:\n
+    * Gets the point from the queue. It is a center\n
+    * Looks at the points near the center\n
+    * Tries to find the point with defined aoi and maximum gradient magnitude\n
+    * Adds center to this aoi\n
+    * Repeats for all points in the matrix\n
+
     :param x: x coordinate of fixation.
     :param y: y coordinate of fixation.
     :param window_size: size of search window.
     :param threshold: threshold density.
     :param pk: list of column names used to split pd.DataFrame.
     :param aoi_name: name of AOI column.
-    :return: DataFrame with AOI column
     """
 
     def __init__(
@@ -361,9 +362,9 @@ class GradientBased(BaseAOIPreprocessor):
             magnitude_sobel, 2, mode="constant", constant_values=-1
         )
 
-        queue_of_centers: List[
-            List[Tuple[int, int]]
-        ] = []  # List of points to add for each aoi
+        queue_of_centers: List[List[Tuple[int, int]]] = (
+            []
+        )  # List of points to add for each aoi
         for i in range(loc_max_coord.shape[0]):  # Initial centers for each AOI
             centers[f"aoi_{i}"] = (
                 X_grid[loc_max_coord[i][0]][0],
@@ -441,6 +442,7 @@ class GradientBased(BaseAOIPreprocessor):
 class OverlapCLustering(BaseAOIPreprocessor):
     """
     Defines the AOI for each fixation using the overlapping clustering algorithm.
+
     :param x: x coordinate of fixation.
     :param y: y coordinate of fixation.
     :param diameters: diameters of fixation.
@@ -448,7 +450,6 @@ class OverlapCLustering(BaseAOIPreprocessor):
     :param pk: list of column names used to split pd.DataFrame.
     :param aoi_name: name of AOI column.
     :param eps: additional length to sum of radius
-    :return: DataFrame with AOI column
     """
 
     def __init__(
@@ -549,6 +550,7 @@ class OverlapCLustering(BaseAOIPreprocessor):
 # ======== EXTRACTOR FOR AOI CLASSES ========
 class AOIExtractor(BaseEstimator, TransformerMixin):
     """Extractor of areas of interest. Selects the partition into zones of interest with the lowest entropy.
+
     :param methods: list of aoi algorithms.
     :param x: x coordinate of fixation.
     :param y: y coordinate of fixation.
@@ -558,7 +560,6 @@ class AOIExtractor(BaseEstimator, TransformerMixin):
     :param instance_columns: list of column names used to split pd.DataFrame into the similar instances for aoi extraction.
     :param aoi_name: name of AOI column.
     :param show_best: if true, then return the best method for each instance
-    :return: DataFrame with AOI column
     """
 
     def __init__(
@@ -703,16 +704,16 @@ class AOIExtractor(BaseEstimator, TransformerMixin):
 class AOIMatcher(BaseEstimator, TransformerMixin):
     """
     Matches AOI in the dataset.
+
     :param x: x coordinate of fixation.
     :param y: y coordinate of fixation.
     :param pk: list of column names used to split pd.DataFrame for scaling.
     :param instance_columns: list of column names used to split pd.DataFrame
                              into the similar instances for aoi extraction.
     :param aoi: name of AOI column.
-    :param n_aoi: count of aoi in the group
-    {0: any number the areas of interest,
-     all integer number that greater than 0: count of the areas of interest}.
-    :return: DataFrame with AOI column
+    :param n_aoi: count of aoi in the group\n
+                 0: any number the areas of interest\n
+                 all integer number that greater than 0: count of the areas of interest.
     """
 
     def __init__(

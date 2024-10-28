@@ -31,6 +31,7 @@ def get_expected_path(
 ) -> Dict[str, Union[pd.DataFrame, np.ndarray]]:
     """
     Estimates expected path by a given method
+
     :param data: pd.Dataframe containing coordinates of fixations and its timestamps
     :param x: Column name of x-coordinate
     :param y: Column name of y-coordinate
@@ -110,6 +111,7 @@ def _get_fill_path(
 ) -> pd.DataFrame:
     """
     Calculates fill path as expected path of given expected paths
+
     :param data: paths data
     :param x: Column name of x-coordinate
     :param y: Column name of y-coordinate
@@ -165,6 +167,7 @@ def restore_matrix(matrix: NDArray, tol=1e-9):
 def get_sim_matrix(scanpaths: List[NDArray], sim_metric: Callable) -> np.ndarray:
     """
     Computes similarity matrix given non-trivial metric.
+
     :param scanpaths: list of scanpaths, each being 2D-array of shape (2, n).
     :param sim_metric: similarity metric.
     :return: scaled similarity matrix.
@@ -188,6 +191,7 @@ def get_dist_matrix(
 ) -> pd.DataFrame:
     """
     Computes pairwise distance matrix given distance metric.
+
     :param scanpaths: List of scanpaths DataFrames of form (x, y)
     :param dist_metric: Metric used to calculate distance from features.scanpath_dist
     """
@@ -211,6 +215,7 @@ def hierarchical_clustering_order(
 ) -> np.ndarray:
     """
     Reorder matrix using hierarchical clustering.
+
     :param sim_matrix: similarity matrix to reorder
     :param metric: metric used in building matrix
     :return: reordered matrix
@@ -227,6 +232,7 @@ def optimal_leaf_ordering_clustering(
 ) -> np.ndarray:
     """
     Reorder matrix using optimal leaf ordering.
+
     :param sim_matrix: similarity matrix to reorder
     :return: reordered matrix
     """
@@ -241,6 +247,7 @@ def optimal_leaf_ordering_clustering(
 def dimensionality_reduction_order(sim_matrix: np.ndarray) -> np.ndarray:
     """
     Reorder matrix using Multi-Dimensional Scaling (MDS).
+
     :param sim_matrix: similarity matrix to reorder
     :return: reordered matrix
     """
@@ -256,6 +263,7 @@ def dimensionality_reduction_order(sim_matrix: np.ndarray) -> np.ndarray:
 def spectral_order(sim_matrix: np.ndarray) -> np.ndarray:
     """
     Reorder matrix using spectral reordering.
+
     :param sim_matrix: similarity matrix to reorder
     :return: reordered matrix
     """
@@ -277,6 +285,7 @@ def spectral_order(sim_matrix: np.ndarray) -> np.ndarray:
 def get_center_matrix(weight_vector: np.ndarray) -> np.ndarray:
     """
     Calculates centering matrix Theta.
+
     :param weight_vector: vector of weights
     :return: centering matrix
     """
@@ -295,6 +304,7 @@ def get_cross_product_matrix(
 ) -> np.ndarray:
     """
     Calculates cross-product matrix.
+
     :param D: distance matrix
     :param weight_vector: vector of weights
     :return: cross-product matrix
@@ -310,6 +320,7 @@ def get_cross_product_matrix(
 def compute_rv_coefficient(S1: np.ndarray, S2: np.ndarray) -> float:
     """
     Calculate the RV coefficient between two cross-product matrices.
+
     :param S1: first cross-product matrix
     :param S2: second cross-product matrix
     :return: RV coefficient
@@ -322,6 +333,7 @@ def compute_rv_coefficient(S1: np.ndarray, S2: np.ndarray) -> float:
 def get_compromise_matrix(distance_matrices: List[np.ndarray]) -> np.ndarray:
     """
     Compute the compromise matrix from a list of distance matrices.
+
     :param distance_matrices: List of distance matrices (each an ndarray)
     :return: compromise cross-product matrix
     """

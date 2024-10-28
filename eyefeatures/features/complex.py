@@ -79,6 +79,7 @@ def get_heatmaps(
 def pca(matrix: NDArray, p: int, cum_sum: float = None):
     """
     PCA compression.
+
     :param matrix: matrix to get principal components from (n x m)
     :param p: number of first principal components to leave
     :param cum_sum: instead of p, leave such number of principal components, that 0.0 <= a_cum_sum <= 1.0
@@ -320,6 +321,7 @@ def get_gaf(
 ) -> np.array:
     """
     Calculates Gramian Angular Field for (x,y) coordinates.
+
     :param data: dataframe containing fixation coordinates.
     :param x: x-coordinate column name.
     :param y: y-coordinate column name.
@@ -432,6 +434,7 @@ def get_hilbert_curve_enc(
 ) -> np.array:
     """
     Map scanpath to values on Hilbert curve and encode to single feature vector.
+
     :param data: dataframe containing fixation coordinates.
     :param x: x-coordinate column name.
     :param y: y-coordinate column name.
@@ -457,6 +460,7 @@ def get_hilbert_curve(
 ) -> np.array:
     """
     Map scanpath to points on 1D Hilbert curve.
+
     :param data: dataframe containing fixation coordinates.
     :param x: x-coordinate column name.
     :param y: y-coordinate column name.
@@ -493,6 +497,7 @@ def get_hilbert_curve(
 def xy2h(x: int, y: int, p: int) -> int:
     """
     Mapping of 2D space to 1D using Hilbert curve.
+
     :param x: x-coordinate of a point, 0 <= x < 2^p.
     :param y: y-coordinate of a point, 0 <= y < 2^p.
     :param p: order of Hilbert curve, unit square is divided into (2^p)x(2^p) smaller squares.
@@ -522,6 +527,7 @@ def xy2h(x: int, y: int, p: int) -> int:
 def hilbert_huang_transform(data: np.ndarray, max_imf: int = 1) -> np.ndarray:
     """
     Perform Hilbert-Huang transform on a given data sequence.
+
     :param data: input sequence of form (x, y) coordinates
     :param max_imf: maximum number of intrinsic mode functions to extract
     :return: np.ndarray: intrinsic mode functions from an input data vector
@@ -540,6 +546,7 @@ def vietoris_rips_filtration(
 ):
     """
     Compute the Vietoris-Rips filtration for a point cloud.
+
     :param point_cloud: scanpath data as a numpy array of shape (n, 2)
     :param max_dim: maximum dimension for persistent homology
     :param max_radius: maximum radius for the filtration
@@ -556,6 +563,7 @@ def vietoris_rips_filtration(
 def lower_star_filtration(time_series: np.ndarray, max_dim: int = 1):
     """
     Compute the Lower Star filtration for a time series.
+
     :param time_series: time series data
     :param max_dim: maximum dimension for persistent homology
     :param persistence: persistence diagram.
@@ -575,6 +583,7 @@ def lower_star_filtration(time_series: np.ndarray, max_dim: int = 1):
 def persistence_curve(persistence_diagram: List[Tuple | np.ndarray], t: float):
     """
     Compute the persistence curve for a persistence diagram at time t.
+
     :param persistence_diagram: persistence diagram [(birth, death), ...]
     :param t: threshold time for persistence curve
     :return: sum of persistence intervals active at time t
@@ -588,6 +597,7 @@ def persistence_curve(persistence_diagram: List[Tuple | np.ndarray], t: float):
 def persistence_entropy_curve(persistence_diagram: List[Tuple | np.ndarray], t: float):
     """
     Compute the persistence entropy curve for a persistence diagram at time t.
+
     :param persistence_diagram: persistence diagram [(birth, death), ...]
     :param t: threshold time for persistence entropy curve
     :return: entropy value at time t
@@ -617,6 +627,7 @@ def calculate_topological_features(
 ):
     """
     Calculate topological features (persistence curve and persistence entropy) for a scanpath.
+
     :param scanpath: scanpath data array of shape (n, 2)
     :param time_series: 1d array of time series data (e.g. x or y coordinates over time)
     :param max_radius: maximum radius for Vietoris-Rips filtration

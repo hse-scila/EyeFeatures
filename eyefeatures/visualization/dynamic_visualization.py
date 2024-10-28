@@ -10,7 +10,7 @@ from eyefeatures.utils import _select_regressions
 
 
 def _built_figure(
-    fig_dict: Dict, element_count: int, animation_duration: int = 500
+    fig_dict: Dict, animation_duration: int = 500
 ):  # animation_duration in ms
     """
     Function for building a layout for plot
@@ -82,6 +82,7 @@ def tracker_animation(
 ):
     """
     Function for tracker animation
+
     :param data_: DataFrame with fixations.
     :param x: x coordinate of fixation.
     :param y: y coordinate of fixation.
@@ -322,6 +323,7 @@ def scanpath_animation(
 ):
     """
     Function for tracker animation
+
     :param data_: DataFrame with fixations.
     :param x: x coordinate of fixation.
     :param y: y coordinate of fixation.

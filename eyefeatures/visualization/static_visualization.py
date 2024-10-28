@@ -58,13 +58,14 @@ def scanpath_visualization(
 ):
     """
     Function for scanpath visualization and aoi visualization.
+
     :param data_: DataFrame with fixations.
     :param x: x coordinate of fixation.
     :param y: y coordinate of fixation.
     :param duration: duration of fixation.
     :param dispersion: dispersion of fixation.
-    :param size_column: label of the column, which is responsible for the size of the fixations(points on plot).
-    It can be duration, dispersion, etc.
+    :param size_column: label of the column, which is responsible for the size of the fixations(points on plot).\n
+                        It can be duration, dispersion, etc.
     :param shape_column: label of the column, which is responsible for the shape of the fixations(points on plot).
     :param time_stamps: time stamps of fixations.
     :param aoi: AOI of fixations.
@@ -90,13 +91,13 @@ def scanpath_visualization(
     :param with_axes: whether to show axes.
     :param axes_limits: limits of axes.
     :param rule: must be either 1) tuple of quadrants direction to classify
-            regressions, 1st quadrant being upper-right square of plane and counting
-            anti-clockwise or 2) tuple of angles in degrees (0 <= angle <= 360).
+                regressions, 1st quadrant being upper-right square of plane and counting
+                anti-clockwise or 2) tuple of angles in degrees (0 <= angle <= 360).
     :param deviation: if None, then `rule` is interpreted as quadrants. Otherwise,
-            `rule` is interpreted as angles. If integer, then is a +-deviation for all angles.
-            If tuple of integers, then must be of the same length as `rule`, each value being
-            a corresponding deviation for each angle. Angle = 0 is positive x-axis direction,
-            rotating anti-clockwise.
+                    `rule` is interpreted as angles. If integer, then is a +-deviation for all angles.
+                    If tuple of integers, then must be of the same length as `rule`, each value being
+                    a corresponding deviation for each angle. Angle = 0 is positive x-axis direction,
+                    rotating anti-clockwise.
     :param return_ndarray: whether to return numpy array of the plot image(returns RGBA array).
     :param show_plot: whether to show the plot.
     :param is_gray: whether to use the gray scale.
@@ -119,9 +120,9 @@ def scanpath_visualization(
     if shape_column is not None:
         intervals = np.linspace(0, data[shape_column].max(), 6)
         for i in range(1, len(intervals)):
-            legend[
-                marks[i - 1]
-            ] = f"[{round(intervals[i - 1], 2)}, {round(intervals[i], 2)})"
+            legend[marks[i - 1]] = (
+                f"[{round(intervals[i - 1], 2)}, {round(intervals[i], 2)})"
+            )
             data.loc[
                 (data[shape_column] >= intervals[i - 1])
                 & (data[shape_column] < intervals[i]),
@@ -413,16 +414,19 @@ def get_visualizations(
 ):
     """
     Gets visualizations.
+
     :param data: Dataframe with fixations
     :param patterns: List of Visualizations
     :param pk: list of column names used to split pd.DataFrame.
-    :return: ndarray [n, m, fig, fig, c]
-    {
-     n   : instances
-     m   : patterns
-     fig : fig size
-     c   : (3 - RGB image; 1 - gray scaled image)
-     }
+
+    Returns
+    -------
+    output: (ndarray)
+        [n, m, fig, fig, c]\n
+         n   : instances\n
+         m   : patterns\n
+         fig : fig size\n
+         c   : (3 - RGB image; 1 - gray scaled image)
     """
     arr = []
     if pk is None:

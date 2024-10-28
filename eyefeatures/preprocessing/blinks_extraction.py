@@ -14,6 +14,7 @@ def _interpolate_nans(
     """
     Function finds sequences of NaN values, selects ones with
     duration <= 'gap_dur' and linearly interpolates them.
+
     :param array: array with NaNs.
     :param timestamps: timestamps of array.
     :param gap_dur: threshold gap duration.
@@ -74,6 +75,7 @@ def _mask2bounds(mask: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     Method constructs onset and offset arrays of indices based on mask.
     Onset - starting index of segment (segment is continuous block of ones),
     offset - ending index of blink.
+
     :param mask: boolean array.
     :return: [onsets, offsets].
     """
@@ -108,6 +110,7 @@ def _merge_blinks(
 ) -> List[List]:
     """
     Method merges blinks given onsets and offsets, also collapses too short ones.
+
     :param blink_onsets: onsets of blinks, ms.
     :param blink_offsets: offsets of blinks, ms.
     :param min_dur: min duration of blink, ms.
@@ -171,6 +174,7 @@ def _indices_to_values(
     """
     Method converts index-based onsets/offsets to
     timestamp-based onsets/offsets.
+
     :param onsets: indexes of starting blink indexes.
     :param offsets: indexes of ending blink indexes.
     :param timestamps: data recording timestamps.
@@ -216,6 +220,7 @@ def _apply_moving_average(
 ) -> np.ndarray:
     """
     Method applies moving average for pupillometry data. Nan values are remained.
+
     :param pupil_signal: sizes of pupil.
     :param timestamps: data recording timestamps.
     :param is_na: boolean array representing whether pupil is nan or not.
@@ -274,6 +279,7 @@ def detect_blinks_pupil_missing(
     Result is boolean array of the same
     length as pupil_signal, with 1 indicating blink, 0 - not blink.
     Taken from [PyTrack paper](https://link.springer.com/article/10.3758/s13428-020-01392-6):
+
     :param pupil_signal: size of right or left pupil.
     :param timestamps: data recording timestamps.
     :param smoothing_window_size: maximum size of smoothing window, ms.
@@ -355,6 +361,7 @@ def detect_blinks_pupil_vt(
     Method detects blinks based on pupil sizes and change of
     pupil sizes. Taken from https://link.springer.com/article/10.3758/s13428-023-02333-9,
     code taken from https://github.com/marcus-nystrom/BlinkDetector.
+
     :param pupil_signal: size of right of left pupil, mm.
     :param timestamps: data recording timestamps, ms.
     :param Fs: sample rate of eye tracker, Hz.
@@ -426,6 +433,7 @@ def detect_blinks_eo(
     Method detects blinks based on Eye Openness (EO) signal.
     Taken from https://link.springer.com/article/10.3758/s13428-023-02333-9,
     code taken from https://github.com/marcus-nystrom/BlinkDetector.
+
     :param eye_openness_signal: eye openness signal.
     :param timestamps: data recording timestamps, ms.
     :param Fs: sample rate of eye tracker, Hz.

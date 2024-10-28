@@ -7,8 +7,7 @@ from numba import jit
 from numpy.typing import NDArray
 
 from eyefeatures.features.extractor import BaseTransformer
-from eyefeatures.utils import (_calc_dt, _get_id, _select_regressions,
-                               _split_dataframe)
+from eyefeatures.utils import _calc_dt, _get_id, _select_regressions, _split_dataframe
 
 
 class StatsTransformer(BaseTransformer):
@@ -62,6 +61,7 @@ class StatsTransformer(BaseTransformer):
         return f"Requested feature {f} requires {c} for calculation."
 
     def _check_feature_names(self, X, *, reset):
+        """"""
         # Since feature names must always be provided with statistics to
         # calculate and are restricted to certain set of available features,
         # this method is irrelevant
@@ -76,6 +76,7 @@ class StatsTransformer(BaseTransformer):
         cast_to_ndarray=True,
         **check_params,
     ):
+        """"""
         # Same reason as for _check_feature_names
         raise AttributeError("This method must not be used.")
 
@@ -238,9 +239,9 @@ class StatsTransformer(BaseTransformer):
                     feat_stats: List[str] = self.features_stats[feat_nm]
 
                     for stat in feat_stats:  # memoize stats for each feat
-                        self.shift_mem[group_id][feat_nm + aoi_str][
-                            stat
-                        ] = feat_arr.apply(stat)
+                        self.shift_mem[group_id][feat_nm + aoi_str][stat] = (
+                            feat_arr.apply(stat)
+                        )
 
         # calc mean for each stat (by groups) to use for unknown groups on transform
         self.shift_fill = dict()

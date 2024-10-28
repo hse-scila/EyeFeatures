@@ -74,8 +74,9 @@ class HurstExponent(MeasureTransformer):
         return_df: bool = True,
     ):
         """
-        Approximates Hurst Exponent using R/S analysis.
+        Approximates Hurst Exponent using R/S analysis.\n
         https://en.wikipedia.org/wiki/Hurst_exponent
+
         :param n_iters: number of iterations to complete. Note: data must be of length more than 2 ^ `n_iters`.
         :param fill_strategy: how to make vector be length of power of 2. If "reduce", then all values
                 after 2 ^ k-th are removed, where n < 2 ^ (k + 1). Other strategies specify the value
@@ -575,6 +576,7 @@ class CorrelationDimension(MeasureTransformer):
 class RQAMeasures(BaseTransformer):
     """
     Calculates Reccurence (REC), Determinism (DET), Laminarity (LAM) and Center of Recurrence Mass (CORM) measures.
+
     :param metric: callable metric on R^2 points
     :param rho: threshold radius for RQA matrix
     :param min_length: min length of lines
@@ -688,6 +690,7 @@ class SaccadeUnlikelihood(MeasureTransformer):
     """
     Calculates cumulative negative log-likelihood of all the saccades in a scanpath with respect to the saccade transition model.
     Default distribution parameters are derived from Potsdam Sentence Corpus.
+
     :param mu_p: mean of the progression distribution
     :param sigma_p1: left standard deviation of the progression distribution
     :param sigma_p2: right standard deviation of the progression distribution
@@ -730,6 +733,7 @@ class SaccadeUnlikelihood(MeasureTransformer):
     def nassym(s: float, mu: float, sigma1: float, sigma2: float) -> float:
         """
         Calculates assymetric Gaussian PDF at point s.
+
         :param s: saccade length
         :param mu: mean of the distribution
         :param sigma1: standard deviation for the left part of the distribution (s < mu)
@@ -768,6 +772,7 @@ class SaccadeUnlikelihood(MeasureTransformer):
 class HHTFeatures(BaseTransformer):
     """
     Extracts features from the Hilbert-Huang Transform (HHT) of the scanpath.
+
     :param max_imfs: maximum number of intrinsic mode functions (IMFs) to extract
     :param features: list of features to extract from the HHT (aggregation functions, special features)
     List of special functions: ['entropy', 'energy', 'dom_freq', 'sample_entropy', 'complexity_index']
@@ -821,6 +826,7 @@ class HHTFeatures(BaseTransformer):
     def dominant_freq(self, imf_data: np.ndarray) -> List[float]:
         """
         Calculates dominant frequency of the intrinsic mode functions (IMFs) using FFT.
+
         :param imf_data: intrinsic mode functions (IMFs) data
         :return: dominant frequency of each IMF
         """
@@ -835,6 +841,7 @@ class HHTFeatures(BaseTransformer):
     def coarse_grain(self, imf_data: np.ndarray, scale: int = 5) -> np.ndarray:
         """
         Calculates coarse-grained standard deviation of the intrinsic mode functions (IMFs).
+
         :param imf_data: intrinsic mode functions (IMFs) data
         :return: coarse-grained standard deviation of each IMF
         """
@@ -856,6 +863,7 @@ class HHTFeatures(BaseTransformer):
     ) -> List[float]:
         """
         Calculates sample entropy of the intrinsic mode functions (IMFs).
+
         :param imf_data: intrinsic mode functions (IMFs) data
         :param m: length of sequences to compare
         :param r: tolerance for accepting mathces
@@ -883,6 +891,7 @@ class HHTFeatures(BaseTransformer):
     ) -> List[float]:
         """
         Calculates complexity index of the intrinsic mode functions (IMFs).
+
         :param imf_data: intrinsic mode functions (IMFs) data
         :param m: length of sequences for sample entropy
         :param r: tolerance for sample entropy
@@ -903,6 +912,7 @@ class HHTFeatures(BaseTransformer):
     def calculate_features(self, data: pd.DataFrame) -> List[float]:
         """
         Feature extraction from the HHT.
+
         :param data: 1D array of the HHT signal
         :returns: list of features extracted from the HHT
         """

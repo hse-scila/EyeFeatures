@@ -169,6 +169,7 @@ class BaseAOIPreprocessor(BasePreprocessor, ABC):
     ) -> tuple[np.ndarray[Any, np.dtype], Any, Any]:
         """
         Finds the fixation density of a given dataframe.
+
         :param data: DataFrame with fixations.
         :return: density for each point in [x_min, x_max] x [y_min, y_max] area
         """
@@ -187,6 +188,7 @@ class BaseAOIPreprocessor(BasePreprocessor, ABC):
     def _find_local_max_coordinates(loc_max_matrix: np.ndarray) -> np.ndarray:
         """
         Finds the local max coordinates of a fixation density matrix.
+
         :param loc_max_matrix: matrix with maxima.
         """
         for i in prange(loc_max_matrix.shape[0]):  # TODO vectorize with numpy?

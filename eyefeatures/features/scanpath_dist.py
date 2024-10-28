@@ -7,8 +7,7 @@ from numba import jit
 from tqdm import tqdm
 
 from eyefeatures.features.extractor import BaseTransformer
-from eyefeatures.features.scanpath_complex import (_get_fill_path,
-                                                   get_expected_path)
+from eyefeatures.features.scanpath_complex import _get_fill_path, get_expected_path
 from eyefeatures.utils import Types, _split_dataframe
 
 
@@ -660,6 +659,7 @@ def _transform_path(path: pd.DataFrame, t_bin: int) -> str:
 def calc_euc_dist(p: pd.DataFrame, q: pd.DataFrame) -> float:
     """
     Calculates Euclidean distance between paths p and q
+
     :param p: pd.DataFrame containing columns (x, y) only
     :param q: pd.DataFrame containing columns (x, y) only
     """
@@ -678,6 +678,7 @@ def calc_euc_dist(p: pd.DataFrame, q: pd.DataFrame) -> float:
 def calc_hau_dist(p: pd.DataFrame, q: pd.DataFrame) -> float:
     """
     Calculates Hausdorff distance between paths p and q
+
     :param p: pd.DataFrame containing columns (x, y) only
     :param q: pd.DataFrame containing columns (x, y) only
     """
@@ -716,6 +717,7 @@ def calc_hau_dist(p: pd.DataFrame, q: pd.DataFrame) -> float:
 def calc_dtw_dist(p: pd.DataFrame, q: pd.DataFrame) -> float:
     """
     Calculates Dynamic Time Warp distance between paths p and q
+
     :param p: pd.DataFrame containing columns (x, y) only
     :param q: pd.DataFrame containing columns (x, y) only
     """
@@ -751,6 +753,7 @@ def calc_scan_match_dist(
 ) -> float:
     """
     Calculates ScanMatch distance between paths p and q
+
     :param p: pd.DataFrame containing columns (x, y, duration) only
     :param q: pd.DataFrame containing columns (x, y, duration) only
     :param sub_mat: substitute costs matrix of shape 20x20 used for AOI differentiating
@@ -790,6 +793,7 @@ def calc_scan_match_dist(
 def calc_man_dist(p: pd.DataFrame, q: pd.DataFrame) -> float:
     """
     Calculates Mannan distance between paths p and q
+
     :param p: pd.DataFrame containing columns (x, y) only
     :param q: pd.DataFrame containing columns (x, y) only
     """
@@ -815,6 +819,7 @@ def calc_man_dist(p: pd.DataFrame, q: pd.DataFrame) -> float:
 def calc_eye_dist(p: pd.DataFrame, q: pd.DataFrame) -> float:
     """
     Calculates EyeDist distance between paths p and q
+
     :param p: pd.DataFrame containing columns (x, y) only
     :param q: pd.DataFrame containing columns (x, y) only
     """
@@ -839,6 +844,7 @@ def calc_eye_dist(p: pd.DataFrame, q: pd.DataFrame) -> float:
 def calc_dfr_dist(p: pd.DataFrame, q: pd.DataFrame) -> float:
     """
     Calculates Discrete Frechet distance between paths p and q
+
     :param p: pd.DataFrame containing columns (x, y) only
     :param q: pd.DataFrame containing columns (x, y) only
     """
@@ -871,6 +877,7 @@ def calc_dfr_dist(p: pd.DataFrame, q: pd.DataFrame) -> float:
 def calc_tde_dist(p: pd.DataFrame, q: pd.DataFrame, k: int = 1) -> float:
     """
     Calculates Time Delay Embedding distance between paths p and q
+
     :param p: pd.DataFrame containing columns (x, y) only
     :param q: pd.DataFrame containing columns (x, y) only
     :param k: number of scanpath batches
@@ -902,6 +909,7 @@ def calc_mm_features(
 ) -> Tuple[float, float, float, float, float]:
     """
     Calculates MultiMatch features between paths p and q
+
     :param p: pd.DataFrame containing columns (x, y, duration) only
     :param q: pd.DataFrame containing columns (x, y, duration) only
     """
