@@ -21,6 +21,7 @@ gudhi = "3.10.1"
 
 [tool.poetry.group.docs.dependencies]
 m2r2 = "^0.3.3.post2"
+docutils = "0.19"
 
 [too.poetry.group.dev]
 optional = true
