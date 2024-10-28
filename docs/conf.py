@@ -5,8 +5,8 @@ sys.path.insert(0, os.path.abspath('../eyefeatures'))
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = 'Test Project'
-author = 'The Authors'
+project = 'EyeFeatures'
+author = ''
 version = release = '0.1.0'
 
 # -- General configuration ------------------------------------------------
@@ -16,6 +16,7 @@ exclude_patterns = []
 extensions = [
     'm2r2',
     'sphinx.ext.autodoc',
+    'sphinx.ext.mathjax',
     'sphinx.ext.napoleon',  # Optional, for Google/NumPy style
     'sphinx.ext.autosummary',  # Optional, for automatic summaries
     # 'sphinx_autodoc_typehints'  # Optional, for type hints in docs
