@@ -28,7 +28,7 @@ autodoc_default_options = {
     'special-members': 'init', # Include init method in classes
 }
 language = 'en'
-# master_doc = 'index'
+master_doc = 'index'
 pygments_style = 'sphinx'
 source_suffix = ['.rst', '.md']
 # templates_path = ['_templates']
