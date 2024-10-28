@@ -1,3 +1,7 @@
+import os
+import sys
+sys.path.insert(0, os.path.abspath('../eyefeatures'))
+
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
@@ -14,7 +18,7 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.napoleon',  # Optional, for Google/NumPy style
     'sphinx.ext.autosummary',  # Optional, for automatic summaries
-    'sphinx_autodoc_typehints'  # Optional, for type hints in docs
+    # 'sphinx_autodoc_typehints'  # Optional, for type hints in docs
 ]
 autodoc_default_options = {
     'members': True,            # Include all members (functions, classes, etc.)
