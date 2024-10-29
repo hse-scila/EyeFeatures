@@ -20,13 +20,11 @@ eyefeatures.utils module
 
 .. automodule:: eyefeatures.utils
    :members:
-   :undoc-members:
-   :show-inheritance:
+   :no-undoc-members:
 
 Module contents
 ---------------
 
 .. automodule:: eyefeatures
    :members:
-   :undoc-members:
-   :show-inheritance:
+   :no-undoc-members:

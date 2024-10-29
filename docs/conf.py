@@ -1,48 +1,41 @@
-# Configuration file for the Sphinx documentation builder.
-#
-# For the full list of built-in configuration values, see the documentation:
-# https://www.sphinx-doc.org/en/master/usage/configuration.html
-
-# -- Project information -----------------------------------------------------
-# https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 import os
 import sys
 sys.path.insert(0, os.path.abspath('..'))
 
-project = 'eyefeatures'
-copyright = '2024, Antonwefwfwfwfwfw'
-author = 'Antonwefwfwfwfwfw'
-release = 'fwfwf'
+# -- Project information -----------------------------------------------------
+# https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-# -- General configuration ---------------------------------------------------
+project = 'EyeFeatures'
+copyright = '2024'
+author = ''
+version = release = '0.1.0'
+
+# -- General configuration ------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-extensions = []
-
-templates_path = ['_templates']
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
-  # Adjust path to your source directory
-
-# Extensions
 extensions = [
+    'm2r2',
     'sphinx.ext.autodoc',
-    'sphinx.ext.napoleon',
-    'sphinx.ext.autosummary',
-    'sphinx_autodoc_typehints'
+    'sphinx.ext.mathjax',
+    'sphinx.ext.napoleon',  # Optional, for Google/NumPy style
+    'sphinx.ext.autosummary',  # Optional, for automatic summaries
+    # 'sphinx_autodoc_typehints'  # Optional, for type hints in docs
 ]
-
-# Autodoc settings
 autodoc_default_options = {
-    'members': True,
-    'undoc-members': True,
-    'private-members': True,
-    'special-members': '__init__',
+    'members': True,            # Include all members (functions, classes, etc.)
+    'undoc-members': True,       # Include members without docstrings
+    'private-members': True,     # Include private members with underscore prefix
+    'special-members': 'init', # Include init method in classes
 }
+language = 'en'
+master_doc = 'index'
+pygments_style = 'sphinx'
+source_suffix = ['.rst', '.md']
+# templates_path = ['_templates']
+exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
-napoleon_include_special_with_doc = True
-
-# -- Options for HTML output -------------------------------------------------
+# -- Options for HTML output ----------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = 'alabaster'
+html_theme = 'classic'
 html_static_path = ['_static']

@@ -9,21 +9,18 @@ eyefeatures.visualization.dynamic\_visualization module
 
 .. automodule:: eyefeatures.visualization.dynamic_visualization
    :members:
-   :undoc-members:
-   :show-inheritance:
+   :no-undoc-members:
 
 eyefeatures.visualization.static\_visualization module
 ------------------------------------------------------
 
 .. automodule:: eyefeatures.visualization.static_visualization
    :members:
-   :undoc-members:
-   :show-inheritance:
+   :no-undoc-members:
 
 Module contents
 ---------------
 
 .. automodule:: eyefeatures.visualization
    :members:
-   :undoc-members:
-   :show-inheritance:
+   :no-undoc-members:

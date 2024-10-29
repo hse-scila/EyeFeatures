@@ -9,21 +9,17 @@ eyefeatures.deep.datasets module
 
 .. automodule:: eyefeatures.deep.datasets
    :members:
-   :undoc-members:
-   :show-inheritance:
+   :no-undoc-members:
 
 eyefeatures.deep.models module
 ------------------------------
 
 .. automodule:: eyefeatures.deep.models
    :members:
-   :undoc-members:
-   :show-inheritance:
-
+   :no-undoc-members:
 Module contents
 ---------------
 
 .. automodule:: eyefeatures.deep
    :members:
-   :undoc-members:
-   :show-inheritance:
+   :no-undoc-members:

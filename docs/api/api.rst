@@ -5,4 +5,7 @@ API
    :maxdepth: 2
    :caption: Contents:
 
-   preprocessing
+   eyefeatures.deep
+   eyefeatures.features
+   eyefeatures.preprocessing
+   eyefeatures.visualization
