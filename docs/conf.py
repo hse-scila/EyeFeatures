@@ -38,4 +38,8 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
 html_theme = 'classic'
+html_theme_options = {
+    "rightsidebar": "false"
+}
+html_css_files = ["horizontal_sidebar.css"]
 html_static_path = ['_static']

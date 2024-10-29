@@ -9,21 +9,21 @@ eyefeatures.preprocessing.aoi\_extraction module
 
 .. automodule:: eyefeatures.preprocessing.aoi_extraction
    :members:
-   :show-inheritance:
+   :no-undoc-members:
 
 eyefeatures.preprocessing.base module
 -------------------------------------
 
 .. automodule:: eyefeatures.preprocessing.base
    :members:
-   :show-inheritance:
+   :no-undoc-members:
 
 eyefeatures.preprocessing.blinks\_extraction module
 ---------------------------------------------------
 
 .. automodule:: eyefeatures.preprocessing.blinks_extraction
    :members:
-   :show-inheritance:
+   :no-undoc-members:
 
 eyefeatures.preprocessing.fixation\_extraction module
 -----------------------------------------------------

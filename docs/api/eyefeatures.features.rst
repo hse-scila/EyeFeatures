@@ -9,28 +9,28 @@ eyefeatures.features.complex module
 
 .. automodule:: eyefeatures.features.complex
    :members:
-   :show-inheritance:
+   :no-undoc-members:
 
 eyefeatures.features.extractor module
 -------------------------------------
 
 .. automodule:: eyefeatures.features.extractor
    :members:
-   :show-inheritance:
+   :no-undoc-members:
 
 eyefeatures.features.measures module
 ------------------------------------
 
 .. automodule:: eyefeatures.features.measures
    :members:
-   :show-inheritance:
+   :no-undoc-members:
 
 eyefeatures.features.scanpath\_complex module
 ---------------------------------------------
 
 .. automodule:: eyefeatures.features.scanpath_complex
    :members:
-   :show-inheritance:
+   :no-undoc-members:
 
 eyefeatures.features.scanpath\_dist module
 ------------------------------------------
