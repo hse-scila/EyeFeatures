@@ -57,6 +57,6 @@ license = {file = "LICENSE"}
 authors = [
     {name = "Kondaurov Zakhar"},
     {name = "Tikhonov Daniil"},
-    {name = "Anton Surkov"},
+    {name = "Anton Surkov", email = "aysurkov@hse.ru"},
     {name = "Vagiz Daudov", email = "vagiz.0282@gmail.com"}
 ]
