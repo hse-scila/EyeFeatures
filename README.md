@@ -18,7 +18,8 @@ datasets and models for deep learning with Pytorch.
 
 ## Installation
 
-1. It is recommended to install package in separate python environment. In conda you can create it with `conda create -n <name_of_environment>`
+It is recommended to install package in separate python environment: (If you want to install it to base environment, ingore steps 1-2) 
+1. In conda you can create it with `conda create -n <name_of_environment>`
 2. To activate environment write `conda activate <name_of_environment>`. In order to make it visible in jupyter write `pip install ipykernel` and  `python -m ipykernel install --user --name <name_of_environment> --display-name "<name_of_environment>`
 
 By default eyefeatures is installed without `deep` module:
