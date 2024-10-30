@@ -14,7 +14,7 @@ class SavGolFilter(
     """
     Savitzkiy-Golay filter. 'x' and 'y' directions are filtered independently, time is ignored.
     Parameters are passed to `scipy.signal.savgol_filter`.
-
+    \n
     Default values are taken from https://arxiv.org/pdf/2303.02134.
     """
 
@@ -63,8 +63,11 @@ class FIRFilter(BaseSmoothingPreprocessor):  # TODO 2D version?
     """
     FIR filter. Convolution with RIR kernel along 'x' and 'y'. `kwargs` are passed to `scipy.signal.firwin`
     to determine the kernel.
+
     :param mode: parameter of `scipy.signal.fftconvolve`.
 
+    Note
+    -------
     Default values are taken from https://arxiv.org/pdf/2303.02134.
     """
 
@@ -132,8 +135,11 @@ class IIRFilter(BaseSmoothingPreprocessor):  # TODO 2D version?
     """
     IIR filter. Convolution with IIR kernel along 'x' and 'y'. `kwargs` are passed to `scipy.signal.iirfilter`
     to determine the kernel.
+
     :param mode: parameter of `scipy.signal.fftconvolve`.
 
+    Note
+    -------
     Default values are taken from https://arxiv.org/pdf/2303.02134.
     """
 
@@ -185,6 +191,7 @@ class IIRFilter(BaseSmoothingPreprocessor):  # TODO 2D version?
 class WienerFilter(BaseSmoothingPreprocessor):
     """
     Wiener filter. Applied independently along 'x' and 'y' axis.
+
     :param K: estimate of ratio of noise-to-signal spectra. If 'auto', such value of K
               on grid [-1e-3, 1e-3] with 2e3 values is chosen to minimize PSNR.
     :param sigma: std of Gaussian filter.

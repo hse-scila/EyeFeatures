@@ -293,6 +293,7 @@ class IHMM(BaseFixationPreprocessor):
     """
     Hidden Markov Model Identification.
     Complexity: O(n^2) for single group.
+
     :param fix2sac: probability of transition from fixation to saccade.
     :param sac2fix: probability of transition from saccade to fixation.
     :param fix_distrib: distribution of fixations.
@@ -478,12 +479,12 @@ class IHMM(BaseFixationPreprocessor):
     def _viterbi(self, observations, states, sp, tp, ep):
         """
         Computes hidden states vector Q s.t. probability
-        of observing vector 'observations' given sp, tp, and ep is maximum.
-        st ~ states
-        sp ~ start_probs
-        tp ~ transition_probs
-        ep ~ emission_probs
-        observations ~ velocities
+        of observing vector 'observations' given sp, tp, and ep is maximum.\n
+        st ~ states\n
+        sp ~ start_probs\n
+        tp ~ transition_probs\n
+        ep ~ emission_probs\n
+        observations ~ velocities\n
         """
         prev_probs_nlog = None
         best_path = []

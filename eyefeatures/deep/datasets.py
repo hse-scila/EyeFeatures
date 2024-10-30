@@ -27,18 +27,23 @@ def iterative_split(
     'maintains balanced representation with respect
     to order-th label combinations.'
 
-    Parameters:
-    - df (pd.DataFrame): Input dataframe to split.
-    - y (ArrayLike): Labels corresponding to the dataframe.
-    - test_size (float): Proportion of the dataset to include in the test split.
-    - stratify_columns (List[str]): List of column names to stratify by.
+    :param df: Input dataframe to split.
+    :param y: Labels corresponding to the dataframe.
+    :param test_size: Proportion of the dataset to include in the test split.
+    :param stratify_columns: List of column names to stratify by.
 
-    Returns:
-    - X_train (pd.DataFrame): Training split of the dataframe.
-    - X_test (pd.DataFrame): Test split of the dataframe.
-    - y_train (ArrayLike): Training labels.
-    - y_test (ArrayLike): Test labels.
-
+    Returns
+    -------
+    X_train: pd.DataFrame
+        Training split of the dataframe.
+    X_test: pd.DataFrame
+        Test split of the dataframe.
+    y_train: ArrayLike
+        Training labels.
+    y_test: ArrayLike
+        Test labels.
+    Notes
+    -----
     From https://madewithml.com/courses/mlops/splitting/#stratified-split
     """
     # One-hot encode the stratify columns and concatenate them
@@ -56,18 +61,19 @@ def iterative_split(
     return X_train, X_test, y_train, y_test
 
 
-def _coord_to_grid(coords, xlim, ylim, shape):
+def _coord_to_grid(coords: np.array, xlim: Tuple, ylim: Tuple, shape: Tuple):
     """
     Maps 2D coordinates to grid indices based on the grid resolution.
 
-    Parameters:
-    - coords (np.array): Array of coordinates to map.
-    - xlim (Tuple): The x-axis limits (x_min, x_max).
-    - ylim (Tuple): The y-axis limits (y_min, y_max).
-    - shape (Tuple): The shape of the grid (rows, cols).
+    :param coords: Array of coordinates to map.
+    :param xlim: The x-axis limits (x_min, x_max).
+    :param ylim: The y-axis limits (y_min, y_max).
+    :param shape: The shape of the grid (rows, cols).
 
-    Returns:
-    - i, j (np.array): The grid indices corresponding to the coordinates.
+    Returns
+    -------
+    (i, j): Tuple[int, int]
+        The grid indices corresponding to the coordinates.
     """
 
     i = (((coords[:, 0] - xlim[0]) / (xlim[1] - xlim[0])) * shape[0]).astype(int)
@@ -75,35 +81,37 @@ def _coord_to_grid(coords, xlim, ylim, shape):
     return i, j
 
 
-def _cell_index(i, j, shape):
+def _cell_index(i: int, j: int, shape: Tuple[int, int]):
     """
     Maps grid indices (i, j) to a 1D cell index based on the grid shape.
 
-    Parameters:
-    - i (int): Row index in the grid.
-    - j (int): Column index in the grid.
-    - shape (Tuple): The shape of the grid (rows, cols).
+    :param i: Row index in the grid.
+    :param j: Column index in the grid.
+    :param shape: The shape of the grid (rows, cols).
 
-    Returns:
-    - index (int): The 1D cell index.
+    Returns
+    -------
+    index: int
+        The 1D cell index.
     """
 
     return i * shape[1] + j
 
 
-def _calculate_cell_center(i, j, xlim, ylim, shape):
+def _calculate_cell_center(i: int, j: int, xlim: Tuple, ylim: Tuple, shape: Tuple):
     """
     Calculates the center coordinates of a grid cell.
 
-    Parameters:
-    - i (int): Row index of the cell.
-    - j (int): Column index of the cell.
-    - xlim (Tuple): Limits of the x-axis (x_min, x_max).
-    - ylim (Tuple): Limits of the y-axis (y_min, y_max).
-    - shape (Tuple): Shape of the grid (rows, cols).
+    :param i: Row index of the cell.
+    :param j: Column index of the cell.
+    :param xlim: Limits of the x-axis (x_min, x_max).
+    :param ylim: Limits of the y-axis (y_min, y_max).
+    :param shape: Shape of the grid (rows, cols).
 
-    Returns:
-    - x_center, y_center (float): Center coordinates of the grid cell.
+    Returns
+    -------
+    x_center, y_center: Tuple[float, float]
+        Center coordinates of the grid cell.
     """
     cell_width = (xlim[1] - xlim[0]) / shape[0]
     cell_height = (ylim[1] - ylim[0]) / shape[1]
@@ -112,15 +120,16 @@ def _calculate_cell_center(i, j, xlim, ylim, shape):
     return x_center, y_center
 
 
-def _calculate_length_vectorized(coords):
+def _calculate_length_vectorized(coords: np.array):
     """
     Calculates the Euclidean distance between consecutive points in 2D space.
 
-    Parameters:
-    - coords (np.array): Array of coordinates with shape (n, 2).
+    :param coords: Array of coordinates with shape (n, 2).
 
-    Returns:
-    - lengths (np.array): Euclidean distances between consecutive points.
+    Returns
+    -------
+    lengths: np.array
+        Euclidean distances between consecutive points.
     """
     # Calculate the difference between consecutive points
     dx = coords[1:, 0] - coords[:-1, 0]
@@ -139,25 +148,29 @@ def create_edge_list_and_cumulative_features(
     Creates an edge list and computes cumulative node features (total duration, total saccade lengths, and cell center coordinates).
     These features are normalized by their respective maximum values. Also computes edge features based on the sum of edge lengths.
 
-    Parameters:
-    - df: DataFrame containing the coordinates and other node features.
-    - x_col: Column name in df for the x coordinates.
-    - y_col: Column name in df for the y coordinates.
-    - duration_col: Column name in df for the duration between consecutive points (optional).
-    - xlim: Tuple (x_min, x_max) defining the bounds for the x-axis.
-    - ylim: Tuple (y_min, y_max) defining the bounds for the y-axis.
-    - shape: Tuple (x_res, y_res) defining the resolution of the grid.
-    - directed: If True, the graph is directional; if False, bidirectional edges are created.
+    :param df: DataFrame containing the coordinates and other node features.
+    :param x_col: Column name in df for the x coordinates.
+    :param y_col: Column name in df for the y coordinates.
+    :param duration_col: Column name in df for the duration between consecutive points (optional).
+    :param xlim: Tuple (x_min, x_max) defining the bounds for the x-axis.
+    :param ylim: Tuple (y_min, y_max) defining the bounds for the y-axis.
+    :param shape: Tuple (x_res, y_res) defining the resolution of the grid.
+    :param directed: If True, the graph is directional; if False, bidirectional edges are created.
 
-    Returns:
-    - edge_list: List of edges as pairs of node indices.
-    - edge_features: List of normalized edge features (sum of lengths of corresponding edges).
-    - node_mapping: Mapping of old node indices to new compacted indices.
-    - cumulative_node_features: A dictionary containing normalized cumulative features:
-        - 'total_duration': Normalized total duration at each node.
-        - 'total_saccade_length_to': Normalized total saccade length directed to each node.
-        - 'total_saccade_length_from': Normalized total saccade length originating from each node.
-        - 'cell_centers': Coordinates of the center of each cell as node features.
+    Returns
+    -------
+    edge_list:
+        List of edges as pairs of node indices.
+    edge_features:
+        List of normalized edge features (sum of lengths of corresponding edges).
+    node_mapping:
+        Mapping of old node indices to new compacted indices.
+    cumulative_node_features:
+        A dictionary containing normalized cumulative features:\n
+        - 'total_duration': Normalized total duration at each node.\n
+        - 'total_saccade_length_to': Normalized total saccade length directed to each node.\n
+        - 'total_saccade_length_from': Normalized total saccade length originating from each node.\n
+        - 'cell_centers': Coordinates of the center of each cell as node features.\n
     """
 
     coords = df[[x_col, y_col]].values
@@ -247,18 +260,19 @@ def create_graph_data_from_dataframe(
     Includes cumulative node features (total duration, total saccade length to/from node, and cell center coordinates).
     Edge features are based on the sum of lengths of corresponding edges.
 
-    Parameters:
-    - df: DataFrame containing the coordinates and other node features.
-    - x_col: Column name in df for the x coordinates.
-    - y_col: Column name in df for the y coordinates.
-    - duration_col: Column name in df for the duration between consecutive points (optional).
-    - xlim: Tuple (x_min, x_max) defining the bounds for the x-axis.
-    - ylim: Tuple (y_min, y_max) defining the bounds for the y-axis.
-    - shape: Tuple (x_res, y_res) defining the resolution of the grid.
-    - directed: If True, the graph is directional; if False, bidirectional edges are created.
+    :param df: DataFrame containing the coordinates and other node features.
+    :param x_col: Column name in df for the x coordinates.
+    :param y_col: Column name in df for the y coordinates.
+    :param duration_col: Column name in df for the duration between consecutive points (optional).
+    :param xlim: Tuple (x_min, x_max) defining the bounds for the x-axis.
+    :param ylim: Tuple (y_min, y_max) defining the bounds for the y-axis.
+    :param shape: Tuple (x_res, y_res) defining the resolution of the grid.
+    :param directed: If True, the graph is directional; if False, bidirectional edges are created.
 
-    Returns:
-    - data: A PyTorch Geometric Data object containing the graph and its features.
+    Returns
+    -------
+    data:
+        A PyTorch Geometric Data object containing the graph and its features.
     """
 
     # Get edge list and cumulative features
@@ -314,14 +328,13 @@ class Dataset2D(Dataset):
     """
     Custom dataset for 2D image-based representations derived from gaze data.
 
-    Parameters:
-    - X (pd.DataFrame): Input data.
-    - y (ArrayLike): Labels for the data.
-    - pk (List[str]): List of primary keys for grouping.
-    - shape (Union[Tuple[int], int]): Shape of the images.
-    - representations (List[str]): List of representation types.
-    - upload_to_cuda (bool): If True, upload the data to the GPU. Default: False.
-    - transforms (Optional): Transformations to apply to the data.
+    :param X: (pd.DataFrame) Input data.
+    :param y: (ArrayLike) Labels for the data.
+    :param pk: (List[str]) List of primary keys for grouping.
+    :param shape: (Union[Tuple[int], int]) Shape of the images.
+    :param representations: (List[str]) List of representation types.
+    :param upload_to_cuda: (bool) If True, upload the data to the GPU. Default: False.
+    :param transforms: (Optional) Transformations to apply to the data.
     """
 
     def __init__(
@@ -400,14 +413,13 @@ class DatasetTimeSeries(Dataset):
     """
     Custom dataset for time-series data.
 
-    Parameters:
-    - X (pd.DataFrame): Input time-series data.
-    - y (ArrayLike): Labels for the data.
-    - pk (List[str]): Primary keys for grouping.
-    - shape (Union[Tuple[int], int]): Shape of the data samples.
-    - features (List[str]): List of features to extract.
-    - upload_to_cuda (bool): If True, upload the data to the GPU. Default: False.
-    - transforms (Optional): Transformations to apply to the data.
+    :param X: (pd.DataFrame) Input time-series data.
+    :param y: (ArrayLike) Labels for the data.
+    :param pk: (List[str]) Primary keys for grouping.
+    :param shape: (Union[Tuple[int], int]) Shape of the data samples.
+    :param features: (List[str]) List of features to extract.
+    :param upload_to_cuda: (bool) If True, upload the data to the GPU. Default: False.
+    :param transforms: (Optional) Transformations to apply to the data.
     """
 
     def __init__(
@@ -491,9 +503,8 @@ class TimeSeries_2D_Dataset(Dataset):
     """
     Composite dataset that combines image and time-series data.
 
-    Parameters:
-    - image_dataset (Dataset): Dataset containing image data.
-    - sequence_dataset (Dataset): Dataset containing sequence data.
+    :param image_dataset: (Dataset) Dataset containing image data.
+    :param sequence_dataset: (Dataset) Dataset containing sequence data.
     """
 
     def __init__(self, image_dataset, sequence_dataset):
@@ -545,18 +556,17 @@ class GridGraphDataset(Dataset):
     """
     Custom dataset for generating grid-based graph representations from spatial coordinates.
 
-    Parameters:
-    - X (pd.DataFrame): Input dataframe.
-    - y (ArrayLike): Labels for the data.
-    - pk (List[str]): Primary keys for grouping.
-    - features (List[str]): List of features to extract.
-    - x_col, y_col (str): Column names for x and y coordinates.
-    - duration_col (str): Column name for time durations.
-    - xlim (Tuple): Limits of the x-axis.
-    - ylim (Tuple): Limits of the y-axis.
-    - shape (Tuple): Shape of the grid.
-    - directed (bool): Whether the graph is directed.
-    - transforms (Optional): Transformations to apply to the data.
+    :param X: (pd.DataFrame) Input dataframe.
+    :param y: (ArrayLike) Labels for the data.
+    :param pk: (List[str]) Primary keys for grouping.
+    :param features: (List[str]) List of features to extract.
+    :param x_col, y_col: (str) Column names for x and y coordinates.
+    :param duration_col: (str) Column name for time durations.
+    :param xlim: (Tuple) Limits of the x-axis.
+    :param ylim: (Tuple) Limits of the y-axis.
+    :param shape: (Tuple) Shape of the grid.
+    :param directed: (bool) Whether the graph is directed.
+    :param transforms: (Optional) Transformations to apply to the data.
     """
 
     def __init__(
@@ -616,13 +626,12 @@ class DatasetLightningBase(pl.LightningDataModule):
     """
     Base PyTorch Lightning DataModule for managing datasets and dataloaders.
 
-    Parameters:
-    - X (pd.DataFrame): Input data.
-    - y (ArrayLike): Labels for the data.
-    - pk (List[str]): Primary keys for grouping.
-    - test_size (int): Test size for the train-validation split.
-    - batch_size (int): Batch size for the dataloaders.
-    - split_type (str): Type of train-validation split.
+    :param X: (pd.DataFrame) Input data.
+    :param y: (ArrayLike) Labels for the data.
+    :param pk: (List[str]) Primary keys for grouping.
+    :param test_size: (int) Test size for the train-validation split.
+    :param batch_size: (int) Batch size for the dataloaders.
+    :param split_type: (str) Type of train-validation split.
     """
 
     def __init__(

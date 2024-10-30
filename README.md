@@ -26,7 +26,7 @@ by cloning the repository on your local machine:
 1. Open a command prompt/terminal and move to an empty folder.
 2. Write command `git clone https://github.com/hse-scila/EyeFeatures` (in windows you need to do it in anaconda prompt).
 3. Write command `cd EyeFeatures`.
-4. If you want to use all modules except for the `deep` module, then write `pip3 install -r base-requirements.txt`.
-If you want to use the `deep` module, write `pip3 install -r requirements.txt`.
-5. If you want to explore the library in Jupyter Notebook, then commands `pip3 install jupyter` and `jupyter notebook`
-will help you.
+4. Write command `pip install poetry`.
+5. If you want to use all modules except for the `deep` module, then write `poetry install --only main`.
+If you want to use the `deep` module, write `poetry install --with deep`. 
+6. If you want to explore the library in Jupyter Notebook, execute `poetry install --with test`.

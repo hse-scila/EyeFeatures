@@ -9,7 +9,7 @@ from numpy.typing import NDArray
 @dataclass
 class Types:
     """
-    Partition: List of split pairs <pk, Dataframe>
+    Partition: List of split pairs <pk, Dataframe>\n
     Data: either Dataframe or Partition
     """
 
