@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "eyefeatures"
-version = "0.1.0"
+version = "0.1.1"
 description = "Preprocessing, visualization, statistical analysis, feature engineering, and machine learning of eye movement data."
 authors = ["Vagiz Daudov <vagiz.0282@gmail.com>"]
 readme = "README.md"
