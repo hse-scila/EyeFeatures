@@ -25,8 +25,6 @@ It is recommended to install package in separate python environment: (If you wan
 By default eyefeatures is installed without `deep` module:
 
 3. To install eyefeatures write `pip install eyefeatures`.
-4. Write command `cd EyeFeatures`.
-5. Write command `pip install poetry`.
 
 If you want to install it with `deep` module:
 
