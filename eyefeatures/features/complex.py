@@ -121,7 +121,6 @@ def pca(matrix: NDArray, p: int, cum_sum: float = None):
 
 
 # =========================== RQA ===========================
-@jit(forceobj=True, looplift=True)
 def get_rqa(
     data: pd.DataFrame, x: str, y: str, metric: Callable, rho: float
 ) -> np.ndarray:
@@ -139,8 +138,8 @@ def get_rqa(
     n = len(fixations)
     rqa_matrix = np.zeros((n, n), dtype=np.int32)
 
-    for i in prange(n):
-        for j in prange(i + 1, n):
+    for i in range(n):
+        for j in range(i + 1, n):
             dist = metric(fixations[i], fixations[j])
             rqa_matrix[i][j] = int(dist <= rho)
             rqa_matrix[j][i] = int(dist <= rho)
@@ -192,7 +191,7 @@ def get_mtf(
     n_samples, n_timestamps = 2, len(x_coords)
     if output_size < n_timestamps:
         shrunk_mtfs = []
-        for i in prange(n_samples):
+        for i in range(n_samples):
             shrunk_mtfs.append(
                 _shrink_matrix(
                     fixations_mtf[i, :, :],
@@ -208,7 +207,6 @@ def get_mtf(
     return fixations_mtf.flatten() if flatten else fixations_mtf
 
 
-@jit(forceobj=True, looplift=True)
 def _get_mtf(a: np.array, n_bins: int) -> np.array:
     assert len(a.shape) == 2, "Array of shape (n_samples, n_timestamps) must be passed."
     n_samples, n_timestamps = a.shape
@@ -216,14 +214,14 @@ def _get_mtf(a: np.array, n_bins: int) -> np.array:
     a_binned = np.zeros(a.shape, dtype=np.int64)
     quantiles = np.linspace(0, 1, n_bins + 1)[1:-1]  # evenly spaced quantiles
     bins = np.quantile(a, q=quantiles, axis=1).T  # bins for each sample
-    for i in prange(n_samples):
+    for i in range(n_samples):
         a_binned[i, :] = np.searchsorted(
             bins[i, :], a[i, :], side="left"
         )  # squeeze coordinates
 
     mtm = np.zeros((n_samples, n_bins, n_bins))  # build Markov Transition Matrix
-    for i in prange(n_samples):
-        for j in prange(n_timestamps - 1):
+    for i in range(n_samples):
+        for j in range(n_timestamps - 1):
             mtm[i, a_binned[i, j], a_binned[i, j + 1]] += 1
 
     mtm_sum = mtm.sum(axis=2)  # normalize rows sums in each sample to 1
@@ -233,9 +231,9 @@ def _get_mtf(a: np.array, n_bins: int) -> np.array:
     mtf = np.zeros(
         (n_samples, n_timestamps, n_timestamps)
     )  # build Markov Transition Field
-    for i in prange(n_samples):
-        for j in prange(n_timestamps):
-            for k in prange(n_timestamps):
+    for i in range(n_samples):
+        for j in range(n_timestamps):
+            for k in range(n_timestamps):
                 mtf[i, j, k] = mtm[i, a_binned[i, j], a_binned[i, k]]
 
     return mtf
@@ -385,7 +383,7 @@ def _get_gaf(
             return np.sin(phi1 - phi2)
 
     gaf = np.zeros((n_samples, n_timestamps, n_timestamps))
-    for i in prange(n_samples):
+    for i in range(n_samples):
         if to_polar == "regular":
             rho, phi = _car2pol(
                 a[i, :], _get_t(t, i)
@@ -393,8 +391,8 @@ def _get_gaf(
         else:
             rho, phi = _encode_car(a[i, :], _get_t(t, i))
 
-        for j in prange(n_timestamps):
-            for k in prange(n_timestamps):
+        for j in range(n_timestamps):
+            for k in range(n_timestamps):
                 gaf[i, j, k] = f(phi[j], phi[k])
 
     return gaf
@@ -428,7 +426,6 @@ def _encode_car(x: np.array, t: np.array) -> Tuple[np.array, np.array]:
 
 
 # =========================== HILBERT CURVE ===========================
-@jit(forceobj=True, looplift=True)
 def get_hilbert_curve_enc(
     data: pd.DataFrame, x: str, y: str, scale: bool = True, p: int = 4
 ) -> np.array:
@@ -449,12 +446,11 @@ def get_hilbert_curve_enc(
     )  # get Hilbert curve mapping
     mapping = np.unique(mapping)  # leave only unique values
     vec = np.zeros((n * n,))
-    for i in prange(n * n):
+    for i in range(n * n):
         vec[i] = i in mapping  # activate mapped values
     return vec
 
 
-@jit(forceobj=True, looplift=True)
 def get_hilbert_curve(
     data: pd.DataFrame, x: str, y: str, scale: bool = True, p: int = 4
 ) -> np.array:
@@ -489,7 +485,7 @@ def get_hilbert_curve(
     )  # map [0, 2^p] to {0, 1, .., 2^p}
 
     h = np.zeros((n_fixations,))
-    for i in prange(n_fixations):
+    for i in range(n_fixations):
         h[i] = xy2h(x[i], y[i], p=p)
     return h
 

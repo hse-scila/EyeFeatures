@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Tuple, Union
 import numpy as np
 import pandas as pd
 from numba import jit
+from tqdm import tqdm
 from sklearn.base import BaseEstimator, TransformerMixin
 
 
@@ -62,7 +63,8 @@ class BaseTransformer(BaseEstimator, TransformerMixin):
         self.dispersion = dispersion
         self.path_pk = path_pk
         self.pk = pk
-        self.aoi = aoi
+        #if self.aoi is None:
+        #    self.aoi = aoi
         self.return_df = return_df
         self.expected_paths = expected_paths
         self.fill_path = fill_path
@@ -107,7 +109,6 @@ class Extractor(BaseEstimator, TransformerMixin):  # TODO rename to FeatureExtra
         self.return_df = return_df
         self.is_fitted = False
 
-    @jit(forceobj=True, looplift=True)
     def fit(self, X: pd.DataFrame, y=None):
         self.is_fitted = True
         if self.features is not None:
@@ -128,7 +129,6 @@ class Extractor(BaseEstimator, TransformerMixin):  # TODO rename to FeatureExtra
 
         return self
 
-    @jit(forceobj=True, looplift=True)
     def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
         if not self.is_fitted:
             raise RuntimeError("Class is not fitted")
@@ -137,17 +137,17 @@ class Extractor(BaseEstimator, TransformerMixin):  # TODO rename to FeatureExtra
             return X if self.return_df else X.values
 
         gathered_features = []
-        data_df: pd.DataFrame = X[
-            [self.x, self.y, self.t, self.duration, self.dispersion]
-        ]
+        data_df: pd.DataFrame = X#[
+            #[self.x, self.y, self.t, self.duration, self.dispersion]
+        #]
 
-        if self.pk is not None:
-            data_df = pd.concat([data_df, X[self.pk]], axis=1)
+        #if self.pk is not None:
+        #    data_df = pd.concat([data_df, X[self.pk]], axis=1)
 
-        if self.aoi is not None:
-            data_df = pd.concat([data_df, X[self.aoi]], axis=1)
+        #if self.aoi is not None:
+        #    data_df = pd.concat([data_df, X[self.aoi]], axis=1)
 
-        for feature in self.features:
+        for feature in tqdm(self.features):
             gathered_features.append(feature.transform(data_df))
 
         if self.extra is not None:

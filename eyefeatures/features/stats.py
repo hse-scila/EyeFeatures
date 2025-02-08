@@ -191,7 +191,6 @@ class StatsTransformer(BaseTransformer):
 
         return feats
 
-    @jit(forceobj=True, looplift=True)
     def fit(self, X: pd.DataFrame, y=None):
         self._check_features_stats()
 
@@ -264,7 +263,6 @@ class StatsTransformer(BaseTransformer):
 
         return self
 
-    @jit(forceobj=True, looplift=True)
     def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, NDArray]:
         if self.features_stats is None:
             return X if self.return_df else X.values
@@ -361,7 +359,7 @@ class StatsTransformer(BaseTransformer):
                             if self._is_shift_feat(feat_nm):
                                 column_nms.extend(
                                     [
-                                        f"{self._fp}_{feat_nm}{aoi_str}_{stat}_shift"
+                                        f"{self._fp}_{feat_nm}{aoi_str}_{stat}_shift_{'_'.join(self.shift_pk)}"
                                         for stat in feat_stats
                                         if self._is_shift_stat(feat_nm + aoi_str, stat)
                                     ]
@@ -437,7 +435,7 @@ class RegressionFeatures(StatsTransformer):
             rotating anti-clockwise.
         """
         super().__init__(**kwargs)
-        self.available_feats = ("length", "acceleration", "speed")
+        self.available_feats = ("length", "acceleration", "speed", "mask")
         self.rule = rule
         self.deviation = deviation
 
@@ -498,6 +496,8 @@ class RegressionFeatures(StatsTransformer):
             dt = dt if dt is not None else _calc_dt(X, self.duration, self.t)
             sac_spd = dr / (dt + self.eps)
             feats.append(("speed", sac_spd[sm][tm]))
+        if "mask" in features:
+            feats.append(("mask", sm))
 
         return feats
 
@@ -510,7 +510,7 @@ class MicroSaccades(StatsTransformer):
         anti-clockwise.
         """
         super().__init__(**kwargs)
-        self.available_feats = ("length", "acceleration", "speed")
+        self.available_feats = ("length", "acceleration", "speed", "mask")
         self.min_dispersion = min_dispersion
         self.max_speed = max_speed
 
@@ -555,6 +555,9 @@ class MicroSaccades(StatsTransformer):
             dt = dt if dt is not None else _calc_dt(X, self.duration, self.t)
             sac_spd = dr / (dt + self.eps)
             feats.append(("speed", sac_spd[sm][tm]))
+            
+        if "mask" in features:
+            feats.append(("mask", sm))
 
         return feats
 
