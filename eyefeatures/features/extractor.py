@@ -2,9 +2,12 @@ from typing import Any, Dict, List, Tuple, Union
 
 import numpy as np
 import pandas as pd
+import warnings
 from numba import jit
 from tqdm import tqdm
 from sklearn.base import BaseEstimator, TransformerMixin
+
+from eyefeatures.utils import _split_dataframe
 
 
 class BaseTransformer(BaseEstimator, TransformerMixin):
@@ -63,6 +66,7 @@ class BaseTransformer(BaseEstimator, TransformerMixin):
         self.dispersion = dispersion
         self.path_pk = path_pk
         self.pk = pk
+        self.aoi = aoi
         #if self.aoi is None:
         #    self.aoi = aoi
         self.return_df = return_df
@@ -77,6 +81,7 @@ class BaseTransformer(BaseEstimator, TransformerMixin):
         return X if self.return_df else X.values
 
 
+# TODO features_names_in_ прокинуть для всех базовых классов
 class Extractor(BaseEstimator, TransformerMixin):  # TODO rename to FeatureExtractor
     def __init__(
         self,
@@ -109,7 +114,23 @@ class Extractor(BaseEstimator, TransformerMixin):  # TODO rename to FeatureExtra
         self.return_df = return_df
         self.is_fitted = False
 
+    def _process_input(self, X: pd.DataFrame, y=None):
+        if self.pk is not None and X[self.pk].isnull().values.any():
+            raise ValueError("Found missing values in pk.")
+        elif X.isnull().values.any():
+            groups: List[str, pd.DataFrame] = _split_dataframe(
+                X, self.pk
+            )  # split by pk
+            for group_id, group_X in groups:
+                if group_X.isnull().values.any():
+                    warnings.warn(f"Group {group_id} has missing values. Dropping them.",
+                                  stacklevel=5)
+            X = X.dropna()
+        return X, y
+
     def fit(self, X: pd.DataFrame, y=None):
+        X, y = self._process_input(X, y)
+
         self.is_fitted = True
         if self.features is not None:
             for feature in self.features:
@@ -150,7 +171,7 @@ class Extractor(BaseEstimator, TransformerMixin):  # TODO rename to FeatureExtra
         for feature in tqdm(self.features):
             gathered_features.append(feature.transform(data_df))
 
-        if self.extra is not None:
+        if self.extra is not None:  # TODO remove because accepts single agg method?
             gathered_features.append(
                 X[self.extra].groupby(self.pk).apply(self.aggr_extra)
             )

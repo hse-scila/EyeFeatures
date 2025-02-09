@@ -6,3 +6,7 @@ __pypackages__/
 .ipynb_checkpoints/
 .DS_Store
 poetry.lock
+_build/
+data/
+dist/
+.pypirc
