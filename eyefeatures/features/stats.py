@@ -443,20 +443,28 @@ class StatsTransformer(BaseTransformer):
                                     shift_pk_id = _get_id(shift_pk)
 
                                     if self._is_shift_feat(shift_features, feat_nm):  # calc shifts
-                                        shift_group_id = _get_id(
-                                            group_X[shift_pk].values[0]
-                                        )
+                                        # --- Because shift_pk was required to be subset of pk ---
+                                        # shift_group_id = _get_id(
+                                        #     group_X[shift_pk].values[0]
+                                        # )
+                                        # --------------------------------------------------------
+                                        values = group_X[shift_pk].values
+                                        shift_group_ids = [_get_id(v) for v in values]
                                         shift_stats_group.extend(
                                             [
-                                                stats_group[i]
-                                                - self._get_shift_val(
-                                                    shift_pk_id,
-                                                    shift_group_id,
-                                                    aoi_col,
-                                                    aoi_val,
-                                                    feat_nm,
-                                                    feat_stats[i],
-                                                )
+                                                np.mean([
+                                                    stats_group[i]
+                                                    - self._get_shift_val(
+                                                        shift_pk_id,
+                                                        shift_group_id,
+                                                        aoi_col,
+                                                        aoi_val,
+                                                        feat_nm,
+                                                        feat_stats[i],
+                                                    )
+                                                    for shift_group_id
+                                                    in shift_group_ids
+                                                ])
                                                 for i in range(len(stats_group))
                                                 if self._is_shift_stat(  # no aoi_str
                                                     shift_features, feat_nm, feat_stats[i]
