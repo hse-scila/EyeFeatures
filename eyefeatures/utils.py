@@ -9,17 +9,20 @@ from numpy.typing import NDArray
 @dataclass
 class Types:
     """
-    Partition: List of split pairs <pk, Dataframe>\n
+    Partition: List of split pairs <pk, Dataframe>
+    EncodedPartition: List of split pairs <join(pk), Dataframe>
     Data: either Dataframe or Partition
     """
 
-    Partition = List[Tuple[str, pd.DataFrame]]
-    Data = Union[pd.DataFrame, Partition]
+    Partition = List[Tuple[Tuple, pd.DataFrame]]
+    EncodedPartition = List[Tuple[str, pd.DataFrame]]
+    Data = pd.DataFrame | Partition
+    Quadrants = Tuple[int, ...]
 
 
 def _split_dataframe(
     df: pd.DataFrame, pk: List[str], encode=True
-) -> Union[Types.Partition, List[Tuple[Tuple, pd.DataFrame]]]:
+) -> Types.Partition | Types.EncodedPartition:
     """
     :param df: DataFrame to split
     :param pk: primary key to split by
@@ -27,7 +30,7 @@ def _split_dataframe(
     """
 
     assert set(pk).issubset(set(df.columns)), "Some key columns in df are missing"
-    grouped: List[Tuple[Tuple, pd.DataFrame]] = list(df.groupby(by=pk))
+    grouped: Types.Partition = list(df.groupby(by=pk))
     if not encode:
         return grouped
     return [(_get_id(grouped[i][0]), grouped[i][1]) for i in range(len(grouped))]
@@ -139,7 +142,7 @@ def _select_regressions(
     dx: pd.Series,
     dy: pd.Series,
     rule: Tuple[int, ...],
-    deviation: Union[int, Tuple[int, ...]] = None,
+    deviation: None | int | Tuple[int, ...] = None,
 ) -> NDArray:
     mask = np.zeros(len(dx))
 

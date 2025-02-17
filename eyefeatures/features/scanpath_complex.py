@@ -185,7 +185,6 @@ def get_sim_matrix(scanpaths: List[NDArray], sim_metric: Callable) -> np.ndarray
     return sim_matrix / m
 
 
-@jit(forceobj=True, looplift=True)
 def get_dist_matrix(
     scanpaths: List[pd.DataFrame], dist_metric: Callable
 ) -> pd.DataFrame:

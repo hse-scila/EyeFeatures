@@ -32,15 +32,12 @@ class MeasureTransformer(ABC, BaseTransformer):
         assert X_len != 0, "Error: there are no fixations"
 
     @abstractmethod
-    @jit(forceobj=True, looplift=True)
     def calculate_feature(self, X: pd.DataFrame) -> float:
         raise NotImplementedError("Abstract method called")
 
-    @jit(forceobj=True, looplift=True)
     def fit(self, X: pd.DataFrame, y=None):
         return self
 
-    @jit(forceobj=True, looplift=True)
     def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
         self._check_init(X_len=X.shape[0])
 
@@ -106,7 +103,6 @@ class HurstExponent(MeasureTransformer):
             f"Error: 'fill_strategy' must be one of " f"{','.join(fill_strategies)}."
         )
 
-    @jit(forceobj=True, looplift=True)
     def _make_pow2(self, x: np.array) -> np.array:
         n = len(x)
         k = np.log2(len(x)).astype(np.int32)  # 2 ^ k <= n < 2 ^ (k + 1)
@@ -128,8 +124,7 @@ class HurstExponent(MeasureTransformer):
         else:
             raise NotImplementedError
 
-    @jit(forceobj=True, looplift=True)
-    def calculate_features(self, X=pd.DataFrame) -> float:
+    def calculate_feature(self, X=pd.DataFrame) -> float:
         x = X[self.var].values / 1000
         x = self._make_pow2(x)
         n = len(x)
@@ -170,12 +165,12 @@ class ShannonEntropy(BaseTransformer):
     ):
         super().__init__(pk=pk, return_df=return_df)
         self.aoi = aoi
+        self.feature_name=f"shannon_entropy_aoi_{aoi}"
 
     def _check_init(self, X_len: int):
         assert self.aoi is not None, "Error: Provide aoi column"
         assert X_len != 0, "Error: there are no fixations"
 
-    @jit(forceobj=True, looplift=True)
     def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
         self._check_init(X_len=X.shape[0])
 
@@ -221,14 +216,15 @@ class ShannonEntropy(BaseTransformer):
 class SpectralEntropy(MeasureTransformer):
     def __init__(
         self,
+        x: str = None,
+        y: str = None,
         aoi: str = None,
         pk: List[str] = None,
         return_df: bool = True,
     ):
-        super().__init__(pk=pk, return_df=return_df, feature_name="spectral_entropy")
+        super().__init__(x=x, y=y, pk=pk, return_df=return_df, feature_name="spectral_entropy")
         self.aoi = aoi
 
-    @jit(forceobj=True, looplift=True)
     def calculate_feature(self, X: pd.DataFrame) -> float:
         coords = [self.x, self.y]
         transformed_seq = ifft(X[coords].values)
@@ -245,19 +241,20 @@ class FuzzyEntropy(MeasureTransformer):
 
     def __init__(
         self,
+        x: str = None,
+        y: str = None,
         m: int = 2,
         r: float = 0.2,
         aoi: str = None,
         pk: List[str] = None,
         return_df: bool = True,
     ):
-        super().__init__(pk=pk, return_df=return_df, feature_name="fuzzy")
+        super().__init__(x=x, y=y, pk=pk, return_df=return_df, feature_name=f"fuzzy_m_{m}_r_{r}")
         self.m = m
         self.r = r
         self.aoi = aoi
         self.eps = 1e-7
 
-    @jit(forceobj=True, looplift=True)
     def calculate_feature(self, X: pd.DataFrame) -> float:
         n = 2 * len(X)
         phi_m = np.zeros(2)
@@ -292,14 +289,13 @@ class SampleEntropy(MeasureTransformer):
         return_df: bool = True,
     ):
         super().__init__(
-            x=x, y=y, pk=pk, return_df=return_df, feature_name="sample_entropy"
+            x=x, y=y, pk=pk, return_df=return_df, feature_name=f"sample_entropy_m={m}_r={r}"
         )
         self.m = m
         self.r = r
         self.aoi = aoi
-        self.eps = 1e-7
+        self.eps = 1e-6
 
-    @jit(forceobj=True, looplift=True)
     def calculate_feature(self, X: pd.DataFrame) -> float:
         n = 2 * len(X)
         coords = [self.x, self.y]
@@ -310,7 +306,7 @@ class SampleEntropy(MeasureTransformer):
         X_emb = np.array([X_coord[j : j + self.m + 1] for j in range(n - self.m)])
         dist_matrix = squareform(pdist(X_emb, metric="chebyshev"))
         A = np.sum(np.sum(dist_matrix < self.r, axis=0) - 1)
-        return -np.log(A / (B + self.eps))
+        return -np.log(A / (B + self.eps)+1e-100)
 
 
 class IncrementalEntropy(MeasureTransformer):
@@ -323,12 +319,11 @@ class IncrementalEntropy(MeasureTransformer):
         return_df: bool = True,
     ):
         super().__init__(
-            x=x, y=y, pk=pk, return_df=return_df, feature_name="incremental_entropy"
+            x=x, y=y, pk=pk, return_df=return_df, feature_name=f"incremental_entropy"
         )
         self.aoi = aoi
 
-    @jit(forceobj=True, looplift=True)
-    def calculate_features(self, X: pd.DataFrame) -> float:
+    def calculate_feature(self, X: pd.DataFrame) -> float:
         n = len(X)
         coords = [self.x, self.y]
         X_coord = X[coords].values.flatten()
@@ -356,7 +351,7 @@ class GriddedDistributionEntropy(MeasureTransformer):
         return_df: bool = True,
     ):
         super().__init__(
-            x=x, y=y, pk=pk, return_df=return_df, feature_name="gridded_entropy"
+            x=x, y=y, pk=pk, return_df=return_df, feature_name=f"gridded_entropy_grid_size_{grid_size}"
         )
         self.grid_size = grid_size
         self.aoi = aoi
@@ -364,8 +359,7 @@ class GriddedDistributionEntropy(MeasureTransformer):
     def _check_init(self, X_len: int):
         assert X_len != 0, "Error: there are no fixations"
 
-    @jit(forceobj=True, looplift=True)
-    def calculate_features(self, X: pd.DataFrame) -> float:
+    def calculate_feature(self, X: pd.DataFrame) -> float:
         coords = [self.x, self.y]
         X_coord = X[coords].values
         H, edges = np.histogramdd(X_coord, bins=self.grid_size)
@@ -391,14 +385,13 @@ class PhaseEntropy(MeasureTransformer):
         return_df: bool = True,
     ):
         super().__init__(
-            x=x, y=y, pk=pk, return_df=return_df, feature_name="phase_entropy"
+            x=x, y=y, pk=pk, return_df=return_df, feature_name=f"phase_entropy_m_{m}_tau_{tau}"
         )
         self.m = m
         self.tau = tau
         self.aoi = aoi
 
-    @jit(forceobj=True, looplift=True)
-    def calculate_features(self, X: pd.DataFrame) -> float:
+    def calculate_feature(self, X: pd.DataFrame) -> float:
         n = 2 * len(X)
         coords = [self.x, self.y]
         X_coord = X[coords].values.flatten()
@@ -433,14 +426,13 @@ class LyapunovExponent(MeasureTransformer):
         return_df: bool = True,
     ):
         super().__init__(
-            x=x, y=y, pk=pk, return_df=return_df, feature_name="lyapunov_exponent"
+            x=x, y=y, pk=pk, return_df=return_df, feature_name=f"lyapunov_exponent_m_{m}_tau_{tau}_T_{T}"
         )
         self.m = m
         self.tau = tau
         self.T = T
         self.aoi = aoi
 
-    @jit(forceobj=True, looplift=True)
     def build_embedding(self, X: np.ndarray) -> np.ndarray:
         return np.array(
             [
@@ -449,8 +441,7 @@ class LyapunovExponent(MeasureTransformer):
             ]
         )
 
-    @jit(forceobj=True, looplift=True)
-    def calculate_features(self, X: pd.DataFrame) -> float:
+    def calculate_feature(self, X: pd.DataFrame) -> float:
         coords = [self.x, self.y]
         X_coord = X[coords].values.flatten()
         X_emb = self.build_embedding(X_coord)
@@ -492,13 +483,12 @@ class FractalDimension(MeasureTransformer):
         return_df: bool = True,
     ):
         super().__init__(
-            x=x, y=y, pk=pk, return_df=return_df, feature_name="fractal_dim"
+            x=x, y=y, pk=pk, return_df=return_df, feature_name=f"fractal_dim_m_{m}_tau_{tau}"
         )
         self.m = m
         self.tau = tau
         self.aoi = aoi
 
-    @jit(forceobj=True, looplift=True)
     def build_embedding(self, X: np.ndarray) -> np.ndarray:
         return np.array(
             [
@@ -507,8 +497,7 @@ class FractalDimension(MeasureTransformer):
             ]
         )
 
-    @jit(forceobj=True, looplift=True)
-    def calculate_features(self, X: pd.DataFrame) -> float:
+    def calculate_feature(self, X: pd.DataFrame) -> float:
         coords = [self.x, self.y]
         X_coord = X[coords].values.flatten()
         X_emb = self.build_embedding(X_coord)
@@ -544,14 +533,13 @@ class CorrelationDimension(MeasureTransformer):
         pk: List[str] = None,
         return_df: bool = True,
     ):
-        super().__init__(x=x, y=y, pk=pk, return_df=return_df, feature_name="corr_dim")
+        super().__init__(x=x, y=y, pk=pk, return_df=return_df, feature_name=f"corr_dim_m_{m}_tau_{tau}_r_{r}")
         self.m = m
         self.tau = tau
         self.r = r
         self.aoi = aoi
         self.eps = 1e-7
 
-    @jit(forceobj=True, looplift=True)
     def build_embedding(self, X: np.ndarray) -> np.ndarray:
         return np.array(
             [
@@ -560,8 +548,7 @@ class CorrelationDimension(MeasureTransformer):
             ]
         )
 
-    @jit(forceobj=True, looplift=True)
-    def calculate_features(self, X: pd.DataFrame) -> float:
+    def calculate_feature(self, X: pd.DataFrame) -> float:
         coords = [self.x, self.y]
         X_coord = X[coords].values.flatten()
         X_emb = self.build_embedding(X_coord)
@@ -596,8 +583,8 @@ class RQAMeasures(BaseTransformer):
         return_df: bool = True,
     ):
         super().__init__(x=x, y=y, pk=pk, return_df=return_df)
-        self.metric = metric
         self.rho = rho
+        self.metric = metric
         self.min_length = min_length
         self.measures = measures
         self.aoi = aoi
@@ -609,11 +596,9 @@ class RQAMeasures(BaseTransformer):
         assert self.rho is not None, "Error: rho must be a float"
         assert self.min_length is not None, "Error: min_length must be an integer"
 
-    @jit(forceobj=True, looplift=True)
     def fit(self, X: pd.DataFrame, y=None):
         return self
 
-    @jit(forceobj=True, looplift=True)
     def calculate_measures(self, X: pd.DataFrame) -> List[float]:
         columns, features = [], []
         rqa_matrix = get_rqa(X, self.x, self.y, self.metric, self.rho)
@@ -621,7 +606,7 @@ class RQAMeasures(BaseTransformer):
         r = np.sum(np.triu(rqa_matrix, k=1)) + self.eps
 
         if "rec" in self.measures:
-            columns.append("rec")
+            columns.append(f"rec_metric_{self.metric.__name__}_length_{self.min_length}_rho_{self.rho}")
             features.append(100 * 2 * r / (n * (n - 1)))
 
         if "det" in self.measures:
@@ -632,7 +617,7 @@ class RQAMeasures(BaseTransformer):
                     for k in range(len(diagonal) - self.min_length + 1):
                         if np.all(diagonal[k : k + self.min_length]):
                             DL.append(np.sum(diagonal[k:]))
-            columns.append("det")
+            columns.append(f"det_{self.metric.__name__}_length_{self.min_length}_rho_{self.rho}")
             features.append(100 * np.sum(DL) / r)
 
         if "lam" in self.measures:
@@ -645,7 +630,7 @@ class RQAMeasures(BaseTransformer):
                         HL.append(np.sum(horizontal[k:]))
                     if np.all(vertical[k : k + self.min_length]):
                         VL.append(np.sum(vertical[k:]))
-            columns.append("lam")
+            columns.append(f"lam_{self.metric.__name__}_length_{self.min_length}_rho_{self.rho}")
             features.append(100 * (np.sum(HL) + np.sum(VL)) / (2 * r))
 
         if "corm" in self.measures:
@@ -653,12 +638,11 @@ class RQAMeasures(BaseTransformer):
             for i in range(n - 1):
                 for j in range(i + 1, n):
                     corm_num += (j - i) * rqa_matrix[i, j]
-            columns.append("corm")
+            columns.append(f"corm_{self.metric.__name__}_length_{self.min_length}_rho_{self.rho}")
             features.append(100 * corm_num / ((n - 1) * r))
 
         return columns, features
 
-    @jit(forceobj=True, looplift=True)
     def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
         self._check_init(X_len=X.shape[0])
 
@@ -729,7 +713,6 @@ class SaccadeUnlikelihood(MeasureTransformer):
         self.aoi = aoi
 
     @staticmethod
-    @jit(forceobj=True, looplift=True)
     def nassym(s: float, mu: float, sigma1: float, sigma2: float) -> float:
         """
         Calculates assymetric Gaussian PDF at point s.
@@ -744,7 +727,6 @@ class SaccadeUnlikelihood(MeasureTransformer):
         sigma = sigma1 if s < mu else sigma2
         return np.exp(-((s - mu) ** 2 / (2 * (sigma**2)))) / Z
 
-    @jit(forceobj=True, looplift=True)
     def calculate_saccade_proba(self, s: float) -> float:
         """
         :param s: saccade length
@@ -758,7 +740,6 @@ class SaccadeUnlikelihood(MeasureTransformer):
         )
         return progression_proba + regression_proba
 
-    @jit(forceobj=True, looplift=True)
     def calculate_features(self, X: pd.DataFrame) -> List[float]:
         nll = 0
         coords = [self.x, self.y]
@@ -794,19 +775,19 @@ class HHTFeatures(BaseTransformer):
         self.features = features
         self.aoi = aoi
         self._feature_mapping = {
-            "mean": partial(np.mean, axis=(1, 2)),
-            "std": partial(np.std, axis=(1, 2)),
-            "var": partial(np.var, axis=(1, 2)),
-            "median": partial(np.median, axis=(1, 2)),
-            "max": partial(np.max, axis=(1, 2)),
-            "min": partial(np.min, axis=(1, 2)),
-            "skew": partial(skew, axis=(1, 2)),
-            "kurtosis": partial(kurtosis, axis=(1, 2)),
-            "entropy": partial(entropy, axis=(1, 2)),
-            "energy": lambda data: np.sum(data**2, axis=(1, 2)),
+            "mean": partial(np.mean, axis=(0, 1)),
+            "std": partial(np.std, axis=(0, 1)),
+            "var": partial(np.var, axis=(0, 1)),
+            "median": partial(np.median, axis=(0, 1)),
+            "max": partial(np.max, axis=(0, 1)),
+            "min": partial(np.min, axis=(0, 1)),
+            "skew": partial(skew, axis=(0, 1)),
+            "kurtosis": partial(kurtosis, axis=(0, 1)),
+            "entropy": partial(entropy, axis=(0, 1)),
+            "energy": lambda data: np.sum(data**2, axis=(0, 1)),
             "dom_freq": self.dominant_freq,
-            "sample_entropy": self.sample_entropy,
-            "complexity_index": self.complexity_index,
+            #"sample_entropy": self.sample_entropy,
+            #"complexity_index": self.complexity_index,
         }
 
     def _check_init(self, X_len: int):
@@ -818,11 +799,9 @@ class HHTFeatures(BaseTransformer):
         for feature in self.features:
             assert feature in self._feature_mapping, f"Error: unknown feature {feature}"
 
-    @jit(forceobj=True, looplift=True)
     def fit(self, X: pd.DataFrame, y=None):
         return self
 
-    @jit(forceobj=True, looplift=True)
     def dominant_freq(self, imf_data: np.ndarray) -> List[float]:
         """
         Calculates dominant frequency of the intrinsic mode functions (IMFs) using FFT.
@@ -830,14 +809,13 @@ class HHTFeatures(BaseTransformer):
         :param imf_data: intrinsic mode functions (IMFs) data
         :return: dominant frequency of each IMF
         """
-        imf_fft = fft2(imf_data, axes=(1, 2))
+        imf_fft = fft2(imf_data, axes=(0, 1))
         dom_freq = []
         for imf in imf_fft:
             signal = np.abs(imf.flatten())
-            dom_freq.append(np.argmax(signal) / np.max(len(signal), 1))
+            dom_freq.append(np.argmax(signal) / np.max(len(signal), 0))
         return dom_freq
 
-    @jit(forceobj=True, looplif=True)
     def coarse_grain(self, imf_data: np.ndarray, scale: int = 5) -> np.ndarray:
         """
         Calculates coarse-grained standard deviation of the intrinsic mode functions (IMFs).
@@ -857,9 +835,8 @@ class HHTFeatures(BaseTransformer):
             cg.append(np.array(current))
         return np.array(cg)
 
-    @jit(forceobj=True, looplif=True)
     def sample_entropy(
-        self, imf_data: np.ndarray, m: int = 5, r: float = 0.20
+        self, imf_data: np.ndarray, m: int = 1, r: float = 0.2
     ) -> List[float]:
         """
         Calculates sample entropy of the intrinsic mode functions (IMFs).
@@ -878,16 +855,15 @@ class HHTFeatures(BaseTransformer):
             def _phi(m: int) -> float:
                 X = np.array([cur_imf[i : i + m] for i in range(len(cur_imf) - m)])
                 B = np.sum(
-                    np.all(np.abs(X[:, np.newaxis] - X[np.newaxis, :]) <= cur_r, axis=2)
+                    np.all(np.abs(X[:, np.newaxis] - X[np.newaxis, :]) <= cur_r, axis=0)
                 ) - len(X)
                 return B / (len(cur_imf) - m)
 
             se.append(_phi(m + 1) / _phi(m))
         return se
 
-    @jit(forceobj=True, looplif=True)
     def complexity_index(
-        self, imf_data: np.ndarray, m: int = 5, r: float = 0.20, max_scale: int = 5
+        self, imf_data: np.ndarray, m: int = 5, r: float = 0.20, max_scale: int = 2
     ) -> List[float]:
         """
         Calculates complexity index of the intrinsic mode functions (IMFs).
@@ -903,12 +879,11 @@ class HHTFeatures(BaseTransformer):
         for imf in imf_data:
             ci = 0
             for scale in range(1, max_scale + 1):
-                cg_data = self.coarse_grain(imf[np.newaxis, :, :], scale)[0]
+                cg_data = self.coarse_grain(imf[np.newaxis, :], scale)[0]
                 ci += self.sample_entropy(cg_data, m=m, r=r)[0]
             cis.append(ci)
         return cis
 
-    @jit(forceobj=True, looplift=True)
     def calculate_features(self, data: pd.DataFrame) -> List[float]:
         """
         Feature extraction from the HHT.
@@ -934,7 +909,6 @@ class HHTFeatures(BaseTransformer):
 
         return columns_names, gathered_features
 
-    @jit(forceobj=True, looplift=True)
     def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
         self._check_init(X_len=X.shape[0])
 

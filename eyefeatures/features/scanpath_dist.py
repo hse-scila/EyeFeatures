@@ -65,7 +65,6 @@ class DistanceTransformer(BaseTransformer):
     def get_expected_paths(self) -> Dict[str, Union[pd.DataFrame, np.ndarray]]:
         return self.expected_paths
 
-    @jit(forceobj=True, looplift=True)
     def fit(self, X: pd.DataFrame, y=None):
         # check must-have attributes
         super(DistanceTransformer, self)._check_init(self._get_required())
@@ -173,14 +172,13 @@ class SimpleDistances(DistanceTransformer):
             )
             dataframes.append(self._methods_cls[method].transform(data_part))
 
-        features_df = pd.concat(dataframes, axis=1)
+        features_df = pd.concat(dataframes, axis=1).add_suffix('_'+self.expected_paths_method)
         return features_df if self.return_df else features_df.values
 
 
 class EucDist(DistanceTransformer):
     """Calculates Euclidean distance between given and expected scanpaths."""
 
-    @jit(forceobj=True, looplift=True)
     def transform(self, X: Types.Data) -> Union[pd.DataFrame, np.ndarray]:
         # check must-have attributes
         super(EucDist, self)._check_init(
@@ -214,7 +212,6 @@ class EucDist(DistanceTransformer):
 class HauDist(DistanceTransformer):
     """Calculates Hausdorff distance between given and expected scanpaths."""
 
-    @jit(forceobj=True, looplift=True)
     def transform(self, X: Types.Data) -> Union[pd.DataFrame, np.ndarray]:
         # check must-have attributes
         super(HauDist, self)._check_init(
@@ -248,7 +245,6 @@ class HauDist(DistanceTransformer):
 class DTWDist(DistanceTransformer):
     """Calculates Dynamic Time Warp distance between given and expected scanpaths."""
 
-    @jit(forceobj=True, looplift=True)
     def transform(self, X: Types.Data) -> Union[pd.DataFrame, np.ndarray]:
         # check must-have attributes
         super(DTWDist, self)._check_init(
@@ -341,7 +337,6 @@ class ScanMatchDist(DistanceTransformer):
             (self.sub_mat, "sub_mat"),
         ]
 
-    @jit(forceobj=True, looplift=True)
     def transform(self, X: Types.Data) -> Union[pd.DataFrame, np.ndarray]:
         # check must-have attributes
         super(ScanMatchDist, self)._check_init(
@@ -373,7 +368,7 @@ class ScanMatchDist(DistanceTransformer):
             )
             features.append([dist])
 
-        features_df = pd.DataFrame(data=features, columns=columns, index=group_names)
+        features_df = pd.DataFrame(data=features, columns=columns, index=group_names).add_suffix('_'+self.expected_paths_method)
         return features_df if self.return_df else features_df.values
 
     def __repr__(self, **kwargs):
@@ -383,7 +378,6 @@ class ScanMatchDist(DistanceTransformer):
 class MannanDist(DistanceTransformer):
     """Calculates Mannan distance between given and expected scanpaths."""
 
-    @jit(forceobj=True, looplift=True)
     def transform(self, X: Types.Data) -> Union[pd.DataFrame, np.ndarray]:
         # check must-have attributes
         super(MannanDist, self)._check_init(
@@ -417,7 +411,6 @@ class MannanDist(DistanceTransformer):
 class EyeAnalysisDist(DistanceTransformer):
     """Calculates Eye Analysis distance between given and expected scanpaths."""
 
-    @jit(forceobj=True, looplift=True)
     def transform(self, X: Types.Data) -> Union[pd.DataFrame, np.ndarray]:
         # check must-have attributes
         super(EyeAnalysisDist, self)._check_init(
@@ -451,7 +444,6 @@ class EyeAnalysisDist(DistanceTransformer):
 class DFDist(DistanceTransformer):
     """Calculates Discrete Frechet distance between given and expected scanpaths."""
 
-    @jit(forceobj=True, looplift=True)
     def transform(self, X: Types.Data) -> Union[pd.DataFrame, np.ndarray]:
         # check must-have attributes
         super(DFDist, self)._check_init(
@@ -523,7 +515,6 @@ class TDEDist(DistanceTransformer):
             return_df=return_df,
         )
 
-    @jit(forceobj=True, looplift=True)
     def transform(self, X: Types.Data) -> Union[pd.DataFrame, np.ndarray]:
         # check must-have attributes
         super(TDEDist, self)._check_init(
@@ -550,7 +541,7 @@ class TDEDist(DistanceTransformer):
             dist = calc_tde_dist(group_path[[self.x, self.y]], expected_path, k=self.k)
             features.append([dist])
 
-        features_df = pd.DataFrame(data=features, columns=columns, index=group_names)
+        features_df = pd.DataFrame(data=features, columns=columns, index=group_names).add_suffix('_'+self.expected_paths_method)
         return features_df if self.return_df else features_df.values
 
 
@@ -603,7 +594,6 @@ class MultiMatchDist(DistanceTransformer):
             (self.duration, "duration"),
         ]
 
-    @jit(forceobj=True, looplift=True)
     def transform(self, X: Types.Data) -> Union[pd.DataFrame, np.ndarray]:
         # check must-have attributes
         super(MultiMatchDist, self)._check_init(
@@ -633,7 +623,7 @@ class MultiMatchDist(DistanceTransformer):
             )
             features.append([shape, angle, length, pos, duration])
 
-        features_df = pd.DataFrame(data=features, columns=columns, index=group_names)
+        features_df = pd.DataFrame(data=features, columns=columns, index=group_names).add_suffix('_'+self.expected_paths_method)
         return features_df if self.return_df else features_df.values
 
 
@@ -655,7 +645,6 @@ def _transform_path(path: pd.DataFrame, t_bin: int) -> str:
     return "".join(encoded_fixations)
 
 
-@jit(forceobj=True, looplift=True)
 def calc_euc_dist(p: pd.DataFrame, q: pd.DataFrame) -> float:
     """
     Calculates Euclidean distance between paths p and q
@@ -670,11 +659,12 @@ def calc_euc_dist(p: pd.DataFrame, q: pd.DataFrame) -> float:
         p_aligned = p.values[:length]
         q_aligned = q.values[:length]
         dist = ((p_aligned - q_aligned) ** 2).sum()
+    if dist==np.nan:
+        print(length, p_aligned, q_aligned)
 
     return dist
 
 
-@jit(forceobj=True, looplift=True)
 def calc_hau_dist(p: pd.DataFrame, q: pd.DataFrame) -> float:
     """
     Calculates Hausdorff distance between paths p and q
@@ -713,7 +703,6 @@ def calc_hau_dist(p: pd.DataFrame, q: pd.DataFrame) -> float:
     return dist
 
 
-@jit(forceobj=True, looplift=True)
 def calc_dtw_dist(p: pd.DataFrame, q: pd.DataFrame) -> float:
     """
     Calculates Dynamic Time Warp distance between paths p and q
@@ -744,7 +733,6 @@ def calc_dtw_dist(p: pd.DataFrame, q: pd.DataFrame) -> float:
     return dist
 
 
-@jit(forceobj=True, looplift=True)
 def calc_scan_match_dist(
     p: pd.DataFrame,
     q: pd.DataFrame,
@@ -789,7 +777,6 @@ def calc_scan_match_dist(
     return dist
 
 
-@jit(forceobj=True, looplift=True)
 def calc_man_dist(p: pd.DataFrame, q: pd.DataFrame) -> float:
     """
     Calculates Mannan distance between paths p and q
@@ -815,7 +802,6 @@ def calc_man_dist(p: pd.DataFrame, q: pd.DataFrame) -> float:
     return dist
 
 
-@jit(forceobj=True, looplift=True)
 def calc_eye_dist(p: pd.DataFrame, q: pd.DataFrame) -> float:
     """
     Calculates EyeDist distance between paths p and q
@@ -840,7 +826,6 @@ def calc_eye_dist(p: pd.DataFrame, q: pd.DataFrame) -> float:
     return dist
 
 
-@jit(forceobj=True, looplift=True)
 def calc_dfr_dist(p: pd.DataFrame, q: pd.DataFrame) -> float:
     """
     Calculates Discrete Frechet distance between paths p and q
@@ -873,7 +858,6 @@ def calc_dfr_dist(p: pd.DataFrame, q: pd.DataFrame) -> float:
     return dist
 
 
-@jit(forceobj=True, looplift=True)
 def calc_tde_dist(p: pd.DataFrame, q: pd.DataFrame, k: int = 1) -> float:
     """
     Calculates Time Delay Embedding distance between paths p and q
@@ -903,7 +887,6 @@ def calc_tde_dist(p: pd.DataFrame, q: pd.DataFrame, k: int = 1) -> float:
     return dist
 
 
-@jit(forceobj=True, looplift=True)
 def calc_mm_features(
     p: pd.DataFrame, q: pd.DataFrame
 ) -> Tuple[float, float, float, float, float]:
