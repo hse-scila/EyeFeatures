@@ -1,5 +1,6 @@
 from abc import abstractmethod
 from typing import Dict, List, Tuple, Union, Any
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -25,6 +26,7 @@ class StatsTransformer(BaseTransformer):
         shift_pk: None | List[str] | Tuple[List[str]] = None,
         shift_features: None | Dict[str, List[str]] | Tuple[Dict[str, List[str]]] = None,
         return_df: bool = True,
+        warn: bool = True
     ):
         """
         Base class for statistical features. Aggregate function strings must be
@@ -52,6 +54,8 @@ class StatsTransformer(BaseTransformer):
         self.aoi = aoi
         self.calc_without_aoi = calc_without_aoi
         self.aoi_mapper = ...
+
+        self.warn = warn
 
         self.feature_names_in_ = None
 
@@ -258,6 +262,11 @@ class StatsTransformer(BaseTransformer):
         """
         shift_mem = self.shift_mem[shift_pk_id]
         shift_fill = self.shift_fill[shift_pk_id]
+        if shift_group_id not in shift_mem.keys() and self.warn:
+            warnings.warn(
+                message=f"Group {shift_group_id} for shift_pk {shift_pk_id} was not seen during `fit`."
+                        f"Average across all values of {shift_pk_id} is used instead.",
+                stacklevel=5)
         return (
             shift_mem[shift_group_id][aoi_col][aoi_val][feat_nm][stat]
             if shift_group_id in shift_mem.keys()
@@ -363,9 +372,9 @@ class StatsTransformer(BaseTransformer):
 
             self.shift_mem[shift_pk_id] = shift_mem
 
-        # all shift features are calculated up to that point
-        # given fixed key shift_pk, there could be unknown groups on transform
-        # calc mean for each stat (by groups) to use for unknown groups on transform
+        # All shift features are calculated up to that point.
+        # Given fixed key shift_pk, there could be unknown groups on transform.
+        # Calc mean for each stat (by groups) to use for unknown groups on transform.
         self.shift_fill = dict()
 
         for shift_features, shift_pk in zip(self.shift_features, self.shift_pk):
@@ -381,7 +390,6 @@ class StatsTransformer(BaseTransformer):
 
                 for aoi_val in self.aoi_mapper[aoi_col]:
                     shift_fill[aoi_col][aoi_val] = dict()
-                    # aoi_str = "" if aoi_col == "" else f"{aoi_col}[{aoi_val}]"
 
                     for feat_nm in feat_nms:
                         shift_fill[aoi_col][aoi_val][feat_nm] = dict()
@@ -427,7 +435,6 @@ class StatsTransformer(BaseTransformer):
                     group_feats: List[Tuple[str, pd.Series]] = self._calc_with_aoi(
                         feat_nms, group_X, aoi_col, aoi_val
                     )
-                    # aoi_str = "" if aoi_col == "" else f"{aoi_col}[{aoi_val}]"
 
                     add_cols_nms = len(group_ids) == 1
                     for feat_nm, feat_arr in group_feats:

@@ -24,6 +24,7 @@ class BaseTransformer(BaseEstimator, TransformerMixin):
         expected_paths: Dict[str, pd.DataFrame] = None,
         fill_path: pd.DataFrame = None,
         expected_paths_method: str = "mean",
+        warn: bool = True,
         return_df: bool = True,
     ):
         self.x = x
@@ -34,6 +35,7 @@ class BaseTransformer(BaseEstimator, TransformerMixin):
         self.path_pk = path_pk
         self.pk = pk
         self.aoi = aoi
+        self.warn = warn
         self.return_df = return_df
         self.expected_paths = expected_paths
         self.fill_path = fill_path
@@ -57,6 +59,7 @@ class BaseTransformer(BaseEstimator, TransformerMixin):
         expected_paths: Dict[str, pd.DataFrame] = None,
         fill_path: pd.DataFrame = None,
         expected_paths_method: str = "mean",
+        warn: bool = True,
         return_df: bool = True,
     ):
         self.x = x
@@ -67,8 +70,7 @@ class BaseTransformer(BaseEstimator, TransformerMixin):
         self.path_pk = path_pk
         self.pk = pk
         self.aoi = aoi
-        #if self.aoi is None:
-        #    self.aoi = aoi
+        self.warn = warn
         self.return_df = return_df
         self.expected_paths = expected_paths
         self.fill_path = fill_path
@@ -97,6 +99,7 @@ class Extractor(BaseEstimator, TransformerMixin):  # TODO rename to FeatureExtra
         expected_paths_method: str = "mean",
         extra: List[str] = None,
         aggr_extra: str = None,
+        warn: bool = True,
         return_df: bool = True,
     ):
         self.features = features
@@ -111,6 +114,7 @@ class Extractor(BaseEstimator, TransformerMixin):  # TODO rename to FeatureExtra
         self.expected_paths_method = expected_paths_method
         self.extra = extra
         self.aggr_extra = aggr_extra
+        self.warn = warn
         self.return_df = return_df
         self.is_fitted = False
 
@@ -122,7 +126,7 @@ class Extractor(BaseEstimator, TransformerMixin):  # TODO rename to FeatureExtra
                 X, self.pk
             )  # split by pk
             for group_id, group_X in groups:
-                if group_X.isnull().values.any():
+                if group_X.isnull().values.any() and self.warn:
                     warnings.warn(f"Group {group_id} has missing values. Dropping them.",
                                   stacklevel=5)
             X = X.dropna()
@@ -144,6 +148,7 @@ class Extractor(BaseEstimator, TransformerMixin):  # TODO rename to FeatureExtra
                     path_pk=self.path_pk,
                     pk=self.pk,
                     expected_paths_method=self.expected_paths_method,
+                    warn=self.warn,
                     return_df=self.return_df,
                 )
                 feature.fit(X)
