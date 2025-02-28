@@ -348,27 +348,47 @@ class StatsTransformer(BaseTransformer):
             for group_id, group_X in groups:
                 shift_mem[group_id] = dict()
 
+                # split group_X by pk into subgroups, calc features
+                # for subgroups and take a mean
+                if self.pk is None:
+                    subgroups_X = [("", group_X)]
+                else:
+                    subgroups_X: List[(str, pd.DataFrame)] = _split_dataframe(
+                        group_X, self.pk
+                    )
+
                 for aoi_col in self.aoi_mapper:
                     shift_mem[group_id][aoi_col] = dict()
 
                     for aoi_val in self.aoi_mapper[aoi_col]:
                         shift_mem[group_id][aoi_col][aoi_val] = dict()
 
-                        # aoi_str = "" if aoi_col == "" else f"{aoi_col}[{aoi_val}]"
+                        subgroups_feats = []
+                        for _, subgroup_X in subgroups_X:
+                            subgroup_feats: List[Tuple[str, pd.Series]] = self._calc_with_aoi(
+                                feat_nms, subgroup_X, aoi_col, aoi_val
+                            )
+                            subgroups_feats.append({k: v for (k, v) in subgroup_feats})
 
-                        group_feats: List[Tuple[str, pd.Series]] = self._calc_with_aoi(
-                            feat_nms, group_X, aoi_col, aoi_val
-                        )
-
-                        for feat_nm, feat_arr in group_feats:  # memoize feats for each group_id
+                        # group_feats: List[Tuple[str, pd.Series]] = self._calc_with_aoi(
+                        #     feat_nms, group_X, aoi_col, aoi_val
+                        # )
+                        for feat_nm in feat_nms:
+                        # for feat_nm, feat_arr in group_feats:  # memoize feats for each group_id
                             shift_mem[group_id][aoi_col][aoi_val][feat_nm] = dict()
                             feat_stats: List[str] = self.features_stats[feat_nm]
 
                             for stat in feat_stats:  # memoize stats for each feat
-                                feat_arr = feat_arr[~np.isnan(feat_arr)]
-                                shift_mem[group_id][aoi_col][aoi_val][feat_nm][stat] = (
-                                    feat_arr.apply(stat) if len(feat_arr) > 0 else 0
-                                )
+                                mean = 0
+                                for subgroup_dict in subgroups_feats:
+                                    feat_arr = subgroup_dict[feat_nm]
+                                    feat_val = feat_arr.apply(stat) if len(feat_arr) > 0 else 0
+                                    mean += feat_val if not np.isnan(feat_val) else 0
+                                shift_mem[group_id][aoi_col][aoi_val][feat_nm][stat] = np.mean(mean)
+                                # feat_arr = feat_arr[~np.isnan(feat_arr)]
+                                # shift_mem[group_id][aoi_col][aoi_val][feat_nm][stat] = (
+                                #     feat_arr.apply(stat) if len(feat_arr) > 0 else 0
+                                # )
 
             self.shift_mem[shift_pk_id] = shift_mem
 
