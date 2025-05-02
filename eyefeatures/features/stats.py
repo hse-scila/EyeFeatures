@@ -4,11 +4,17 @@ import warnings
 
 import numpy as np
 import pandas as pd
-from numba import jit
 from numpy.typing import NDArray
 
 from eyefeatures.features.extractor import BaseTransformer
-from eyefeatures.utils import _calc_dt, _get_id, _select_regressions, _split_dataframe, Types
+from eyefeatures.utils import (
+    _calc_dt,
+    _get_id,
+    _get_objs,
+    _select_regressions,
+    _split_dataframe,
+    Types
+)
 
 
 class StatsTransformer(BaseTransformer):
@@ -26,7 +32,8 @@ class StatsTransformer(BaseTransformer):
         shift_pk: None | List[str] | Tuple[List[str]] = None,
         shift_features: None | Dict[str, List[str]] | Tuple[Dict[str, List[str]]] = None,
         return_df: bool = True,
-        warn: bool = True
+        warn: bool = True,
+        dense_index: bool = True
     ):
         """
         Base class for statistical features. Aggregate function strings must be
@@ -56,6 +63,7 @@ class StatsTransformer(BaseTransformer):
         self.aoi_mapper = ...
 
         self.warn = warn
+        self.dense_index = dense_index
 
         self.feature_names_in_ = None
 
@@ -442,7 +450,7 @@ class StatsTransformer(BaseTransformer):
             groups: Types.EncodedPartition = [("0", X)]
         else:
             groups: Types.EncodedPartition = _split_dataframe(
-                X, self.pk
+                X, self.pk, encode=self.dense_index
             )  # split by unique groups
 
         group_ids = []

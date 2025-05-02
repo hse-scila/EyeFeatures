@@ -38,9 +38,16 @@ def _split_dataframe(
 
 def _get_id(elements: Iterable[Any]) -> str:
     """
-    Mapping between list of objects to string.
+    Mapping between list of objects and string.
     """
     return "_".join(str(e) for e in elements)
+
+
+def _get_objs(id_: str) -> Iterable[Any]:
+    """
+    Mapping between string and list of objects.
+    """
+    return id_.split("_")
 
 
 def _calc_dt(X: pd.DataFrame, duration: str, t: str) -> pd.Series:

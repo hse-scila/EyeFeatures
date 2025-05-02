@@ -60,6 +60,7 @@ class BaseTransformer(BaseEstimator, TransformerMixin):
         fill_path: pd.DataFrame = None,
         expected_paths_method: str = "mean",
         warn: bool = True,
+        dense_index: bool = True,
         return_df: bool = True,
     ):
         self.x = x
@@ -71,6 +72,7 @@ class BaseTransformer(BaseEstimator, TransformerMixin):
         self.pk = pk
         self.aoi = aoi
         self.warn = warn
+        self.dense_index = dense_index
         self.return_df = return_df
         self.expected_paths = expected_paths
         self.fill_path = fill_path
@@ -100,6 +102,7 @@ class Extractor(BaseEstimator, TransformerMixin):  # TODO rename to FeatureExtra
         extra: List[str] = None,
         aggr_extra: str = None,
         warn: bool = True,
+        dense_index: bool = True,
         return_df: bool = True,
     ):
         self.features = features
@@ -115,6 +118,7 @@ class Extractor(BaseEstimator, TransformerMixin):  # TODO rename to FeatureExtra
         self.extra = extra
         self.aggr_extra = aggr_extra
         self.warn = warn
+        self.dense_index = dense_index
         self.return_df = return_df
         self.is_fitted = False
 
@@ -149,6 +153,7 @@ class Extractor(BaseEstimator, TransformerMixin):  # TODO rename to FeatureExtra
                     pk=self.pk,
                     expected_paths_method=self.expected_paths_method,
                     warn=self.warn,
+                    dense_index=self.dense_index,
                     return_df=self.return_df,
                 )
                 feature.fit(X)
