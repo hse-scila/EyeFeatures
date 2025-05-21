@@ -7,7 +7,7 @@ from numba import jit
 from tqdm import tqdm
 from sklearn.base import BaseEstimator, TransformerMixin
 
-from eyefeatures.utils import _split_dataframe
+from eyefeatures.utils import _split_dataframe, _get_objs, _get_id
 
 
 class BaseTransformer(BaseEstimator, TransformerMixin):
@@ -60,7 +60,6 @@ class BaseTransformer(BaseEstimator, TransformerMixin):
         fill_path: pd.DataFrame = None,
         expected_paths_method: str = "mean",
         warn: bool = True,
-        dense_index: bool = True,
         return_df: bool = True,
     ):
         self.x = x
@@ -72,7 +71,6 @@ class BaseTransformer(BaseEstimator, TransformerMixin):
         self.pk = pk
         self.aoi = aoi
         self.warn = warn
-        self.dense_index = dense_index
         self.return_df = return_df
         self.expected_paths = expected_paths
         self.fill_path = fill_path
@@ -102,7 +100,7 @@ class Extractor(BaseEstimator, TransformerMixin):  # TODO rename to FeatureExtra
         extra: List[str] = None,
         aggr_extra: str = None,
         warn: bool = True,
-        dense_index: bool = True,
+        leave_pk: bool = False,
         return_df: bool = True,
     ):
         self.features = features
@@ -118,7 +116,7 @@ class Extractor(BaseEstimator, TransformerMixin):  # TODO rename to FeatureExtra
         self.extra = extra
         self.aggr_extra = aggr_extra
         self.warn = warn
-        self.dense_index = dense_index
+        self.leave_pk = leave_pk
         self.return_df = return_df
         self.is_fitted = False
 
@@ -153,7 +151,6 @@ class Extractor(BaseEstimator, TransformerMixin):  # TODO rename to FeatureExtra
                     pk=self.pk,
                     expected_paths_method=self.expected_paths_method,
                     warn=self.warn,
-                    dense_index=self.dense_index,
                     return_df=self.return_df,
                 )
                 feature.fit(X)
@@ -168,24 +165,22 @@ class Extractor(BaseEstimator, TransformerMixin):  # TODO rename to FeatureExtra
             return X if self.return_df else X.values
 
         gathered_features = []
-        data_df: pd.DataFrame = X#[
-            #[self.x, self.y, self.t, self.duration, self.dispersion]
-        #]
-
-        #if self.pk is not None:
-        #    data_df = pd.concat([data_df, X[self.pk]], axis=1)
-
-        #if self.aoi is not None:
-        #    data_df = pd.concat([data_df, X[self.aoi]], axis=1)
+        data_df: pd.DataFrame = X
 
         for feature in tqdm(self.features):
             gathered_features.append(feature.transform(data_df))
 
-        if self.extra is not None:  # TODO remove because accepts single agg method?
-            gathered_features.append(
-                X[self.extra].groupby(self.pk).apply(self.aggr_extra)
-            )
+        if self.extra is not None:
+            columns = self.pk + [col for col in self.extra if col not in self.pk]
+            extra_df = data_df[columns].groupby(self.pk).apply(self.aggr_extra)
+            extra_df.index = [_get_id(index) for index in extra_df.index]
+            gathered_features.append(extra_df)
 
         features_df = pd.concat(gathered_features, axis=1)
+        if self.leave_pk:
+            index = features_df.index.values
+            index_as_cols = [_get_objs(id_) for id_ in index]
+            for index_i in range(len(self.pk)):
+                features_df[self.pk[index_i]] = [objs[index_i] for objs in index_as_cols]
 
         return features_df if self.return_df else features_df.values

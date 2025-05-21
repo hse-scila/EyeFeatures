@@ -32,8 +32,7 @@ class StatsTransformer(BaseTransformer):
         shift_pk: None | List[str] | Tuple[List[str]] = None,
         shift_features: None | Dict[str, List[str]] | Tuple[Dict[str, List[str]]] = None,
         return_df: bool = True,
-        warn: bool = True,
-        dense_index: bool = True
+        warn: bool = True
     ):
         """
         Base class for statistical features. Aggregate function strings must be
@@ -63,7 +62,6 @@ class StatsTransformer(BaseTransformer):
         self.aoi_mapper = ...
 
         self.warn = warn
-        self.dense_index = dense_index
 
         self.feature_names_in_ = None
 
@@ -450,7 +448,7 @@ class StatsTransformer(BaseTransformer):
             groups: Types.EncodedPartition = [("0", X)]
         else:
             groups: Types.EncodedPartition = _split_dataframe(
-                X, self.pk, encode=self.dense_index
+                X, self.pk
             )  # split by unique groups
 
         group_ids = []
