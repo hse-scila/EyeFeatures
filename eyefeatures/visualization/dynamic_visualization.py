@@ -117,7 +117,7 @@ def tracker_animation(
 
     fig_dict = {"data": [], "layout": {}, "frames": []}
 
-    _built_figure(fig_dict, data.shape[0], animation_duration)
+    _built_figure(fig_dict, animation_duration)
 
     sliders_dict = {
         "active": 0,
@@ -353,7 +353,7 @@ def scanpath_animation(
 
     fig_dict = {"data": [], "layout": {}, "frames": []}
 
-    _built_figure(fig_dict, data.shape[0], animation_duration)
+    _built_figure(fig_dict, animation_duration)
 
     sliders_dict = {
         "active": 0,

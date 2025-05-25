@@ -29,8 +29,6 @@ class StatsTransformer(BaseTransformer):
         aoi: None | str | List[str] = None,
         calc_without_aoi: bool = False,  # if True, then calculate regular features even with aoi passed
         pk: None | List[str] = None,
-        shift_pk: None | List[str] | Tuple[List[str]] = None,
-        shift_features: None | Dict[str, List[str]] | Tuple[Dict[str, List[str]]] = None,
         return_df: bool = True,
         warn: bool = True
     ):
@@ -51,15 +49,11 @@ class StatsTransformer(BaseTransformer):
         self.features_stats = features_stats
         # feature -- i.e. saccade length/speed
         self.feature_names_in = list(features_stats.keys())
-        self.shift_mem = None
-        self.shift_fill = None
-        self.shift_pk = shift_pk
-        self.shift_features = shift_features
-        self.available_feats = ...
+        self.available_feats = None
         self.eps = 1e-20
         self.aoi = aoi
         self.calc_without_aoi = calc_without_aoi
-        self.aoi_mapper = ...
+        self.aoi_mapper = None
 
         self.warn = warn
 
@@ -108,35 +102,6 @@ class StatsTransformer(BaseTransformer):
             assert feat in self.available_feats, err_msg(feat)
 
         self._check_params()
-
-    def _check_shift_features(self):
-        """
-        Method checks that provided shift features are correct.
-        """
-        assert self.shift_pk is not None, "Provide `shift_pk` for shift features."
-        assert isinstance(self.shift_pk, list) or isinstance(self.shift_pk, tuple),\
-            f"`shift_pk` must be list or tuple, got {type(self.shift_pk)}."
-        assert len(self.shift_pk) > 0, "`shift_pk` must be non-empty."
-
-        assert self.shift_features is not None, "Provide `shift_features` for shift features."
-        assert isinstance(self.shift_features, dict) or isinstance(self.shift_features, tuple),\
-            f"`shift_features` must be dict or tuple, got {type(self.shift_features)}."
-
-        # assert self.pk is not None, "`shift_pk` must be subset of `pk`."  # could be not a subset
-
-        self._preprocess_shift_features()
-
-        err_msg_feat = (
-            lambda f: f"Passed shift feature '{f}' not found in `features_stats`."
-        )
-        err_msg_stat = (
-            lambda s: f"Passed shift feature stat '{s}' not found in `features_stats`."
-        )
-        for shift_features in self.shift_features:
-            for feat_nm in shift_features.keys():
-                assert feat_nm in self.feature_names_in, err_msg_feat(feat_nm)
-                for stat in shift_features[feat_nm]:
-                    assert stat in self.features_stats[feat_nm], err_msg_stat(stat)
 
     # method called on fit
     def _check_aoi_fit(self, X):
@@ -189,43 +154,6 @@ class StatsTransformer(BaseTransformer):
                             v in self.aoi_mapper[aoi_col]
                     ), f"Unknown AOI value {v} was not seen during `fit` in '{aoi_col}'."
 
-    def _preprocess_shift_features(self):
-        if isinstance(self.shift_pk, list) and self.shift_features is None:
-            self.shift_pk = (self.shift_pk,)
-            self.shift_features = (None,)
-
-        elif isinstance(self.shift_pk, list) and isinstance(self.shift_features, dict):
-            self.shift_pk = (self.shift_pk,)
-            self.shift_features = (self.shift_features,)
-
-        elif isinstance(self.shift_pk, tuple) and isinstance(self.shift_features, dict):
-            # same shift_features for different shift_pk
-            self.shift_features = [
-                self.shift_features for _ in range(len(self.shift_pk))
-            ]
-
-        # several shift_features for single shift_pk are not allowed - just merge shift_features
-        # into single dict
-
-        # elif isinstance(self.shift_pk, list) and isinstance(self.shift_features, tuple):
-
-        elif isinstance(self.shift_pk, tuple) and isinstance(self.shift_features, tuple):
-            # different shift_features for different shift_pk
-            assert len(self.shift_features) == len(self.shift_pk),\
-                f"""If tuple of lists, length of `shift_features`
-                    ({len(self.shift_features)}) must correspond
-                    to length of `shift_pk` ({len(self.shift_pk)})."""
-
-        else:
-            raise ValueError(f"Wrong combination of types for `shift_features` and `shift_pk`."
-                             f"Read docs for an example.")
-
-        # sf = Tuple[Dict], sp = Tuple[List]
-        for i in range(len(self.shift_pk)):
-            assert isinstance(self.shift_features[i], dict), "Wrong value for `shift_features`."
-            assert isinstance(self.shift_pk[i], list), "Wrong value for `shift_pk`."
-
-
     @property
     @abstractmethod
     def _fp(self) -> str:
@@ -247,38 +175,6 @@ class StatsTransformer(BaseTransformer):
         first fixation in each block is then removed.
         """
         ...
-
-    @staticmethod
-    def _is_shift_stat(shift_features, feat_nm, stat):
-        if shift_features is None:
-            return False
-        if feat_nm in shift_features and stat in shift_features[feat_nm]:
-            return True
-        return False
-
-    @staticmethod
-    def _is_shift_feat(shift_features, feat_nm):
-        if shift_features is None:
-            return False
-        return feat_nm in shift_features
-
-    def _get_shift_val(self, shift_pk_id, shift_group_id, aoi_col, aoi_val, feat_nm, stat):
-        """
-        Retrieves corresponding shift value for shift features calculation.
-        """
-        shift_mem = self.shift_mem[shift_pk_id]
-        shift_fill = self.shift_fill[shift_pk_id]
-        if shift_group_id not in shift_mem.keys() and self.warn:
-            warnings.warn(
-                message=f"Group {shift_group_id} for shift_pk {shift_pk_id} was not seen during `fit`."
-                        f"Average across all values of {shift_pk_id} is used instead.",
-                stacklevel=5)
-        return (
-            shift_mem[shift_group_id][aoi_col][aoi_val][feat_nm][stat]
-            if shift_group_id in shift_mem.keys()
-            # and aoi_val in shift_mem[shift_group_id][aoi_val]  # unknown aoi values on transform are not allowed
-            else shift_fill[aoi_col][aoi_val][feat_nm][stat]
-        )
 
     def _calc_with_aoi(
         self, feat_nms: List[str], X: pd.DataFrame, aoi_col: str, aoi_val: Any
@@ -309,9 +205,6 @@ class StatsTransformer(BaseTransformer):
         self._check_features_stats()
         self._check_aoi_fit(X)
 
-        if self.shift_features is not None:
-            self._check_shift_features()
-
         # all output features that will appear on transform
         self.feature_names_in_ = []
         for aoi_col in self.aoi_mapper:
@@ -323,115 +216,6 @@ class StatsTransformer(BaseTransformer):
                             if aoi_col != "" else
                             f"{self._fp}_{feat_nm}_{stat}"
                         )
-                        if self.shift_features is not None:
-                            for shift_features, shift_pk in zip(self.shift_features, self.shift_pk):
-                                shift_pk_id = _get_id(shift_pk)
-
-                                if self._is_shift_feat(shift_features, feat_nm):
-                                    if self._is_shift_stat(shift_features, feat_nm, stat):
-                                        self.feature_names_in_.append(
-                                            f"{self._fp}_{feat_nm}_{aoi_col}[{aoi_val}]_{stat}_shift_{shift_pk_id}"
-                                            if aoi_col != "" else
-                                            f"{self._fp}_{feat_nm}_{stat}_shift_{shift_pk_id}"
-                                        )
-        if self.shift_features is None:
-            return self
-
-        # OK if self.pk is None
-        # self._check_shift_features()
-
-        self.shift_mem = dict()
-        for shift_features, shift_pk in zip(self.shift_features, self.shift_pk):
-            shift_pk_id = _get_id(shift_pk)
-
-            feat_nms = list(shift_features.keys())  # names of features
-            groups: Types.EncodedPartition = _split_dataframe(
-                X, shift_pk
-            )  # split by shift_pk
-
-            # calc stats for each group
-            shift_mem = dict()
-            for group_id, group_X in groups:
-                shift_mem[group_id] = dict()
-
-                # split group_X by pk into subgroups, calc features
-                # for subgroups and take a mean
-                if self.pk is None:
-                    subgroups_X = [("", group_X)]
-                else:
-                    subgroups_X: List[(str, pd.DataFrame)] = _split_dataframe(
-                        group_X, self.pk
-                    )
-
-                for aoi_col in self.aoi_mapper:
-                    shift_mem[group_id][aoi_col] = dict()
-
-                    for aoi_val in self.aoi_mapper[aoi_col]:
-                        shift_mem[group_id][aoi_col][aoi_val] = dict()
-
-                        subgroups_feats = []
-                        for _, subgroup_X in subgroups_X:
-                            subgroup_feats: List[Tuple[str, pd.Series]] = self._calc_with_aoi(
-                                feat_nms, subgroup_X, aoi_col, aoi_val
-                            )
-                            subgroups_feats.append({k: v for (k, v) in subgroup_feats})
-
-                        # group_feats: List[Tuple[str, pd.Series]] = self._calc_with_aoi(
-                        #     feat_nms, group_X, aoi_col, aoi_val
-                        # )
-                        for feat_nm in feat_nms:
-                        # for feat_nm, feat_arr in group_feats:  # memoize feats for each group_id
-                            shift_mem[group_id][aoi_col][aoi_val][feat_nm] = dict()
-                            feat_stats: List[str] = self.features_stats[feat_nm]
-
-                            for stat in feat_stats:  # memoize stats for each feat
-                                mean = 0
-                                for subgroup_dict in subgroups_feats:
-                                    feat_arr = subgroup_dict[feat_nm]
-                                    feat_val = feat_arr.apply(stat) if len(feat_arr) > 0 else 0
-                                    mean += feat_val if not np.isnan(feat_val) else 0
-                                shift_mem[group_id][aoi_col][aoi_val][feat_nm][stat] = np.mean(mean)
-                                # feat_arr = feat_arr[~np.isnan(feat_arr)]
-                                # shift_mem[group_id][aoi_col][aoi_val][feat_nm][stat] = (
-                                #     feat_arr.apply(stat) if len(feat_arr) > 0 else 0
-                                # )
-
-            self.shift_mem[shift_pk_id] = shift_mem
-
-        # All shift features are calculated up to that point.
-        # Given fixed key shift_pk, there could be unknown groups on transform.
-        # Calc mean for each stat (by groups) to use for unknown groups on transform.
-        self.shift_fill = dict()
-
-        for shift_features, shift_pk in zip(self.shift_features, self.shift_pk):
-            shift_pk_id = _get_id(shift_pk)
-            shift_mem = self.shift_mem[shift_pk_id]
-            shift_fill = dict()
-
-            group_ids = list(shift_mem.keys())
-            feat_nms = list(shift_features.keys())  # names of features
-
-            for aoi_col in self.aoi_mapper:
-                shift_fill[aoi_col] = dict()
-
-                for aoi_val in self.aoi_mapper[aoi_col]:
-                    shift_fill[aoi_col][aoi_val] = dict()
-
-                    for feat_nm in feat_nms:
-                        shift_fill[aoi_col][aoi_val][feat_nm] = dict()
-                        # feat_stats: List[str] = self.features_stats[feat_nm]
-                        feat_stats: List[str] = shift_features[feat_nm]
-
-                        for stat in feat_stats:
-                            stat_sum = 0
-                            for group_id in group_ids:
-                                stat_sum += shift_mem[group_id][aoi_col][aoi_val][feat_nm][stat]
-                            shift_fill[aoi_col][aoi_val][feat_nm][stat] = stat_sum / max(
-                                1, len(group_ids)
-                            )
-
-            self.shift_fill[shift_pk_id] = shift_fill
-
         return self
 
     def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, NDArray]:
@@ -454,7 +238,7 @@ class StatsTransformer(BaseTransformer):
         group_ids = []
         for group_id, group_X in groups:
             group_ids.append(group_id)
-            gath_stats_group = []
+            gathered_stats_group = []
 
             for aoi_col in self.aoi_mapper:
                 for aoi_val in self.aoi_mapper[aoi_col]:
@@ -469,62 +253,10 @@ class StatsTransformer(BaseTransformer):
                         if not feat_arr.empty:  # group_X with AOI was not empty
                             stats_group = [feat_arr.apply(stat) for stat in feat_stats]
 
-                            # if initially shift_features=None
-                            if self.shift_features is not None:
-                                shift_stats_group = []
-                                for shift_features, shift_pk in zip(self.shift_features, self.shift_pk):
-                                    shift_pk_id = _get_id(shift_pk)
-
-                                    if self._is_shift_feat(shift_features, feat_nm):  # calc shifts
-                                        # --- Because shift_pk was required to be subset of pk ---
-                                        # shift_group_id = _get_id(
-                                        #     group_X[shift_pk].values[0]
-                                        # )
-                                        # --------------------------------------------------------
-                                        values = group_X[shift_pk].values
-                                        shift_group_ids = [_get_id(v) for v in values]
-                                        shift_stats_group.extend(
-                                            [
-                                                np.mean([
-                                                    stats_group[i]
-                                                    - self._get_shift_val(
-                                                        shift_pk_id,
-                                                        shift_group_id,
-                                                        aoi_col,
-                                                        aoi_val,
-                                                        feat_nm,
-                                                        feat_stats[i],
-                                                    )
-                                                    for shift_group_id
-                                                    in shift_group_ids
-                                                ])
-                                                for i in range(len(stats_group))
-                                                if self._is_shift_stat(  # no aoi_str
-                                                    shift_features, feat_nm, feat_stats[i]
-                                                )
-                                            ]
-                                        )
-                                stats_group.extend(shift_stats_group)
-
                         else:  # no AOI for given group
                             stats_group = [None for _ in feat_stats]
 
-                            if self.shift_features is not None:
-                                shift_stats_group = []
-                                for shift_features, shift_pk in zip(self.shift_features, self.shift_pk):
-                                    if self._is_shift_feat(shift_features, feat_nm):  # calc shifts
-                                        shift_stats_group.extend(
-                                            [
-                                                None
-                                                for i in range(len(stats_group))
-                                                if self._is_shift_stat(
-                                                    shift_features, feat_nm, feat_stats[i]
-                                                )
-                                            ]
-                                        )
-                                stats_group.extend(shift_stats_group)
-
-                        gath_stats_group.extend(stats_group)
+                        gathered_stats_group.extend(stats_group)
                         # TODO remove, have self.features_names_in_ on fit. But order matters,
                         #  so not removed for now
                         if add_cols_nms:
@@ -536,24 +268,12 @@ class StatsTransformer(BaseTransformer):
                                     for stat in feat_stats
                                 ]
                             )
-                            if self.shift_features is not None:
-                                for shift_features, shift_pk in zip(self.shift_features, self.shift_pk):
-                                    shift_pk_id = _get_id(shift_pk)
 
-                                    if self._is_shift_feat(shift_features, feat_nm):
-                                        column_nms.extend(
-                                            [
-                                                f"{self._fp}_{feat_nm}_{aoi_col}[{aoi_val}]_{stat}_shift_{shift_pk_id}"
-                                                if aoi_col != "" else
-                                                f"{self._fp}_{feat_nm}_{stat}_shift_{shift_pk_id}"
-                                                for stat in feat_stats
-                                                if self._is_shift_stat(shift_features, feat_nm, stat)
-                                            ]
-                                        )
+            gathered_stats.append(gathered_stats_group)
 
-            gathered_stats.append(gath_stats_group)
-
-        assert set(self.feature_names_in_) == set(column_nms)
+        assert len(self.feature_names_in_) == len(column_nms)
+        for i in range(len(column_nms)):
+            assert self.feature_names_in_[i] == column_nms[i], f"Fit: {self.feature_names_in_}\nTransform: {column_nms}."
         stats_df = pd.DataFrame(
             data=gathered_stats, columns=column_nms, index=group_ids
         )
@@ -585,21 +305,23 @@ class SaccadeFeatures(StatsTransformer):
         dx: pd.Series = X[self.x].diff()
         dy: pd.Series = X[self.y].diff()
         dr = np.sqrt(dx**2 + dy**2)
-        dt = None
+        dt = _calc_dt(X, self.duration, self.t) if any(map(lambda f: f != "length", features)) else None
 
-        if "length" in features:
-            sac_len = dr
-            feats.append(("length", sac_len[transition_mask]))
-        if "acceleration" in features:
-            # Acceleration: dx = v0 * t + 1/2 * a * t^2.
-            # Above formula is law of uniformly accelerated motion TODO consider direction
-            dt = _calc_dt(X, self.duration, self.t)
-            sac_acc: pd.DataFrame = dr / (dt**2 + self.eps) * 1 / 2
-            feats.append(("acceleration", sac_acc[transition_mask]))
-        if "speed" in features:
-            dt = dt if dt is not None else _calc_dt(X, self.duration, self.t)
-            sac_spd = dr / (dt + self.eps)
-            feats.append(("speed", sac_spd[transition_mask]))
+        for feat_nm in features:
+            if feat_nm == "length":
+                sac_len = dr
+                feat_arr = sac_len[transition_mask]
+            elif feat_nm == "acceleration":
+                # Acceleration: dx = v0 * t + 1/2 * a * t^2.
+                # Above formula is law of uniformly accelerated motion TODO consider direction
+                sac_acc: pd.DataFrame = dr / (dt ** 2 + self.eps) * 1 / 2
+                feat_arr = sac_acc[transition_mask]
+            elif feat_nm == "speed":
+                sac_spd = dr / (dt + self.eps)
+                feat_arr = sac_spd[transition_mask]
+            else:
+                raise NotImplemented(feat_nm)
+            feats.append((feat_nm, feat_arr))
 
         return feats
 
@@ -667,24 +389,24 @@ class RegressionFeatures(StatsTransformer):
         dy: pd.Series = X[self.y].diff()
         sm = _select_regressions(dx, dy, self.rule, self.deviation)  # selection_mask
         dr = np.sqrt(dx**2 + dy**2)
-        dt = None
+        dt = _calc_dt(X, self.duration, self.t) if any(map(lambda f: f != "length", features)) else None
 
         tm = transition_mask[sm]
-        if "length" in features:
-            sac_len = dr
-            feats.append(("length", sac_len[sm][tm]))
-        if "acceleration" in features:
-            # Acceleration: dx = v0 * t + 1/2 * a * t^2.
-            # Above formula is law of uniformly accelerated motion TODO consider direction
-            dt = _calc_dt(X, self.duration, self.t)
-            sac_acc: pd.DataFrame = dr / (dt**2 + self.eps) * 1 / 2
-            feats.append(("acceleration", sac_acc[sm][tm]))
-        if "speed" in features:
-            dt = dt if dt is not None else _calc_dt(X, self.duration, self.t)
-            sac_spd = dr / (dt + self.eps)
-            feats.append(("speed", sac_spd[sm][tm]))
-        if "mask" in features:
-            feats.append(("mask", sm))
+        for feat_nm in features:
+            if feat_nm == "length":
+                sac_len = dr
+                feat_arr = sac_len[sm][tm]
+            elif feat_nm == "acceleration":
+                sac_acc: pd.DataFrame = dr / (dt ** 2 + self.eps) * 1 / 2
+                feat_arr = sac_acc[sm][tm]
+            elif feat_nm == "speed":
+                sac_spd = dr / (dt + self.eps)
+                feat_arr = sac_spd[sm][tm]
+            elif feat_nm == "mask":
+                feat_arr = sm
+            else:
+                raise NotImplemented(feat_nm)
+            feats.append((feat_nm, feat_arr))
 
         return feats
 
@@ -726,25 +448,24 @@ class MicroSaccades(StatsTransformer):
         # selection_mask
         sm = (dr < self.max_speed) & (X[self.dispersion] > self.min_dispersion)
 
-        dt = None
+        dt = _calc_dt(X, self.duration, self.t) if any(map(lambda f: f != "length", features)) else None
 
         tm = transition_mask[sm]
-        if "length" in features:
-            sac_len = dr
-            feats.append(("length", sac_len[sm][tm]))
-        if "acceleration" in features:
-            # Acceleration: dx = v0 * t + 1/2 * a * t^2.
-            # Above formula is law of uniformly accelerated motion TODO consider direction
-            dt = _calc_dt(X, self.duration, self.t)
-            sac_acc: pd.DataFrame = dr / (dt**2 + self.eps) * 1 / 2
-            feats.append(("acceleration", sac_acc[sm][tm]))
-        if "speed" in features:
-            dt = dt if dt is not None else _calc_dt(X, self.duration, self.t)
-            sac_spd = dr / (dt + self.eps)
-            feats.append(("speed", sac_spd[sm][tm]))
-            
-        if "mask" in features:
-            feats.append(("mask", sm))
+        for feat_nm in features:
+            if feat_nm == "length":
+                sac_len = dr
+                feat_arr = sac_len[sm][tm]
+            elif feat_nm == "acceleration":
+                sac_acc: pd.DataFrame = dr / (dt ** 2 + self.eps) * 1 / 2
+                feat_arr = sac_acc[sm][tm]
+            elif feat_nm == "speed":
+                sac_spd = dr / (dt + self.eps)
+                feat_arr = sac_spd[sm][tm]
+            elif feat_nm == "mask":
+                feat_arr = sm
+            else:
+                raise NotImplemented(feat_nm)
+            feats.append((feat_nm, feat_arr))
 
         return feats
 
@@ -770,9 +491,13 @@ class FixationFeatures(StatsTransformer):
     ) -> List[Tuple[str, pd.Series]]:
         feats = []
 
-        if "duration" in features:
-            feats.append(("duration", X[self.duration][transition_mask]))
-        if "vad" in features:
-            feats.append(("vad", X[self.dispersion][transition_mask]))
+        for feat_nm in features:
+            if feat_nm == "duration":
+                feat_arr = X[self.duration][transition_mask]
+            elif feat_nm == "vad":
+                feat_arr = X[self.dispersion][transition_mask]
+            else:
+                raise NotImplemented(feat_nm)
+            feats.append((feat_nm, feat_arr))
 
         return feats

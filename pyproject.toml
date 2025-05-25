@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "eyefeatures"
-version = "0.2.0"
+version = "0.3.0"
 description = "Preprocessing, visualization, statistical analysis, feature engineering, and machine learning of eye movement data."
 authors = ["Vagiz Daudov <vagiz.0282@gmail.com>"]
 readme = "README.md"
@@ -31,6 +31,9 @@ optional = true
 black = "24.3.0"
 isort = "5.12.0"
 flake8 = "6.1"
+openpyxl = "3.1.5"
+plotly = "6.1.1"
+seaborn = "0.13.2"
 
 [tool.poetry.group.deep]
 optional = true

@@ -3,7 +3,6 @@ from typing import Any, Dict, List, Tuple, Union
 import numpy as np
 import pandas as pd
 import warnings
-from numba import jit
 from tqdm import tqdm
 from sklearn.base import BaseEstimator, TransformerMixin
 

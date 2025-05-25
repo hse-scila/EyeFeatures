@@ -3,7 +3,6 @@ from typing import Dict, List, Union
 import numpy as np
 import pandas as pd
 import scipy
-from numba import jit
 
 from eyefeatures.preprocessing._utils import _get_distance, _get_MEC
 from eyefeatures.preprocessing.base import BaseFixationPreprocessor

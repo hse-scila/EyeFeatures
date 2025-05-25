@@ -49,8 +49,8 @@ class MeasureTransformer(ABC, BaseTransformer):
             group_names.append("all")
             gathered_features.append([self.calculate_feature(X)])
         else:
-            X_splited = _split_dataframe(X, self.pk)
-            for group, current_X in X_splited:
+            X_split = _split_dataframe(X, self.pk)
+            for group, current_X in X_split:
                 group_names.append(group)
                 gathered_features.append([self.calculate_feature(current_X)])
 
@@ -65,7 +65,6 @@ class HurstExponent(MeasureTransformer):
         self,
         n_iters=10,
         fill_strategy: Literal["mean", "reduce", "last"] = "last",
-        var: str = None,
         pk: List[str] = None,
         eps: float = 1e-22,
         return_df: bool = True,
@@ -79,13 +78,11 @@ class HurstExponent(MeasureTransformer):
                 after 2 ^ k-th are removed, where n < 2 ^ (k + 1). Other strategies specify the value
                 to fill the vector with up to the closest power of 2, "mean" being the mean of vector, "last"
                 being the last value of vector (makes time-series constant at the end).
-        :param var: column name of sequence points.
         :param pk: list of column names used to split pd.DataFrame.
         :param eps: division epsilon.
         :param return_df: Return pd.Dataframe object else np.ndarray.
         """
         super().__init__(pk=pk, return_df=return_df, feature_name="hurst_exponent")
-        self.var = var
         self.n_iters = n_iters
         self.fill_strategy = fill_strategy
         self.eps = eps
@@ -124,8 +121,8 @@ class HurstExponent(MeasureTransformer):
         else:
             raise NotImplementedError
 
-    def calculate_feature(self, X=pd.DataFrame) -> float:
-        x = X[self.var].values / 1000
+    def calculate_feature(self, X: pd.DataFrame) -> float:
+        x = X[self.x].values / 1000  # TODO make in 2D
         x = self._make_pow2(x)
         n = len(x)
 

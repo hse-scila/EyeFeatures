@@ -3,7 +3,6 @@ from typing import Any, List, Tuple, Union
 
 import numpy as np
 import pandas as pd
-from numba import jit, prange
 from numpy.typing import NDArray
 from scipy.stats import gaussian_kde
 from sklearn.base import BaseEstimator, TransformerMixin
@@ -34,12 +33,10 @@ class BasePreprocessor(BaseEstimator, TransformerMixin):
     def _err_no_field(m, c):
         return f"Method '{m}' requires '{c}' for preprocessing."
 
-    @jit(forceobj=True, looplift=True)
     def fit(self, X: pd.DataFrame, y=None):
         self._check_params()
         return self
 
-    @jit(forceobj=True, looplift=True)
     def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, NDArray]:
         self._check_params()
         if self.pk is None:
@@ -50,7 +47,7 @@ class BasePreprocessor(BaseEstimator, TransformerMixin):
             for group_ids, group_X in groups:
                 cur_fixations = self._preprocess(group_X)
 
-                for i in prange(len(self.pk)):
+                for i in range(len(self.pk)):
                     cur_fixations.insert(loc=i, column=self.pk[i], value=group_ids[i])
 
                 if fixations is None:
@@ -79,7 +76,7 @@ class BaseFixationPreprocessor(BasePreprocessor, ABC):
         n = len(is_fixation)
         fixation_id = 0
         prev_is_fixation = False
-        for i in prange(n):
+        for i in range(n):
             if is_fixation[i] == 0:
                 prev_is_fixation = False
                 continue
@@ -94,7 +91,7 @@ class BaseFixationPreprocessor(BasePreprocessor, ABC):
     @staticmethod
     def _get_distances(points: NDArray, distance):
         dist = np.zeros(len(points) - 1)
-        for i in prange(len(points) - 1):
+        for i in range(len(points) - 1):
             dist[i] = _get_distance(points[i, :], points[i + 1, :], distance=distance)
         return dist
 
@@ -134,7 +131,7 @@ class BaseFixationPreprocessor(BasePreprocessor, ABC):
             dx: pd.Series = fixations_df[self.x].diff().values
             dy: pd.Series = fixations_df[self.y].diff().values
             sa = np.zeros(shape=(n,))
-            for i in prange(1, n):
+            for i in range(1, n):
                 sa[i] = _get_angle(dx[i], dy[i], degrees=True)
             fixations_df["saccade_angle"] = sa
 
@@ -142,7 +139,7 @@ class BaseFixationPreprocessor(BasePreprocessor, ABC):
         if "saccade2_angle" in feats:
             xx, yy = fixations_df[self.x].values, fixations_df[self.y].values
             sa2 = np.zeros(shape=(n,))
-            for i in prange(1, n - 1):
+            for i in range(1, n - 1):
                 sa2[i] = _get_angle3(
                     x0=xx[i],
                     y0=yy[i],
@@ -184,15 +181,14 @@ class BaseAOIPreprocessor(BasePreprocessor, ABC):
         return np.reshape(kde(positions), X.shape), X, Y
 
     @staticmethod
-    @jit(forceobj=True, looplift=True)
     def _find_local_max_coordinates(loc_max_matrix: np.ndarray) -> np.ndarray:
         """
         Finds the local max coordinates of a fixation density matrix.
 
         :param loc_max_matrix: matrix with maxima.
         """
-        for i in prange(loc_max_matrix.shape[0]):  # TODO vectorize with numpy?
-            for j in prange(loc_max_matrix.shape[1]):
+        for i in range(loc_max_matrix.shape[0]):  # TODO vectorize with numpy?
+            for j in range(loc_max_matrix.shape[1]):
                 if i == 0 and j != 0:
                     if loc_max_matrix[i][j - 1] == loc_max_matrix[i][j]:
                         loc_max_matrix[i][j - 1] = 0

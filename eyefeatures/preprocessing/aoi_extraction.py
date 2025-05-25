@@ -1,10 +1,8 @@
-import math
-from typing import Any, Dict, List, Tuple, Union
+from typing import Dict, List, Tuple
 
 import numpy as np
 import pandas as pd
-from numba import jit
-from scipy.ndimage import maximum_filter, prewitt, sobel
+from scipy.ndimage import maximum_filter, sobel
 from sklearn.base import BaseEstimator, ClusterMixin, TransformerMixin
 
 from eyefeatures.features.measures import ShannonEntropy
@@ -331,7 +329,6 @@ class GradientBased(BaseAOIPreprocessor):
             self.threshold >= 0
         ), "Error: threshold must be greater than zero or equal to zero"
 
-    # @jit(forceobj=True, looplift=True)
     def _preprocess(self, X: pd.DataFrame) -> pd.DataFrame:
         assert X.shape[0] != 0, "Error: there are no points"
         if self.pk is not None:
@@ -439,7 +436,7 @@ class GradientBased(BaseAOIPreprocessor):
         return X
 
 
-class OverlapCLustering(BaseAOIPreprocessor):
+class OverlapClustering(BaseAOIPreprocessor):
     """
     Defines the AOI for each fixation using the overlapping clustering algorithm.
 
@@ -584,7 +581,6 @@ class AOIExtractor(BaseEstimator, TransformerMixin):
         self.aoi = aoi_name
         self.show_best = show_best
 
-    # @jit(forceobj=True, looplift=True)
     def fit(self, X: pd.DataFrame, y=None):
         for method in self.methods:
             method.x = self.x
@@ -599,7 +595,6 @@ class AOIExtractor(BaseEstimator, TransformerMixin):
                 method.fit(X)
         return self
 
-    # @jit(forceobj=True, looplift=True)
     def transform(self, X: pd.DataFrame) -> pd.DataFrame:
         if self.methods is None:
             return X
