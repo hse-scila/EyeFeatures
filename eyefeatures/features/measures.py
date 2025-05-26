@@ -162,7 +162,7 @@ class ShannonEntropy(BaseTransformer):
     ):
         super().__init__(pk=pk, return_df=return_df)
         self.aoi = aoi
-        self.feature_name=f"shannon_entropy_aoi_{aoi}"
+        self.feature_name = f"shannon_entropy_aoi_{aoi}"
 
     def _check_init(self, X_len: int):
         assert self.aoi is not None, "Error: Provide aoi column"
@@ -219,7 +219,9 @@ class SpectralEntropy(MeasureTransformer):
         pk: List[str] = None,
         return_df: bool = True,
     ):
-        super().__init__(x=x, y=y, pk=pk, return_df=return_df, feature_name="spectral_entropy")
+        super().__init__(
+            x=x, y=y, pk=pk, return_df=return_df, feature_name="spectral_entropy"
+        )
         self.aoi = aoi
 
     def calculate_feature(self, X: pd.DataFrame) -> float:
@@ -246,7 +248,9 @@ class FuzzyEntropy(MeasureTransformer):
         pk: List[str] = None,
         return_df: bool = True,
     ):
-        super().__init__(x=x, y=y, pk=pk, return_df=return_df, feature_name=f"fuzzy_m_{m}_r_{r}")
+        super().__init__(
+            x=x, y=y, pk=pk, return_df=return_df, feature_name=f"fuzzy_m_{m}_r_{r}"
+        )
         self.m = m
         self.r = r
         self.aoi = aoi
@@ -286,7 +290,11 @@ class SampleEntropy(MeasureTransformer):
         return_df: bool = True,
     ):
         super().__init__(
-            x=x, y=y, pk=pk, return_df=return_df, feature_name=f"sample_entropy_m={m}_r={r}"
+            x=x,
+            y=y,
+            pk=pk,
+            return_df=return_df,
+            feature_name=f"sample_entropy_m={m}_r={r}",
         )
         self.m = m
         self.r = r
@@ -303,7 +311,7 @@ class SampleEntropy(MeasureTransformer):
         X_emb = np.array([X_coord[j : j + self.m + 1] for j in range(n - self.m)])
         dist_matrix = squareform(pdist(X_emb, metric="chebyshev"))
         A = np.sum(np.sum(dist_matrix < self.r, axis=0) - 1)
-        return -np.log(A / (B + self.eps)+1e-100)
+        return -np.log(A / (B + self.eps) + 1e-100)
 
 
 class IncrementalEntropy(MeasureTransformer):
@@ -348,7 +356,11 @@ class GriddedDistributionEntropy(MeasureTransformer):
         return_df: bool = True,
     ):
         super().__init__(
-            x=x, y=y, pk=pk, return_df=return_df, feature_name=f"gridded_entropy_grid_size_{grid_size}"
+            x=x,
+            y=y,
+            pk=pk,
+            return_df=return_df,
+            feature_name=f"gridded_entropy_grid_size_{grid_size}",
         )
         self.grid_size = grid_size
         self.aoi = aoi
@@ -382,7 +394,11 @@ class PhaseEntropy(MeasureTransformer):
         return_df: bool = True,
     ):
         super().__init__(
-            x=x, y=y, pk=pk, return_df=return_df, feature_name=f"phase_entropy_m_{m}_tau_{tau}"
+            x=x,
+            y=y,
+            pk=pk,
+            return_df=return_df,
+            feature_name=f"phase_entropy_m_{m}_tau_{tau}",
         )
         self.m = m
         self.tau = tau
@@ -423,7 +439,11 @@ class LyapunovExponent(MeasureTransformer):
         return_df: bool = True,
     ):
         super().__init__(
-            x=x, y=y, pk=pk, return_df=return_df, feature_name=f"lyapunov_exponent_m_{m}_tau_{tau}_T_{T}"
+            x=x,
+            y=y,
+            pk=pk,
+            return_df=return_df,
+            feature_name=f"lyapunov_exponent_m_{m}_tau_{tau}_T_{T}",
         )
         self.m = m
         self.tau = tau
@@ -480,7 +500,11 @@ class FractalDimension(MeasureTransformer):
         return_df: bool = True,
     ):
         super().__init__(
-            x=x, y=y, pk=pk, return_df=return_df, feature_name=f"fractal_dim_m_{m}_tau_{tau}"
+            x=x,
+            y=y,
+            pk=pk,
+            return_df=return_df,
+            feature_name=f"fractal_dim_m_{m}_tau_{tau}",
         )
         self.m = m
         self.tau = tau
@@ -530,7 +554,13 @@ class CorrelationDimension(MeasureTransformer):
         pk: List[str] = None,
         return_df: bool = True,
     ):
-        super().__init__(x=x, y=y, pk=pk, return_df=return_df, feature_name=f"corr_dim_m_{m}_tau_{tau}_r_{r}")
+        super().__init__(
+            x=x,
+            y=y,
+            pk=pk,
+            return_df=return_df,
+            feature_name=f"corr_dim_m_{m}_tau_{tau}_r_{r}",
+        )
         self.m = m
         self.tau = tau
         self.r = r
@@ -603,7 +633,9 @@ class RQAMeasures(BaseTransformer):
         r = np.sum(np.triu(rqa_matrix, k=1)) + self.eps
 
         if "rec" in self.measures:
-            columns.append(f"rec_metric_{self.metric.__name__}_length_{self.min_length}_rho_{self.rho}")
+            columns.append(
+                f"rec_metric_{self.metric.__name__}_length_{self.min_length}_rho_{self.rho}"
+            )
             features.append(100 * 2 * r / (n * (n - 1)))
 
         if "det" in self.measures:
@@ -614,7 +646,9 @@ class RQAMeasures(BaseTransformer):
                     for k in range(len(diagonal) - self.min_length + 1):
                         if np.all(diagonal[k : k + self.min_length]):
                             DL.append(np.sum(diagonal[k:]))
-            columns.append(f"det_{self.metric.__name__}_length_{self.min_length}_rho_{self.rho}")
+            columns.append(
+                f"det_{self.metric.__name__}_length_{self.min_length}_rho_{self.rho}"
+            )
             features.append(100 * np.sum(DL) / r)
 
         if "lam" in self.measures:
@@ -627,7 +661,9 @@ class RQAMeasures(BaseTransformer):
                         HL.append(np.sum(horizontal[k:]))
                     if np.all(vertical[k : k + self.min_length]):
                         VL.append(np.sum(vertical[k:]))
-            columns.append(f"lam_{self.metric.__name__}_length_{self.min_length}_rho_{self.rho}")
+            columns.append(
+                f"lam_{self.metric.__name__}_length_{self.min_length}_rho_{self.rho}"
+            )
             features.append(100 * (np.sum(HL) + np.sum(VL)) / (2 * r))
 
         if "corm" in self.measures:
@@ -635,7 +671,9 @@ class RQAMeasures(BaseTransformer):
             for i in range(n - 1):
                 for j in range(i + 1, n):
                     corm_num += (j - i) * rqa_matrix[i, j]
-            columns.append(f"corm_{self.metric.__name__}_length_{self.min_length}_rho_{self.rho}")
+            columns.append(
+                f"corm_{self.metric.__name__}_length_{self.min_length}_rho_{self.rho}"
+            )
             features.append(100 * corm_num / ((n - 1) * r))
 
         return columns, features
@@ -783,8 +821,8 @@ class HHTFeatures(BaseTransformer):
             "entropy": partial(entropy, axis=(0, 1)),
             "energy": lambda data: np.sum(data**2, axis=(0, 1)),
             "dom_freq": self.dominant_freq,
-            #"sample_entropy": self.sample_entropy,
-            #"complexity_index": self.complexity_index,
+            # "sample_entropy": self.sample_entropy,
+            # "complexity_index": self.complexity_index,
         }
 
     def _check_init(self, X_len: int):

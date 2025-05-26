@@ -1,12 +1,12 @@
+import warnings
 from typing import Any, Dict, List, Tuple, Union
 
 import numpy as np
 import pandas as pd
-import warnings
-from tqdm import tqdm
 from sklearn.base import BaseEstimator, TransformerMixin
+from tqdm import tqdm
 
-from eyefeatures.utils import _split_dataframe, _get_objs, _get_id
+from eyefeatures.utils import _get_id, _get_objs, _split_dataframe
 
 
 class BaseTransformer(BaseEstimator, TransformerMixin):
@@ -128,8 +128,10 @@ class Extractor(BaseEstimator, TransformerMixin):  # TODO rename to FeatureExtra
             )  # split by pk
             for group_id, group_X in groups:
                 if group_X.isnull().values.any() and self.warn:
-                    warnings.warn(f"Group {group_id} has missing values. Dropping them.",
-                                  stacklevel=5)
+                    warnings.warn(
+                        f"Group {group_id} has missing values. Dropping them.",
+                        stacklevel=5,
+                    )
             X = X.dropna()
         return X, y
 
@@ -180,6 +182,8 @@ class Extractor(BaseEstimator, TransformerMixin):  # TODO rename to FeatureExtra
             index = features_df.index.values
             index_as_cols = [_get_objs(id_) for id_ in index]
             for index_i in range(len(self.pk)):
-                features_df[self.pk[index_i]] = [objs[index_i] for objs in index_as_cols]
+                features_df[self.pk[index_i]] = [
+                    objs[index_i] for objs in index_as_cols
+                ]
 
         return features_df if self.return_df else features_df.values

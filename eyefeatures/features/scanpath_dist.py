@@ -7,7 +7,8 @@ from numba import jit
 from tqdm import tqdm
 
 from eyefeatures.features.extractor import BaseTransformer
-from eyefeatures.features.scanpath_complex import _get_fill_path, get_expected_path
+from eyefeatures.features.scanpath_complex import (_get_fill_path,
+                                                   get_expected_path)
 from eyefeatures.utils import Types, _split_dataframe
 
 
@@ -172,7 +173,9 @@ class SimpleDistances(DistanceTransformer):
             )
             dataframes.append(self._methods_cls[method].transform(data_part))
 
-        features_df = pd.concat(dataframes, axis=1).add_suffix('_'+self.expected_paths_method)
+        features_df = pd.concat(dataframes, axis=1).add_suffix(
+            "_" + self.expected_paths_method
+        )
         return features_df if self.return_df else features_df.values
 
 
@@ -368,7 +371,9 @@ class ScanMatchDist(DistanceTransformer):
             )
             features.append([dist])
 
-        features_df = pd.DataFrame(data=features, columns=columns, index=group_names).add_suffix('_'+self.expected_paths_method)
+        features_df = pd.DataFrame(
+            data=features, columns=columns, index=group_names
+        ).add_suffix("_" + self.expected_paths_method)
         return features_df if self.return_df else features_df.values
 
     def __repr__(self, **kwargs):
@@ -541,7 +546,9 @@ class TDEDist(DistanceTransformer):
             dist = calc_tde_dist(group_path[[self.x, self.y]], expected_path, k=self.k)
             features.append([dist])
 
-        features_df = pd.DataFrame(data=features, columns=columns, index=group_names).add_suffix('_'+self.expected_paths_method)
+        features_df = pd.DataFrame(
+            data=features, columns=columns, index=group_names
+        ).add_suffix("_" + self.expected_paths_method)
         return features_df if self.return_df else features_df.values
 
 
@@ -623,7 +630,9 @@ class MultiMatchDist(DistanceTransformer):
             )
             features.append([shape, angle, length, pos, duration])
 
-        features_df = pd.DataFrame(data=features, columns=columns, index=group_names).add_suffix('_'+self.expected_paths_method)
+        features_df = pd.DataFrame(
+            data=features, columns=columns, index=group_names
+        ).add_suffix("_" + self.expected_paths_method)
         return features_df if self.return_df else features_df.values
 
 
@@ -659,7 +668,7 @@ def calc_euc_dist(p: pd.DataFrame, q: pd.DataFrame) -> float:
         p_aligned = p.values[:length]
         q_aligned = q.values[:length]
         dist = ((p_aligned - q_aligned) ** 2).sum()
-    if dist==np.nan:
+    if dist == np.nan:
         print(length, p_aligned, q_aligned)
 
     return dist

@@ -1,20 +1,14 @@
-from abc import abstractmethod
-from typing import Dict, List, Tuple, Union, Any
 import warnings
+from abc import abstractmethod
+from typing import Any, Dict, List, Tuple, Union
 
 import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
 
 from eyefeatures.features.extractor import BaseTransformer
-from eyefeatures.utils import (
-    _calc_dt,
-    _get_id,
-    _get_objs,
-    _select_regressions,
-    _split_dataframe,
-    Types
-)
+from eyefeatures.utils import (Types, _calc_dt, _get_id, _get_objs,
+                               _select_regressions, _split_dataframe)
 
 
 class StatsTransformer(BaseTransformer):
@@ -30,7 +24,7 @@ class StatsTransformer(BaseTransformer):
         calc_without_aoi: bool = False,  # if True, then calculate regular features even with aoi passed
         pk: None | List[str] = None,
         return_df: bool = True,
-        warn: bool = True
+        warn: bool = True,
     ):
         """
         Base class for statistical features. Aggregate function strings must be
@@ -106,19 +100,24 @@ class StatsTransformer(BaseTransformer):
     # method called on fit
     def _check_aoi_fit(self, X):
         if self.aoi is not None:  # check if aoi columns contain any NaNs
-            assert isinstance(self.aoi, str) or isinstance(self.aoi, list),\
-                f"`aoi` must be str or List[str], got {type(self.aoi)}."
+            assert isinstance(self.aoi, str) or isinstance(
+                self.aoi, list
+            ), f"`aoi` must be str or List[str], got {type(self.aoi)}."
 
             if isinstance(self.aoi, str):
                 self.aoi = [self.aoi]
 
-            assert "" not in self.aoi, 'Empty string "" as value in `aoi` columns is not allowed.'
+            assert (
+                "" not in self.aoi
+            ), 'Empty string "" as value in `aoi` columns is not allowed.'
 
             for aoi_col in self.aoi:
                 if aoi_col != "":
                     aoi_view = X[aoi_col]
                     if aoi_view.isnull().values.any():
-                        raise RuntimeError(f"Passed column '{aoi_col}' for AOI contains NaNs.")
+                        raise RuntimeError(
+                            f"Passed column '{aoi_col}' for AOI contains NaNs."
+                        )
 
         self._preprocess_aoi(X)
 
@@ -139,7 +138,9 @@ class StatsTransformer(BaseTransformer):
     # method called on transform
     def _check_aoi_transform(self, X: pd.DataFrame):
         if self.aoi is not None:  # check if aoi column contains any NaNs
-            assert "" not in self.aoi, 'Empty string "" as value in `aoi` columns is not allowed.'
+            assert (
+                "" not in self.aoi
+            ), 'Empty string "" as value in `aoi` columns is not allowed.'
 
             for aoi_col in self.aoi:
                 if aoi_col == "":  # lib placeholder
@@ -147,11 +148,13 @@ class StatsTransformer(BaseTransformer):
 
                 aoi_view = X[aoi_col]
                 if aoi_view.isnull().values.any():
-                    raise RuntimeError(f"Passed column '{aoi_col}' for AOI contains NaNs.")
+                    raise RuntimeError(
+                        f"Passed column '{aoi_col}' for AOI contains NaNs."
+                    )
 
                 for v in aoi_view:
                     assert (
-                            v in self.aoi_mapper[aoi_col]
+                        v in self.aoi_mapper[aoi_col]
                     ), f"Unknown AOI value {v} was not seen during `fit` in '{aoi_col}'."
 
     @property
@@ -192,7 +195,7 @@ class StatsTransformer(BaseTransformer):
         else:
             X_aoi = X[X[aoi_col] == aoi_val]
             all_aoi = X[aoi_col]
-            all_transition_mask: pd.Series = (all_aoi == all_aoi.shift(1))
+            all_transition_mask: pd.Series = all_aoi == all_aoi.shift(1)
             transition_mask = all_transition_mask[all_aoi == aoi_val].values
 
             feats: List[Tuple[str, pd.Series]] = self._calc_feats(
@@ -213,8 +216,8 @@ class StatsTransformer(BaseTransformer):
                     for stat in self.features_stats[feat_nm]:
                         self.feature_names_in_.append(
                             f"{self._fp}_{feat_nm}_{aoi_col}[{aoi_val}]_{stat}"
-                            if aoi_col != "" else
-                            f"{self._fp}_{feat_nm}_{stat}"
+                            if aoi_col != ""
+                            else f"{self._fp}_{feat_nm}_{stat}"
                         )
         return self
 
@@ -262,9 +265,11 @@ class StatsTransformer(BaseTransformer):
                         if add_cols_nms:
                             column_nms.extend(
                                 [
-                                    f"{self._fp}_{feat_nm}_{aoi_col}[{aoi_val}]_{stat}"
-                                    if aoi_col != "" else
-                                    f"{self._fp}_{feat_nm}_{stat}"
+                                    (
+                                        f"{self._fp}_{feat_nm}_{aoi_col}[{aoi_val}]_{stat}"
+                                        if aoi_col != ""
+                                        else f"{self._fp}_{feat_nm}_{stat}"
+                                    )
                                     for stat in feat_stats
                                 ]
                             )
@@ -273,7 +278,9 @@ class StatsTransformer(BaseTransformer):
 
         assert len(self.feature_names_in_) == len(column_nms)
         for i in range(len(column_nms)):
-            assert self.feature_names_in_[i] == column_nms[i], f"Fit: {self.feature_names_in_}\nTransform: {column_nms}."
+            assert (
+                self.feature_names_in_[i] == column_nms[i]
+            ), f"Fit: {self.feature_names_in_}\nTransform: {column_nms}."
         stats_df = pd.DataFrame(
             data=gathered_stats, columns=column_nms, index=group_ids
         )
@@ -305,7 +312,11 @@ class SaccadeFeatures(StatsTransformer):
         dx: pd.Series = X[self.x].diff()
         dy: pd.Series = X[self.y].diff()
         dr = np.sqrt(dx**2 + dy**2)
-        dt = _calc_dt(X, self.duration, self.t) if any(map(lambda f: f != "length", features)) else None
+        dt = (
+            _calc_dt(X, self.duration, self.t)
+            if any(map(lambda f: f != "length", features))
+            else None
+        )
 
         for feat_nm in features:
             if feat_nm == "length":
@@ -314,7 +325,7 @@ class SaccadeFeatures(StatsTransformer):
             elif feat_nm == "acceleration":
                 # Acceleration: dx = v0 * t + 1/2 * a * t^2.
                 # Above formula is law of uniformly accelerated motion TODO consider direction
-                sac_acc: pd.DataFrame = dr / (dt ** 2 + self.eps) * 1 / 2
+                sac_acc: pd.DataFrame = dr / (dt**2 + self.eps) * 1 / 2
                 feat_arr = sac_acc[transition_mask]
             elif feat_nm == "speed":
                 sac_spd = dr / (dt + self.eps)
@@ -389,7 +400,11 @@ class RegressionFeatures(StatsTransformer):
         dy: pd.Series = X[self.y].diff()
         sm = _select_regressions(dx, dy, self.rule, self.deviation)  # selection_mask
         dr = np.sqrt(dx**2 + dy**2)
-        dt = _calc_dt(X, self.duration, self.t) if any(map(lambda f: f != "length", features)) else None
+        dt = (
+            _calc_dt(X, self.duration, self.t)
+            if any(map(lambda f: f != "length", features))
+            else None
+        )
 
         tm = transition_mask[sm]
         for feat_nm in features:
@@ -397,7 +412,7 @@ class RegressionFeatures(StatsTransformer):
                 sac_len = dr
                 feat_arr = sac_len[sm][tm]
             elif feat_nm == "acceleration":
-                sac_acc: pd.DataFrame = dr / (dt ** 2 + self.eps) * 1 / 2
+                sac_acc: pd.DataFrame = dr / (dt**2 + self.eps) * 1 / 2
                 feat_arr = sac_acc[sm][tm]
             elif feat_nm == "speed":
                 sac_spd = dr / (dt + self.eps)
@@ -448,7 +463,11 @@ class MicroSaccades(StatsTransformer):
         # selection_mask
         sm = (dr < self.max_speed) & (X[self.dispersion] > self.min_dispersion)
 
-        dt = _calc_dt(X, self.duration, self.t) if any(map(lambda f: f != "length", features)) else None
+        dt = (
+            _calc_dt(X, self.duration, self.t)
+            if any(map(lambda f: f != "length", features))
+            else None
+        )
 
         tm = transition_mask[sm]
         for feat_nm in features:
@@ -456,7 +475,7 @@ class MicroSaccades(StatsTransformer):
                 sac_len = dr
                 feat_arr = sac_len[sm][tm]
             elif feat_nm == "acceleration":
-                sac_acc: pd.DataFrame = dr / (dt ** 2 + self.eps) * 1 / 2
+                sac_acc: pd.DataFrame = dr / (dt**2 + self.eps) * 1 / 2
                 feat_arr = sac_acc[sm][tm]
             elif feat_nm == "speed":
                 sac_spd = dr / (dt + self.eps)
