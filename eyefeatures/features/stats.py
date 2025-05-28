@@ -7,29 +7,47 @@ import pandas as pd
 from numpy.typing import NDArray
 
 from eyefeatures.features.extractor import BaseTransformer
-from eyefeatures.utils import (Types, _calc_dt, _get_id, _get_objs,
-                               _select_regressions, _split_dataframe)
+from eyefeatures.utils import (
+    Types,
+    _calc_dt,
+    _select_regressions,
+    _split_dataframe
+)
 
 
 class StatsTransformer(BaseTransformer):
+    """Base class for statistical features. Aggregate function strings must be
+    compatible with `pandas`. Expected dataframe with fixations.
+
+    Args:
+        features_stats: Dictionary of format {'feature_1': ['statistic_1', 'statistic_2'], ...}.
+        x: X coordinate column name.
+        y: Y coordinate column name.
+        t: timestamp column name.
+        duration: duration column name (milliseconds expected).
+        dispersion: fixation dispersion column name.
+        aoi: Area Of Interest column name(-s). If provided, features can be calculated inside
+            the specified AOI.
+        calc_without_aoi: if True, then, in addition to AOI-wise features, calculate regular features
+            ignoring AOI.
+        pk: primary key.
+        return_df: whether to return output as DataFrame or numpy array.
+        warn: whether to enable warnings.
+    """
     def __init__(
         self,
         features_stats: Dict[str, List[str]],
         x: str = None,
         y: str = None,
         t: str = None,
-        duration: None | str = None,  # TODO consider units, i.e. ps, ns, ms.
-        dispersion: None | str = None,
-        aoi: None | str | List[str] = None,
-        calc_without_aoi: bool = False,  # if True, then calculate regular features even with aoi passed
-        pk: None | List[str] = None,
+        duration: str = None,  # TODO consider units, i.e. ps, ns, ms.
+        dispersion: str = None,
+        aoi: str | List[str] = None,
+        calc_without_aoi: bool = False,
+        pk: List[str] = None,
         return_df: bool = True,
         warn: bool = True,
     ):
-        """
-        Base class for statistical features. Aggregate function strings must be
-        compatible with `pandas`.
-        """
         super().__init__(
             x=x,
             y=y,
@@ -289,6 +307,11 @@ class StatsTransformer(BaseTransformer):
 
 
 class SaccadeFeatures(StatsTransformer):
+    """Saccade Features Transformer.
+    The transformer identifies saccades from fixations and extract
+    their features.
+    """
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.available_feats = ("length", "acceleration", "speed")
@@ -338,22 +361,26 @@ class SaccadeFeatures(StatsTransformer):
 
 
 class RegressionFeatures(StatsTransformer):
-    def __init__(
-        self,
-        rule: Tuple[int, ...],
-        deviation: Union[int, Tuple[int, ...]] = None,
-        **kwargs,
-    ):
-        """
-        :param rule: must be either 1) tuple of quadrants direction to classify
+    """Regression Features Transformer.
+    The transformer identifies saccades, and then selects regressions
+    from them using user-defined set of rules.
+
+    Args:
+        rule: must be either 1) tuple of quadrants direction to classify
             regressions, 1st quadrant being upper-right square of plane and counting
             anti-clockwise or 2) tuple of angles in degrees (0 <= angle <= 360).
-        :param deviation: if None, then `rule` is interpreted as quadrants. Otherwise,
+        deviation: if None, then `rule` is interpreted as quadrants. Otherwise,
             `rule` is interpreted as angles. If integer, then is a +-deviation for all angles.
             If tuple of integers, then must be of the same length as `rule`, each value being
             a corresponding deviation for each angle. Angle = 0 is positive x-axis direction,
             rotating anti-clockwise.
-        """
+    """
+    def __init__(
+        self,
+        rule: Tuple[int, ...],
+        deviation: int | Tuple[int, ...] = None,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
         self.available_feats = ("length", "acceleration", "speed", "mask")
         self.rule = rule
@@ -426,13 +453,16 @@ class RegressionFeatures(StatsTransformer):
         return feats
 
 
-class MicroSaccades(StatsTransformer):
+class MicroSaccadeFeatures(StatsTransformer):
+    """Micro Saccade Features
+    The transformer identities saccades, and then selects micro saccades
+    from them using user-defined set of rules.
+
+    Args:
+        min_dispersion: minimum dispersion of fixation.
+        max_speed: maximum speed between fixations.
+    """
     def __init__(self, min_dispersion: float, max_speed: float, **kwargs):
-        """
-        :param rule: specify list of quadrants direction to which classifies
-        regressions, 1st quadrant being upper-right square of plane and counting
-        anti-clockwise.
-        """
         super().__init__(**kwargs)
         self.available_feats = ("length", "acceleration", "speed", "mask")
         self.min_dispersion = min_dispersion
@@ -490,6 +520,9 @@ class MicroSaccades(StatsTransformer):
 
 
 class FixationFeatures(StatsTransformer):
+    """Fixation Features Transformer
+    The transformer uses input fixations to extract features.
+    """
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.available_feats = ("duration", "vad")

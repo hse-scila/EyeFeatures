@@ -27,24 +27,22 @@ def iterative_split(
     'maintains balanced representation with respect
     to order-th label combinations.'
 
-    :param df: Input dataframe to split.
-    :param y: Labels corresponding to the dataframe.
-    :param test_size: Proportion of the dataset to include in the test split.
-    :param stratify_columns: List of column names to stratify by.
+    Args:
+        df (pd.DataFrame): Input dataframe to split.
+        y (np.ndarray): Labels corresponding to the dataframe.
+        test_size (float): Proportion of the dataset to include in the test split.
+        stratify_columns (List[str]): List of column names to stratify by.
 
-    Returns
-    -------
-    X_train: pd.DataFrame
-        Training split of the dataframe.
-    X_test: pd.DataFrame
-        Test split of the dataframe.
-    y_train: ArrayLike
-        Training labels.
-    y_test: ArrayLike
-        Test labels.
-    Notes
-    -----
-    From https://madewithml.com/courses/mlops/splitting/#stratified-split
+    Returns:
+        tuple (pd.DataFrame, pd.DataFrame, np.ndarray, np.ndarray): A tuple
+            (X_train, X_test, y_train, y_test):
+                (1) Training split of the dataframe.
+                (2) Test split of the dataframe.
+                (3) Training labels.
+                (4) Test labels.
+
+    Note:
+        From https://madewithml.com/courses/mlops/splitting/#stratified-split
     """
     # One-hot encode the stratify columns and concatenate them
     one_hot_cols = [pd.get_dummies(df[col]) for col in stratify_columns]
@@ -62,18 +60,16 @@ def iterative_split(
 
 
 def _coord_to_grid(coords: np.array, xlim: Tuple, ylim: Tuple, shape: Tuple):
-    """
-    Maps 2D coordinates to grid indices based on the grid resolution.
+    """Maps 2D coordinates to grid indices based on the grid resolution.
 
-    :param coords: Array of coordinates to map.
-    :param xlim: The x-axis limits (x_min, x_max).
-    :param ylim: The y-axis limits (y_min, y_max).
-    :param shape: The shape of the grid (rows, cols).
+    Args:
+        coords (np.ndarray): Array of coordinates to map.
+        xlim: The x-axis limits (x_min, x_max).
+        ylim: The y-axis limits (y_min, y_max).
+        shape: The shape of the grid (rows, cols).
 
-    Returns
-    -------
-    (i, j): Tuple[int, int]
-        The grid indices corresponding to the coordinates.
+    Returns:
+        tuple(int, int): A tuple (i, j) - the grid indices corresponding to the coordinates.
     """
 
     i = (((coords[:, 0] - xlim[0]) / (xlim[1] - xlim[0])) * shape[0]).astype(int)
@@ -82,33 +78,32 @@ def _coord_to_grid(coords: np.array, xlim: Tuple, ylim: Tuple, shape: Tuple):
 
 
 def _cell_index(i: int, j: int, shape: Tuple[int, int]):
-    """
-    Maps grid indices (i, j) to a 1D cell index based on the grid shape.
+    """Maps grid indices (i, j) to a 1D cell index based on the grid shape.
 
-    :param i: Row index in the grid.
-    :param j: Column index in the grid.
-    :param shape: The shape of the grid (rows, cols).
+    Args:
+        i (int): Row index in the grid.
+        j (int): Column index in the grid.
+        shape (tuple(int,int)): The shape of the grid (rows, cols).
 
-    Returns
-    -------
-    index: int
-        The 1D cell index.
+    Returns:
+        int:  The 1D cell index.
     """
 
     return i * shape[1] + j
 
 
 def _calculate_cell_center(i: int, j: int, xlim: Tuple, ylim: Tuple, shape: Tuple):
-    """
-    Calculates the center coordinates of a grid cell.
+    """Calculates the center coordinates of a grid cell.
 
-    :param i: Row index of the cell.
-    :param j: Column index of the cell.
-    :param xlim: Limits of the x-axis (x_min, x_max).
-    :param ylim: Limits of the y-axis (y_min, y_max).
-    :param shape: Shape of the grid (rows, cols).
+    Args:
+        i (int): Row index in the grid.
+        j (int): Column index in the grid.
+        xlim: The x-axis limits (x_min, x_max).
+        ylim: The y-axis limits (y_min, y_max).
+        shape: The shape of the grid (rows, cols).
 
-    Returns
+    Returns:
+        tuple(float,float):
     -------
     x_center, y_center: Tuple[float, float]
         Center coordinates of the grid cell.

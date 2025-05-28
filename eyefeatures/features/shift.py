@@ -6,6 +6,22 @@ from eyefeatures.utils import Types, _get_id, _split_dataframe
 
 
 class IndividualNormalization(TransformerMixin):
+    """Normalization of features based on slices, produced by grouping with primary key.
+
+    Args:
+        pk: primary key to use for grouping.
+        independent_features: features to normalize without fitting statistics (not used
+            on fit).
+        dependent_features: features to normalize with fitting statistics (calculated
+            on fit).
+        use_mean: means to use for normalization. Its keys must be same as
+            `eyefeatures.utils._get_id` output.
+        use_std: standard deviations to use for normalization. Its keys must be same as
+            `eyefeatures.utils._get_id` output.
+        inplace: if true, then provided `features` are normalized inplace, otherwise
+            new columns are created.
+        return_df: whether to return output as DataFrame or numpy array.
+    """
     def __init__(
         self,
         pk: List[str] | Tuple[List[str]],
@@ -30,22 +46,6 @@ class IndividualNormalization(TransformerMixin):
         self.features_stats = None
 
         self._preprocess_init()
-
-    """
-    Normalization of features based on slices, produced by grouping with primary key.
-    :param pk: primary key to use for grouping.
-    :param independent_features: Dict, features to normalize without fitting statistics (not used
-        on fit).
-    :param dependent_features: Dict, features to normalize with fitting statistics (calculated
-        on fit).
-    :param use_mean: Dict | None, means to use for normalization. Its keys must be same as
-        `eyefeatures.utils._get_id` output.
-    :param use_std: Dict | None, stds to use for normalization. Its keys must be same as
-        `eyefeatures.utils._get_id` output.
-    :param inplace: bool, if true, then provided `features` are normalized inplace, otherwise
-        new columns are created.
-    :param return_df: bool, it true then pandas DataFrame is returned, else numpy ndarray.
-    """
 
     def _preprocess_init(self):
         args = [self.ind_features, self.d_features]

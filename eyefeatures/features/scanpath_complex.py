@@ -141,22 +141,22 @@ def restore_matrix(matrix: NDArray, tol=1e-9):
     Estimates A assuming 'matrix' equals
     .. math: $A^T A$.
     """
-    # Получаем собственные вектора и диагональную матрицу с.ч.
+    # Get eigenvectors and eigenvalues
     evals, evecs = np.linalg.eigh(matrix)
 
-    # Сортируем вектора и числа по убыванию модуля
+    # Sort by decrease of eigenvalue modulus
     sorted_evals_indexes = np.argsort(evals)[::-1]
     # sorted_evals_indexes = np.argsort(np.abs(evals))[::-1]
     evecs = evecs[:, sorted_evals_indexes]
     evals = evals[sorted_evals_indexes]
 
-    # Удалим вырожденные части из матриц
+    # Rank is determined by positive eigenvalues
     A_rank = (evals > tol).sum()
     # A_rank = (np.abs(evals) > tol).sum()
     evals = np.diag(evals[:A_rank])
     evecs = evecs[:, :A_rank]
 
-    # Посчитам матрицу A
+    # Restore matrix
     S = sqrtm(evals)
     U = np.identity(A_rank)
 
