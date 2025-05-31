@@ -9,18 +9,17 @@ from eyefeatures.features.measures import ShannonEntropy
 from eyefeatures.preprocessing.base import BaseAOIPreprocessor
 from eyefeatures.utils import _split_dataframe
 
+
 # ======== AOI PREPROCESSORS ========
-
-
 class ShapeBased(BaseAOIPreprocessor):
-    """
-    Defines AOI using the specified shapes
+    """Defines AOI using the specified shapes.
 
-    :param x: x coordinate of fixation.
-    :param y: y coordinate of fixation.
-    :param aoi_name: name of AOI column.
-    :param pk: list of column names used to split pd.DataFrame.
-    :param shapes: list of shapes. It should be a list of tuple lists. Parameters for shape:\n
+    Args:
+        x: x coordinate of fixation.
+        y: y coordinate of fixation.
+        aoi_name: name of AOI column.
+        pk: list of column names used to split pd.DataFrame.
+        shapes: list of shapes. It should be a list of tuple lists. Parameters for shape:\n
                     \n
                     0: 'r', 'c', 'e': rectangle, circle, ellipse\n
                     For the rectangle:\n
@@ -30,15 +29,14 @@ class ShapeBased(BaseAOIPreprocessor):
                     1: coordinates of the center of the circle.\n
                     2: radius of the circle.\n
                     For the ellipse:\n
-                    ((x - x')*cos(alpha) + (y - y')*sin(alpha))**2 / a**2 + (-(x - x')*sin(alpha) + (y - y')*cos(alpha))**2 / b**2 = c\n
-                    1: coordinates of the center of the ellipse (x', y').\n
+                    :math:`\\frac{((x - x')\\cos(\\alpha) + (y - y')\\sin(\\alpha))^2}{a^2} + \\frac{(-(x - x')\\sin(\\alpha) + (y - y')\\cos(\\alpha))^2}{b^2} = c`
+
+                    1: coordinates of the center of the ellipse :math:`(x', y')`.\n
                     2: "a" in the ellipse equation\n
                     3: "b" in the ellipse equation\n
                     4: "c" in the ellipse equation\n
-                    5: angle of inclination of th ellipse in radians (alpha)\n
-
+                    5: angle of inclination of th ellipse in radians (:math:`\\alpha`)\n
     """
-
     def __init__(
         self,
         x: str = None,
@@ -125,18 +123,18 @@ class ShapeBased(BaseAOIPreprocessor):
 
 
 class ThresholdBased(BaseAOIPreprocessor):
-    """
-    Defines the AOI for each fixation using density maximum and Kmeans. Finds local maximum, pre-threshold it, and uses
-    it as a center of aoi
+    """Defines the AOI for each fixation using density maximum and Kmeans.
+    Finds local maximum, pre-threshold it, and uses it as a center of aoi.
 
-    :param x: x coordinate of fixation.
-    :param y: y coordinate of fixation.
-    :param window_size: size of search window.
-    :param threshold: threshold density.
-    :param pk: list of column names used to split pd.DataFrame.
-    :param aoi_name: name of AOI column.
-    :param algorithm_type: type of clustering algorithm to use.
-    :param threshold_dist:
+    Args:
+        x: x coordinate of fixation.
+        y: y coordinate of fixation.
+        window_size: size of search window.
+        threshold: threshold density.
+        pk: list of column names used to split pd.DataFrame.
+        aoi_name: name of AOI column.
+        algorithm_type: type of clustering algorithm to use.
+        threshold_dist: maximum allowed distance between fixations in single AOI.
     """
 
     def __init__(
@@ -287,9 +285,9 @@ class ThresholdBased(BaseAOIPreprocessor):
 
 
 class GradientBased(BaseAOIPreprocessor):
-    """
-    Defines the AOI for each fixation using a gradient-based algorithm. Finds the local maximum, pre-threshold it, and
-    uses it as a center of aoi. After that, uses the Sobel operator to compute the gradient magnitude for each point.
+    """Defines the AOI for each fixation using a gradient-based algorithm.
+    Finds the local maximum, pre-threshold it, and uses it as a center of aoi.
+    After that, uses the Sobel operator to compute the gradient magnitude for each point.
     Next, defines the queue of areas of interest. Algorithm of aoi defining:\n
     * Gets the point from the queue. It is a center\n
     * Looks at the points near the center\n
@@ -297,12 +295,13 @@ class GradientBased(BaseAOIPreprocessor):
     * Adds center to this aoi\n
     * Repeats for all points in the matrix\n
 
-    :param x: x coordinate of fixation.
-    :param y: y coordinate of fixation.
-    :param window_size: size of search window.
-    :param threshold: threshold density.
-    :param pk: list of column names used to split pd.DataFrame.
-    :param aoi_name: name of AOI column.
+    Args:
+        x: X coordinate of fixation.
+        y: Y coordinate of fixation.
+        window_size: size of search window.
+        threshold: threshold density.
+        pk: list of column names used to split pd.DataFrame.
+        aoi_name: name of AOI column.
     """
 
     def __init__(
@@ -437,18 +436,17 @@ class GradientBased(BaseAOIPreprocessor):
 
 
 class OverlapClustering(BaseAOIPreprocessor):
-    """
-    Defines the AOI for each fixation using the overlapping clustering algorithm.
+    """Defines the AOI for each fixation using the overlapping clustering algorithm.
 
-    :param x: x coordinate of fixation.
-    :param y: y coordinate of fixation.
-    :param diameters: diameters of fixation.
-    :param centers: centers of fixation.
-    :param pk: list of column names used to split pd.DataFrame.
-    :param aoi_name: name of AOI column.
-    :param eps: additional length to sum of radius
+    Args:
+        x: X coordinate of fixation.
+        y: Y coordinate of fixation.
+        diameters: diameters of fixation.
+        centers: centers of fixation.
+        pk: list of column names used to split pd.DataFrame.
+        aoi_name: name of AOI column.
+        eps: additional length to sum of radius
     """
-
     def __init__(
         self,
         x: str = None,
@@ -464,16 +462,16 @@ class OverlapClustering(BaseAOIPreprocessor):
         self.centers = centers
         self.eps = eps
 
-    def _check_aoi(self):
-        m = "OverlapCLustering"
+    def _check_params(self):
+        m = "OverlapClustering"
         assert self.x is not None, self._err_no_field(m, "x")
         assert self.y is not None, self._err_no_field(m, "y")
         assert self.diameters is not None, self._err_no_field(m, "diameters")
         assert self.centers is not None, self._err_no_field(m, "centers")
 
     def _build_clusters(self, X: pd.DataFrame) -> pd.DataFrame:
-        """
-        First step of the overlapping clustering algorithm. Builds the clusters. If the fixation locates inside another
+        """First step of the overlapping clustering algorithm.
+        Builds the clusters. If the fixation locates inside another
         one, then these fixations are in one aoi.
         """
         X[self.aoi] = 0
@@ -496,8 +494,10 @@ class OverlapClustering(BaseAOIPreprocessor):
         return X
 
     def _merge_clusters(self, X: pd.DataFrame) -> pd.DataFrame:
-        """Second step of the overlapping clustering algorithm. Merges the clusters. Selects aoi with the most amount of
-        fixation in itself. Creates the queue of fixation and starts the cycle of merging
+        """Second step of the overlapping clustering algorithm.
+        Merges the clusters. Selects aoi with the most amount of
+        fixation in itself. Creates the queue of fixation and
+        starts the cycle of merging.
         """
         used = []
         while len(X[~X[self.aoi].isin(used)]) > 0:
@@ -546,19 +546,20 @@ class OverlapClustering(BaseAOIPreprocessor):
 
 # ======== EXTRACTOR FOR AOI CLASSES ========
 class AOIExtractor(BaseEstimator, TransformerMixin):
-    """Extractor of areas of interest. Selects the partition into zones of interest with the lowest entropy.
+    """Extractor of areas of interest. Selects the partition into
+    zones of interest with the lowest entropy.
 
-    :param methods: list of aoi algorithms.
-    :param x: x coordinate of fixation.
-    :param y: y coordinate of fixation.
-    :param window_size: size of search window.
-    :param threshold: threshold density.
-    :param pk: list of column names used to split pd.DataFrame for scaling.
-    :param instance_columns: list of column names used to split pd.DataFrame into the similar instances for aoi extraction.
-    :param aoi_name: name of AOI column.
-    :param show_best: if true, then return the best method for each instance
+    Args:
+        methods: list of aoi algorithms.
+        x: X coordinate of fixation.
+        y: Y coordinate of fixation.
+        window_size: size of search window.
+        threshold: threshold density.
+        pk: list of column names used to split pd.DataFrame for scaling.
+        instance_columns: list of column names used to split pd.DataFrame into the similar instances for aoi extraction.
+        aoi_name: name of AOI column.
+        show_best: if true, then return the best method for each instance
     """
-
     def __init__(
         self,
         methods: List[BaseAOIPreprocessor],
@@ -697,20 +698,19 @@ class AOIExtractor(BaseEstimator, TransformerMixin):
 
 
 class AOIMatcher(BaseEstimator, TransformerMixin):
-    """
-    Matches AOI in the dataset.
+    """Matches AOI in the dataset.
 
-    :param x: x coordinate of fixation.
-    :param y: y coordinate of fixation.
-    :param pk: list of column names used to split pd.DataFrame for scaling.
-    :param instance_columns: list of column names used to split pd.DataFrame
-                             into the similar instances for aoi extraction.
-    :param aoi: name of AOI column.
-    :param n_aoi: count of aoi in the group\n
-                 0: any number the areas of interest\n
-                 all integer number that greater than 0: count of the areas of interest.
+    Args:
+        x: X coordinate column name.
+        y: Y coordinate column name.
+        pk: list of column names used to split pd.DataFrame for scaling.
+        instance_columns: list of column names used to split pd.DataFrame
+                          into the similar instances for aoi extraction.
+        aoi: name of AOI column.
+        n_aoi: count of aoi in the group.\n
+               0: any number the areas of interest.\n
+               integer > 0: count of the areas of interest.
     """
-
     def __init__(
         self,
         x: str,

@@ -11,11 +11,11 @@ from eyefeatures.preprocessing.base import BaseSmoothingPreprocessor
 class SavGolFilter(
     BaseSmoothingPreprocessor
 ):  # TODO 2D SG filter: https://github.com/espdev/sgolay2
-    """
-    Savitzkiy-Golay filter. 'x' and 'y' directions are filtered independently, time is ignored.
-    Parameters are passed to `scipy.signal.savgol_filter`.
-    \n
-    Default values are taken from https://arxiv.org/pdf/2303.02134.
+    """Savitzkiy-Golay filter. 'x' and 'y' directions are filtered independently,
+    time is ignored. Parameters are passed to `scipy.signal.savgol_filter`.
+
+    Notes:
+        Default values are taken from https://arxiv.org/pdf/2303.02134.
     """
 
     def __init__(
@@ -60,15 +60,14 @@ class SavGolFilter(
 
 
 class FIRFilter(BaseSmoothingPreprocessor):  # TODO 2D version?
-    """
-    FIR filter. Convolution with RIR kernel along 'x' and 'y'. `kwargs` are passed to `scipy.signal.firwin`
-    to determine the kernel.
+    """FIR filter. Convolution with RIR kernel along 'x' and 'y'.
+    `kwargs` are passed to `scipy.signal.firwin` to determine the kernel.
 
-    :param mode: parameter of `scipy.signal.fftconvolve`.
+    Args:
+        mode: parameter of `scipy.signal.fftconvolve`.
 
-    Note
-    -------
-    Default values are taken from https://arxiv.org/pdf/2303.02134.
+    Notes:
+        Default values are taken from https://arxiv.org/pdf/2303.02134.
     """
 
     def __init__(
@@ -132,15 +131,14 @@ class FIRFilter(BaseSmoothingPreprocessor):  # TODO 2D version?
 
 
 class IIRFilter(BaseSmoothingPreprocessor):  # TODO 2D version?
-    """
-    IIR filter. Convolution with IIR kernel along 'x' and 'y'. `kwargs` are passed to `scipy.signal.iirfilter`
-    to determine the kernel.
+    """IIR filter. Convolution with IIR kernel along 'x' and 'y'.
+    `kwargs` are passed to `scipy.signal.iirfilter` to determine the kernel.
 
-    :param mode: parameter of `scipy.signal.fftconvolve`.
+    Args:
+        mode: parameter of `scipy.signal.fftconvolve`.
 
-    Note
-    -------
-    Default values are taken from https://arxiv.org/pdf/2303.02134.
+    Notes:
+        Default values are taken from https://arxiv.org/pdf/2303.02134.
     """
 
     def __init__(
@@ -189,13 +187,13 @@ class IIRFilter(BaseSmoothingPreprocessor):  # TODO 2D version?
 
 
 class WienerFilter(BaseSmoothingPreprocessor):
-    """
-    Wiener filter. Applied independently along 'x' and 'y' axis.
+    """Wiener filter. Applied independently along 'x' and 'y' axis.
 
-    :param K: estimate of ratio of noise-to-signal spectra. If 'auto', such value of K
-              on grid [-1e-3, 1e-3] with 2e3 values is chosen to minimize PSNR.
-    :param sigma: std of Gaussian filter.
-    :param size: length of Gaussian filter.
+    Args:
+        K: estimate of ratio of noise-to-signal spectra. If 'auto', such value of K
+           on grid [-1e-3, 1e-3] with 2e3 values is chosen to minimize PSNR.
+        sigma: std of Gaussian filter.
+        size: length of Gaussian filter.
     """
 
     def __init__(
@@ -235,8 +233,8 @@ class WienerFilter(BaseSmoothingPreprocessor):
 
     @staticmethod
     def _compute_psnr(seq1, seq2):
-        """
-        Peak-Signal-to-Noise Ratio. Must be applied to normalized coordinates with maximum value of 1.
+        """Peak-Signal-to-Noise Ratio. Must be applied to
+        normalized coordinates with maximum value of 1.
         """
         mse = np.sum(np.square(seq1 - seq2)) / len(seq1)
         psnr = 20 * np.log10(2 / np.sqrt(mse))  # 2 = length of [-1, 1]

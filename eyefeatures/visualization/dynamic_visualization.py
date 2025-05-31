@@ -12,9 +12,7 @@ from eyefeatures.utils import _select_regressions
 def _built_figure(
     fig_dict: Dict, animation_duration: int = 500
 ):  # animation_duration in ms
-    """
-    Function for building a layout for plot
-    """
+    """Function for building a layout for plot."""
     fig_dict["layout"]["width"] = 600
     fig_dict["layout"]["height"] = 600
     fig_dict["layout"]["updatemenus"] = [
@@ -80,33 +78,33 @@ def tracker_animation(
     save_gif: str = None,
     frames_count: int = 1,
 ):
-    """
-    Function for tracker animation
+    """Function for tracker animation.
 
-    :param data_: DataFrame with fixations.
-    :param x: x coordinate of fixation.
-    :param y: y coordinate of fixation.
-    :param path_color: color of saccades.
-    :param path_width: width of saccades.
-    :param points_color: color of points.
-    :param points_width: width of points.
-    :param add_regression: whether to add regressions.
-    :param regression_color: color of regressions.
-    :param meta_data: list of columns that will be used for meta data.
-    :param rule: must be either 1) tuple of quadrants direction to classify
-            regressions, 1st quadrant being upper-right square of plane and counting
-            anti-clockwise or 2) tuple of angles in degrees (0 <= angle <= 360).
-    :param deviation: if None, then `rule` is interpreted as quadrants. Otherwise,
-            `rule` is interpreted as angles. If integer, then is a +-deviation for all angles.
-            If tuple of integers, then must be of the same length as `rule`, each value being
-            a corresponding deviation for each angle. Angle = 0 is positive x-axis direction,
-            rotating anti-clockwise.
-    :param aoi: AOI of fixations.
-    :param aoi_c: colormap for AOI.
-    :param tracker_color: color of tracker.
-    :param animation_duration: duration of animation.
-    :param save_gif: path to save animation.
-    :param frames_count: TODO.
+    Args:
+        data_: DataFrame with fixations.
+        x: x coordinate of fixation.
+        y: y coordinate of fixation.
+        path_color: color of saccades.
+        path_width: width of saccades.
+        points_color: color of points.
+        points_width: width of points.
+        add_regression: whether to add regressions.
+        regression_color: color of regressions.
+        meta_data: list of columns that will be used for meta data.
+        rule: must be either 1) tuple of quadrants direction to classify
+         regressions, 1st quadrant being upper-right square of plane and counting
+         anti-clockwise or 2) tuple of angles in degrees (0 <= angle <= 360).
+        deviation: if None, then `rule` is interpreted as quadrants. Otherwise,
+         `rule` is interpreted as angles. If integer, then is a +-deviation for all angles.
+         If tuple of integers, then must be of the same length as `rule`, each value being
+         a corresponding deviation for each angle. Angle = 0 is positive x-axis direction,
+         rotating anti-clockwise.
+        aoi: AOI of fixations.
+        aoi_c: colormap for AOI.
+        tracker_color: color of tracker.
+        animation_duration: duration of animation.
+        save_gif: path to save animation.
+        frames_count: TODO.
     """
     data = data_.reset_index(drop=True)
     X = data[x].values
@@ -321,29 +319,29 @@ def scanpath_animation(
     save_gif: str = None,
     frames_count: int = 1,
 ):
-    """
-    Function for tracker animation
+    """Function for tracker animation.
 
-    :param data_: DataFrame with fixations.
-    :param x: x coordinate of fixation.
-    :param y: y coordinate of fixation.
-    :param path_color: color of saccades.
-    :param path_width: width of saccades.
-    :param points_color: color of points.
-    :param points_width: width of points.
-    :param add_regression: whether to add regressions.
-    :param regression_color: color of regressions.
-    :param rule: must be either 1) tuple of quadrants direction to classify
-            regressions, 1st quadrant being upper-right square of plane and counting
-            anti-clockwise or 2) tuple of angles in degrees (0 <= angle <= 360).
-    :param deviation: if None, then `rule` is interpreted as quadrants. Otherwise,
-            `rule` is interpreted as angles. If integer, then is a +-deviation for all angles.
-            If tuple of integers, then must be of the same length as `rule`, each value being
-            a corresponding deviation for each angle. Angle = 0 is positive x-axis direction,
-            rotating anti-clockwise.
-    :param animation_duration: duration of animation.
-    :param save_gif: path to save animation.
-    :param frames_count: TODO.
+    Args:
+        data_: DataFrame with fixations.
+        x: x coordinate of fixation.
+        y: y coordinate of fixation.
+        path_color: color of saccades.
+        path_width: width of saccades.
+        points_color: color of points.
+        points_width: width of points.
+        add_regression: whether to add regressions.
+        regression_color: color of regressions.
+        rule: must be either 1) tuple of quadrants direction to classify
+         regressions, 1st quadrant being upper-right square of plane and counting
+         anti-clockwise or 2) tuple of angles in degrees (0 <= angle <= 360).
+        deviation: if None, then `rule` is interpreted as quadrants. Otherwise,
+         `rule` is interpreted as angles. If integer, then is a +-deviation for all angles.
+         If tuple of integers, then must be of the same length as `rule`, each value being
+         a corresponding deviation for each angle. Angle = 0 is positive x-axis direction,
+         rotating anti-clockwise.
+        animation_duration: duration of animation.
+        save_gif: path to save animation.
+        frames_count: TODO.
     """
     data = data_.reset_index(drop=True)
     X = data[x].values

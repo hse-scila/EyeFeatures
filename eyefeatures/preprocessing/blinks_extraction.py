@@ -11,14 +11,16 @@ from scipy.signal import find_peaks, savgol_filter
 def _interpolate_nans(
     array: np.ndarray, timestamps: np.ndarray, gap_dur: float = np.inf
 ) -> np.ndarray:
-    """
-    Function finds sequences of NaN values, selects ones with
+    """Function finds sequences of NaN values, selects ones with
     duration <= 'gap_dur' and linearly interpolates them.
 
-    :param array: array with NaNs.
-    :param timestamps: timestamps of array.
-    :param gap_dur: threshold gap duration.
-    :return: array with interpolated gaps.
+    Args:
+        array: array with NaNs.
+        timestamps: timestamps of array.
+        gap_dur: threshold gap duration.
+
+    Returns:
+        array with interpolated gaps.
     """
     assert len(array.shape) == 1, "Only 1D array is allowed."
     assert (
@@ -63,21 +65,21 @@ def _interpolate_nans(
 
 # Helper function
 def _nearest_odd_integer(x: float) -> int:
-    """
-    Method computes nearest odd integer to 'x'.
-    """
+    """Method computes nearest odd integer to 'x'."""
     return int(2 * np.floor(np.abs(x) / 2) + 1) * np.sign(x)
 
 
 # Helper function
 def _mask2bounds(mask: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-    """
-    Method constructs onset and offset arrays of indices based on mask.
+    """Method constructs onset and offset arrays of indices based on mask.
     Onset - starting index of segment (segment is continuous block of ones),
     offset - ending index of blink.
 
-    :param mask: boolean array.
-    :return: [onsets, offsets].
+    Args:
+        mask: boolean array.
+
+    Returns:
+        [onsets, offsets].
     """
 
     # Find segments
@@ -108,15 +110,17 @@ def _merge_blinks(
     min_separation: int,
     blink_properties: List | np.ndarray = None,
 ) -> List[List]:
-    """
-    Method merges blinks given onsets and offsets, also collapses too short ones.
+    """Method merges blinks given onsets and offsets, also collapses too short ones.
 
-    :param blink_onsets: onsets of blinks, ms.
-    :param blink_offsets: offsets of blinks, ms.
-    :param min_dur: min duration of blink, ms.
-    :param min_separation: min duration between blinks, ms.
-    :param blink_properties: array of lists, properties of blinks.
-    :return: array of triples (onset, offset, duration).
+    Args:
+        blink_onsets: onsets of blinks, ms.
+        blink_offsets: offsets of blinks, ms.
+        min_dur: min duration of blink, ms.
+        min_separation: min duration between blinks, ms.
+        blink_properties: array of lists, properties of blinks.
+
+    Returns:
+        array of triples (onset, offset, duration).
     """
     have_properties = blink_properties is not None
 
@@ -171,15 +175,17 @@ def _merge_blinks(
 def _indices_to_values(
     onsets: np.ndarray, offsets: np.ndarray, timestamps: np.ndarray, Fs: int = None
 ) -> Tuple[np.ndarray, np.ndarray]:
-    """
-    Method converts index-based onsets/offsets to
+    """Method converts index-based onsets/offsets to
     timestamp-based onsets/offsets.
 
-    :param onsets: indexes of starting blink indexes.
-    :param offsets: indexes of ending blink indexes.
-    :param timestamps: data recording timestamps.
-    :param Fs: sample rate of eye tracker, Hz.
-    :return: onsets, offsets.
+    Args:
+        onsets: indexes of starting blink indexes.
+        offsets: indexes of ending blink indexes.
+        timestamps: data recording timestamps.
+        Fs: sample rate of eye tracker, Hz.
+
+    Returns:
+        onsets, offsets.
     """
 
     # Convert onsets/offsets to ms
@@ -218,14 +224,16 @@ def _apply_moving_average(
     is_na: np.ndarray,
     max_window_size: float,
 ) -> np.ndarray:
-    """
-    Method applies moving average for pupillometry data. Nan values are remained.
+    """Method applies moving average for pupillometry data. Nan values are remained.
 
-    :param pupil_signal: sizes of pupil.
-    :param timestamps: data recording timestamps.
-    :param is_na: boolean array representing whether pupil is nan or not.
-    :param max_window_size: maximum size of smoothing window, in milliseconds.
-    :return: smoothed pupil sizes.
+    Args:
+        pupil_signal: sizes of pupil.
+        timestamps: data recording timestamps.
+        is_na: boolean array representing whether pupil is nan or not.
+        max_window_size: maximum size of smoothing window, in milliseconds.
+
+    Returns:
+        smoothed pupil sizes.
     """
 
     if len(pupil_signal) <= 2:
@@ -274,19 +282,20 @@ def detect_blinks_pupil_missing(
     smoothing_window_size: int = 10,  # 10ms
     return_mask: bool = False,
 ) -> pd.DataFrame | Tuple[pd.DataFrame, np.ndarray]:
-    """
-    Method detects blinks based on size of pupil and missing recordings (NaN) in its data.
-    Result is boolean array of the same
+    """Method detects blinks based on size of pupil and
+    missing recordings (NaN) in its data. Result is boolean array of the same
     length as pupil_signal, with 1 indicating blink, 0 - not blink.
-    Taken from [PyTrack paper](https://link.springer.com/article/10.3758/s13428-020-01392-6):
 
-    :param pupil_signal: size of right or left pupil.
-    :param timestamps: data recording timestamps.
-    :param smoothing_window_size: maximum size of smoothing window, ms.
-    :param min_separation: min time interval between detected blinks, ms.
-    :param min_dur: min duration of blink, ms.
-    :param return_mask: bool = False
-    :return: detected blinks dataframe.
+    Args:
+        pupil_signal: size of right or left pupil.
+        timestamps: data recording timestamps.
+        smoothing_window_size: maximum size of smoothing window, ms.
+        min_separation: min time interval between detected blinks, ms.
+        min_dur: min duration of blink, ms.
+        return_mask: bool = False
+
+    Returns:
+        detected blinks dataframe.
     """
 
     assert not np.isnan(timestamps).any(), "Timestamps must not be nan."
@@ -357,22 +366,23 @@ def detect_blinks_pupil_vt(
     min_separation: int = 50,
     return_mask: bool = False,
 ) -> pd.DataFrame | Tuple[pd.DataFrame, np.ndarray]:
-    """
-    Method detects blinks based on pupil sizes and change of
-    pupil sizes. Taken from https://link.springer.com/article/10.3758/s13428-023-02333-9,
-    code taken from https://github.com/marcus-nystrom/BlinkDetector.
+    """Method detects blinks based on pupil sizes and change of
+    pupil sizes.
 
-    :param pupil_signal: size of right of left pupil, mm.
-    :param timestamps: data recording timestamps, ms.
-    :param Fs: sample rate of eye tracker, Hz.
-    :param gap_dur: max gaps between periods of data loss, ms.
-    :param min_dur: min duration of blink, ms.
-    :param remove_outliers: whether to remove outliers.
-    :param window_len: size of window to use if 'remove_outliers' = True.
-    :param min_pupil_size: min value of pupil size considered to be recorded correctly, mm.
-    :param min_separation: min time interval between detected blinks, ms.
-    :param return_mask: if True, then mask showing blink classification is also returned.
-    :return: detected blinks dataframe.
+    Args:
+        pupil_signal: size of right of left pupil, mm.
+        timestamps: data recording timestamps, ms.
+        Fs: sample rate of eye tracker, Hz.
+        gap_dur: max gaps between periods of data loss, ms.
+        min_dur: min duration of blink, ms.
+        remove_outliers: whether to remove outliers.
+        window_len: size of window to use if 'remove_outliers' = True.
+        min_pupil_size: min value of pupil size considered to be recorded correctly, mm.
+        min_separation: min time interval between detected blinks, ms.
+        return_mask: if True, then mask showing blink classification is also returned.
+
+    Returns:
+        detected blinks dataframe.
     """
 
     # Remove outliers
@@ -429,21 +439,21 @@ def detect_blinks_eo(
     min_separation: int = 100,
     return_eo_vel: bool = False,
 ) -> pd.DataFrame | Tuple[pd.DataFrame, np.ndarray]:
-    """
-    Method detects blinks based on Eye Openness (EO) signal.
-    Taken from https://link.springer.com/article/10.3758/s13428-023-02333-9,
-    code taken from https://github.com/marcus-nystrom/BlinkDetector.
+    """Method detects blinks based on Eye Openness (EO) signal.
 
-    :param eye_openness_signal: eye openness signal.
-    :param timestamps: data recording timestamps, ms.
-    :param Fs: sample rate of eye tracker, Hz.
-    :param gap_dur: max gaps between periods of data loss, ms.
-    :param filter_length: length of Savitzky-Golay filter, ms.
-    :param min_blink_length: min length of detected blinks, ms.
-    :param min_separation: min time interval between detected blinks, ms.
-    :param min_amplitude: fraction of fully opened eye.
-    :param return_eo_vel: if True, then computed velocity of EO signal is returned.
-    :return: detected blinks dataframe.
+    Args:
+        eye_openness_signal: eye openness signal.
+        timestamps: data recording timestamps, ms.
+        Fs: sample rate of eye tracker, Hz.
+        gap_dur: max gaps between periods of data loss, ms.
+        filter_length: length of Savitzky-Golay filter, ms.
+        min_blink_length: min length of detected blinks, ms.
+        min_separation: min time interval between detected blinks, ms.
+        min_amplitude: fraction of fully opened eye.
+        return_eo_vel: if True, then computed velocity of EO signal is returned.
+
+    Returns:
+        detected blinks dataframe.
     """
 
     ms_to_sample = Fs / 1000
@@ -641,62 +651,3 @@ def detect_blinks_eo(
     if return_eo_vel:
         return df, eye_openness_signal_vel
     return df
-
-
-if __name__ == "__main__":
-    from numpy import array, nan
-
-    test_pupil_sizes = array(
-        [
-            1.2,
-            1.12,
-            1.15,
-            1.3,
-            1.21,
-            1.25,
-            0.9,
-            nan,
-            nan,
-            nan,
-            nan,
-            0.98,
-            0.95,
-            1.2,
-            1.33,
-            1.54,
-            1.3,
-            1.3,
-            1.25,
-            1.44,
-        ]
-    )
-    test_timestamps = array(
-        [
-            487383.208,
-            487391.543,
-            487399.885,
-            487408.216,
-            487416.551,
-            487424.872,
-            487433.203,
-            487441.537,
-            487449.87,
-            487458.203,
-            487466.532,
-            487474.868,
-            487483.206,
-            487491.528,
-            487499.912,
-            487508.225,
-            487516.531,
-            487524.865,
-            487533.192,
-            487540.733,
-        ]
-    )
-
-    # print(detect_blinks_pupil_missing(test_pupil_sizes, test_timestamps))
-    #
-    # print(detect_blinks_pupil_vt(test_pupil_sizes, test_timestamps, Fs=120))
-
-    print(detect_blinks_eo(test_pupil_sizes, test_timestamps, Fs=120)[0])

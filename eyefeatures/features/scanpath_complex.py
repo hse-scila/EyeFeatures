@@ -29,18 +29,20 @@ def get_expected_path(
     duration: str = None,
     return_df: bool = True,
 ) -> Dict[str, Union[pd.DataFrame, np.ndarray]]:
-    """
-    Estimates expected path by a given method
+    """Estimates expected path by a given method.
 
-    :param data: pd.Dataframe containing coordinates of fixations and its timestamps
-    :param x: Column name of x-coordinate
-    :param y: Column name of y-coordinate
-    :param path_pk: List of column names of groups to calculate expected path (must be a subset of pk)
-    :param pk: List of column names used to split pd.Dataframe
-    :param method: method to calculate expected path ("mean" or "fwp")
-    :param duration: Column name of fixations duration if needed
-    :param return_df: Return pd.Dataframe object else np.ndarray
-    :return: Dict of groups and Union[pd.Dataframe, np.ndarray] of form (x_est, y_est) or (x_est, y_est, duration_est)
+    Args:
+        data: input Dataframe with fixations.
+        x: X coordinate column name.
+        y: Y coordinate column name.
+        path_pk: List of column names of groups to calculate expected path (must be a subset of pk).
+        pk: List of column names used to split pd.Dataframe.
+        method: method to calculate expected path ("mean" or "fwp").
+        duration: Column name of fixations duration if needed.
+        return_df: Return pd.Dataframe object else np.ndarray.
+
+    Returns:
+        Dict of groups and Union[pd.Dataframe, np.ndarray] of form (x_est, y_est) or (x_est, y_est, duration_est).
     """
 
     if not set(path_pk).issubset(set(pk)):
@@ -109,14 +111,14 @@ def _get_fill_path(
     method: str = "mean",
     duration: str = None,
 ) -> pd.DataFrame:
-    """
-    Calculates fill path as expected path of given expected paths
+    """Calculates fill path as expected path of given expected paths
 
-    :param data: paths data
-    :param x: Column name of x-coordinate
-    :param y: Column name of y-coordinate
-    :param method: method to calculate expected path ("mean" or "fwp")
-    :param duration: Column name of fixations duration if needed
+    Args:
+        data: input Dataframe with fixations.
+        x: X coordinate column name.
+        y: Y coordinate column name.
+        method: method to calculate expected path ("mean" or "fwp").
+        duration: Column name of fixations duration if needed.
     """
 
     paths = pd.concat(
@@ -137,10 +139,7 @@ def _get_fill_path(
 
 # ======================== SIMILARITY MATRIX ========================
 def restore_matrix(matrix: NDArray, tol=1e-9):
-    """
-    Estimates A assuming 'matrix' equals
-    .. math: $A^T A$.
-    """
+    """Estimates A assuming 'matrix' equals :math:`A^T A`."""
     # Get eigenvectors and eigenvalues
     evals, evecs = np.linalg.eigh(matrix)
 
@@ -165,12 +164,14 @@ def restore_matrix(matrix: NDArray, tol=1e-9):
 
 
 def get_sim_matrix(scanpaths: List[NDArray], sim_metric: Callable) -> np.ndarray:
-    """
-    Computes similarity matrix given non-trivial metric.
+    """Computes similarity matrix given non-trivial metric.
 
-    :param scanpaths: list of scanpaths, each being 2D-array of shape (2, n).
-    :param sim_metric: similarity metric.
-    :return: scaled similarity matrix.
+    Args:
+        scanpaths: list of scanpaths, each being 2D-array of shape (2, n).
+        sim_metric: similarity metric.
+
+    Returns:
+        scaled similarity matrix.
     """
     n = len(scanpaths)
     sim_matrix = np.ones(shape=(n, n))
@@ -188,11 +189,11 @@ def get_sim_matrix(scanpaths: List[NDArray], sim_metric: Callable) -> np.ndarray
 def get_dist_matrix(
     scanpaths: List[pd.DataFrame], dist_metric: Callable
 ) -> pd.DataFrame:
-    """
-    Computes pairwise distance matrix given distance metric.
+    """Computes pairwise distance matrix given distance metric.
 
-    :param scanpaths: List of scanpaths DataFrames of form (x, y)
-    :param dist_metric: Metric used to calculate distance from features.scanpath_dist
+    Args:
+        scanpaths: List of scanpaths DataFrames of form (x, y)
+        dist_metric: Metric used to calculate distance from features.scanpath_dist
     """
 
     if len(scanpaths) == 0:
@@ -212,12 +213,14 @@ def get_dist_matrix(
 def hierarchical_clustering_order(
     sim_matrix: np.ndarray, metric: str = "euclidean"
 ) -> np.ndarray:
-    """
-    Reorder matrix using hierarchical clustering.
+    """Reorder matrix using hierarchical clustering.
 
-    :param sim_matrix: similarity matrix to reorder
-    :param metric: metric used in building matrix
-    :return: reordered matrix
+    Args:
+        sim_matrix: similarity matrix to reorder.
+        metric: metric used in building matrix.
+
+    Returns:
+        reordered matrix.
     """
 
     Z = linkage(sim_matrix, method="ward", metric=metric)
@@ -229,11 +232,13 @@ def hierarchical_clustering_order(
 def optimal_leaf_ordering_clustering(
     sim_matrix: np.ndarray, metric: str = "euclidean"
 ) -> np.ndarray:
-    """
-    Reorder matrix using optimal leaf ordering.
+    """Reorder matrix using optimal leaf ordering.
 
-    :param sim_matrix: similarity matrix to reorder
-    :return: reordered matrix
+    Args:
+        sim_matrix: similarity matrix to reorder.
+
+    Returns:
+        reordered matrix.
     """
 
     Z = linkage(sim_matrix, method="ward", metric=metric)
@@ -244,11 +249,13 @@ def optimal_leaf_ordering_clustering(
 
 
 def dimensionality_reduction_order(sim_matrix: np.ndarray) -> np.ndarray:
-    """
-    Reorder matrix using Multi-Dimensional Scaling (MDS).
+    """Reorder matrix using Multi-Dimensional Scaling (MDS).
 
-    :param sim_matrix: similarity matrix to reorder
-    :return: reordered matrix
+    Args:
+        sim_matrix: similarity matrix to reorder.
+
+    Returns:
+        reordered matrix.
     """
 
     mds = MDS(n_components=2, dissimilarity="precomputed")
@@ -260,11 +267,13 @@ def dimensionality_reduction_order(sim_matrix: np.ndarray) -> np.ndarray:
 
 
 def spectral_order(sim_matrix: np.ndarray) -> np.ndarray:
-    """
-    Reorder matrix using spectral reordering.
+    """Reorder matrix using spectral reordering.
 
-    :param sim_matrix: similarity matrix to reorder
-    :return: reordered matrix
+    Args:
+        sim_matrix: similarity matrix to reorder.
+
+    Returns:
+        reordered matrix.
     """
 
     L = laplacian(sim_matrix, normed=True)
@@ -279,14 +288,14 @@ def spectral_order(sim_matrix: np.ndarray) -> np.ndarray:
 
 
 # ======================== COMPROMISE MATRIX ========================
-
-
 def get_center_matrix(weight_vector: np.ndarray) -> np.ndarray:
-    """
-    Calculates centering matrix Theta.
+    """Calculates centering matrix Theta.
 
-    :param weight_vector: vector of weights
-    :return: centering matrix
+    Args:
+        weight_vector: vector of weights.
+
+    Returns:
+        centering matrix.
     """
     assert np.sum(weight_vector) > 0, "Sum of weights must be greater than 0"
     weight_vector = weight_vector.astype(np.float32)
@@ -301,12 +310,14 @@ def get_center_matrix(weight_vector: np.ndarray) -> np.ndarray:
 def get_cross_product_matrix(
     D: np.ndarray, weight_vector: np.ndarray = None
 ) -> np.ndarray:
-    """
-    Calculates cross-product matrix.
+    """Calculates cross-product matrix.
 
-    :param D: distance matrix
-    :param weight_vector: vector of weights
-    :return: cross-product matrix
+    Args:
+        D: distance matrix.
+        weight_vector: vector of weights.
+
+    Returns:
+        cross-product matrix.
     """
 
     if weight_vector is None:
@@ -317,12 +328,14 @@ def get_cross_product_matrix(
 
 
 def compute_rv_coefficient(S1: np.ndarray, S2: np.ndarray) -> float:
-    """
-    Calculate the RV coefficient between two cross-product matrices.
+    """Calculate the RV coefficient between two cross-product matrices.
 
-    :param S1: first cross-product matrix
-    :param S2: second cross-product matrix
-    :return: RV coefficient
+    Args:
+        S1: first cross-product matrix.
+        S2: second cross-product matrix.
+
+    Returns:
+        RV coefficient.
     """
     numerator = np.trace(S1 @ S2.T)
     denominator = np.sqrt(np.trace(S1 @ S1.T) * np.trace(S2 @ S2.T))
@@ -330,11 +343,13 @@ def compute_rv_coefficient(S1: np.ndarray, S2: np.ndarray) -> float:
 
 
 def get_compromise_matrix(distance_matrices: List[np.ndarray]) -> np.ndarray:
-    """
-    Compute the compromise matrix from a list of distance matrices.
+    """Compute the compromise matrix from a list of distance matrices.
 
-    :param distance_matrices: List of distance matrices (each an ndarray)
-    :return: compromise cross-product matrix
+    Args:
+        distance_matrices: List of distance matrices (each a ndarray).
+
+    Returns:
+        compromise cross-product matrix.
     """
     assert len(distance_matrices) > 0, "At least one distance matrix is required"
     num_matrices = len(distance_matrices)

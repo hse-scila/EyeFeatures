@@ -15,6 +15,18 @@ from eyefeatures.utils import _split_dataframe
 
 
 class MeasureTransformer(ABC, BaseTransformer):
+    """Base Transformer class for measures.
+
+    Args:
+        x: X coordinate column name.
+        y: Y coordinate column name.
+        aoi: Area of Interest column name.
+        aoi: Area Of Interest column name(-s). If provided, features can be calculated inside
+            the specified AOI.
+        pk: primary key.
+        return_df: whether to return output as DataFrame or numpy array.
+        feature_name: Column name for resulting feature.
+    """
     def __init__(
         self,
         x: str = None,
@@ -61,6 +73,18 @@ class MeasureTransformer(ABC, BaseTransformer):
 
 
 class HurstExponent(MeasureTransformer):
+    """Approximates Hurst Exponent using R/S analysis.
+
+    Args:
+        n_iters: number of iterations to complete. Note: data must be of length more than :math:`2^{n\_iters}`.
+        fill_strategy: how to make vector be length of power of :math:`2`. If "reduce", then all values
+            after :math:`2^k`-th are removed, where :math:`n < 2^{(k + 1)}`. Other strategies specify the value
+            to fill the vector with up to the closest power of :math:`2`, "mean" being the mean of vector, "last"
+            being the last value of vector (makes time-series constant at the end).
+        pk: list of column names used to split pd.DataFrame.
+        eps: division epsilon.
+        return_df: Return pd.Dataframe object else np.ndarray.
+    """
     def __init__(
         self,
         n_iters=10,
@@ -69,19 +93,6 @@ class HurstExponent(MeasureTransformer):
         eps: float = 1e-22,
         return_df: bool = True,
     ):
-        """
-        Approximates Hurst Exponent using R/S analysis.\n
-        https://en.wikipedia.org/wiki/Hurst_exponent
-
-        :param n_iters: number of iterations to complete. Note: data must be of length more than 2 ^ `n_iters`.
-        :param fill_strategy: how to make vector be length of power of 2. If "reduce", then all values
-                after 2 ^ k-th are removed, where n < 2 ^ (k + 1). Other strategies specify the value
-                to fill the vector with up to the closest power of 2, "mean" being the mean of vector, "last"
-                being the last value of vector (makes time-series constant at the end).
-        :param pk: list of column names used to split pd.DataFrame.
-        :param eps: division epsilon.
-        :param return_df: Return pd.Dataframe object else np.ndarray.
-        """
         super().__init__(pk=pk, return_df=return_df, feature_name="hurst_exponent")
         self.n_iters = n_iters
         self.fill_strategy = fill_strategy
@@ -154,6 +165,7 @@ class HurstExponent(MeasureTransformer):
 
 
 class ShannonEntropy(BaseTransformer):
+    """Shannon Entropy."""
     def __init__(
         self,
         aoi: str = None,
@@ -211,6 +223,7 @@ class ShannonEntropy(BaseTransformer):
 
 
 class SpectralEntropy(MeasureTransformer):
+    """Spectral Entropy."""
     def __init__(
         self,
         x: str = None,
@@ -233,11 +246,12 @@ class SpectralEntropy(MeasureTransformer):
 
 
 class FuzzyEntropy(MeasureTransformer):
-    """
-    :param m: embedding dimension
-    :param r: tolerance threshold for matches acceptance (usually std)
-    """
+    """Fuzzy Entropy.
 
+    Args:
+        m: embedding dimension
+        r: tolerance threshold for matches acceptance (usually std)
+    """
     def __init__(
         self,
         x: str = None,
@@ -274,11 +288,12 @@ class FuzzyEntropy(MeasureTransformer):
 
 
 class SampleEntropy(MeasureTransformer):
-    """
-    :param m: embedding dimension
-    :param r: tolerance threshold for matches acceptance (usually std)
-    """
+    """Sample Entropy.
 
+    Args:
+        m: embedding dimension
+        r: tolerance threshold for matches acceptance (usually std)
+    """
     def __init__(
         self,
         m: int = 2,
@@ -315,6 +330,7 @@ class SampleEntropy(MeasureTransformer):
 
 
 class IncrementalEntropy(MeasureTransformer):
+    """Incremental Entropy."""
     def __init__(
         self,
         x: str = None,
@@ -342,10 +358,11 @@ class IncrementalEntropy(MeasureTransformer):
 
 
 class GriddedDistributionEntropy(MeasureTransformer):
-    """
-    :param grid_size: the number of bins (grid cells) for creating the histogram
-    """
+    """Gridded Distrbituion Entropy.
 
+    Args:
+        grid_size: the number of bins (grid cells) for creating the histogram
+    """
     def __init__(
         self,
         grid_size: int = 10,
@@ -378,11 +395,12 @@ class GriddedDistributionEntropy(MeasureTransformer):
 
 
 class PhaseEntropy(MeasureTransformer):
-    """
-    :param m: embedding dimension
-    :param tau: time delay for phase space reconstruction, the lag between each point in the phase space vectors.
-    """
+    """Phase Entropy.
 
+    Args:
+        m: embedding dimension
+        tau: time delay for phase space reconstruction, the lag between each point in the phase space vectors.
+    """
     def __init__(
         self,
         m: int = 2,
@@ -421,12 +439,13 @@ class PhaseEntropy(MeasureTransformer):
 
 
 class LyapunovExponent(MeasureTransformer):
-    """
-    :param m: embedding dimension
-    :param tau: time delay for phase space reconstruction
-    :param T: time steps to average the divergence over
-    """
+    """Lyapunov Exponent.
 
+    Args:
+        m: embedding dimension
+        tau: time delay for phase space reconstruction
+        T: time steps to average the divergence over
+    """
     def __init__(
         self,
         m: int = 2,
@@ -484,11 +503,12 @@ class LyapunovExponent(MeasureTransformer):
 
 
 class FractalDimension(MeasureTransformer):
-    """
-    :param m: embedding dimension
-    :param tau: time delay for phase space reconstruction
-    """
+    """Fractal Dimension.
 
+    Args:
+        m: embedding dimension
+        tau: time delay for phase space reconstruction
+    """
     def __init__(
         self,
         m: int = 2,
@@ -537,12 +557,13 @@ class FractalDimension(MeasureTransformer):
 
 
 class CorrelationDimension(MeasureTransformer):
-    """
-    :param m: embedding dimension
-    :param tau: time delay for phase space reconstruction
-    :param r: radius threshold for correlation sum
-    """
+    """Correlation Dimension.
 
+    Args:
+        m: embedding dimension
+        tau: time delay for phase space reconstruction
+        r: radius threshold for correlation sum
+    """
     def __init__(
         self,
         m: int = 2,
@@ -588,15 +609,14 @@ class CorrelationDimension(MeasureTransformer):
 
 
 class RQAMeasures(BaseTransformer):
-    """
-    Calculates Reccurence (REC), Determinism (DET), Laminarity (LAM) and Center of Recurrence Mass (CORM) measures.
+    """Calculates Reccurence (REC), Determinism (DET), Laminarity (LAM) and Center of Recurrence Mass (CORM) measures.
 
-    :param metric: callable metric on R^2 points
-    :param rho: threshold radius for RQA matrix
-    :param min_length: min length of lines
-    :param measures: list of measure to calculate (corresponding str)
+    Args:
+        metric: callable metric on R^2 points
+        rho: threshold radius for RQA matrix
+        min_length: min length of lines
+        measures: list of measure to calculate (corresponding str)
     """
-
     def __init__(
         self,
         metric: Callable = euclidean,
@@ -706,18 +726,23 @@ class RQAMeasures(BaseTransformer):
 
 
 class SaccadeUnlikelihood(MeasureTransformer):
-    """
-    Calculates cumulative negative log-likelihood of all the saccades in a scanpath with respect to the saccade transition model.
-    Default distribution parameters are derived from Potsdam Sentence Corpus.
+    """Saccade Unlikelihood.
 
-    :param mu_p: mean of the progression distribution
-    :param sigma_p1: left standard deviation of the progression distribution
-    :param sigma_p2: right standard deviation of the progression distribution
-    :param mu_r: mean of the regression distribution
-    :param sigma_r1: left standard deviation of the regression distribution
-    :param sigma_r2: right standard deviation of the regression distribution
-    :param psi: probability of performing a progressive saccade
-    :return: the cumulative Negative Log-Likelihood (NLL) of the saccades
+    Calculates cumulative negative log-likelihood of all the saccades in a
+    scanpath with respect to the saccade transition model. Default distribution
+    parameters are derived from Potsdam Sentence Corpus.
+
+    Args:
+        mu_p: mean of the progression distribution
+        sigma_p1: left standard deviation of the progression distribution
+        sigma_p2: right standard deviation of the progression distribution
+        mu_r: mean of the regression distribution
+        sigma_r1: left standard deviation of the regression distribution
+        sigma_r2: right standard deviation of the regression distribution
+        psi: probability of performing a progressive saccade
+
+    Returns:
+        the cumulative Negative Log-Likelihood (NLL) of the saccades
     """
 
     def __init__(
@@ -749,23 +774,29 @@ class SaccadeUnlikelihood(MeasureTransformer):
 
     @staticmethod
     def nassym(s: float, mu: float, sigma1: float, sigma2: float) -> float:
-        """
-        Calculates assymetric Gaussian PDF at point s.
+        """Calculates assymetric Gaussian PDF at point s.
 
-        :param s: saccade length
-        :param mu: mean of the distribution
-        :param sigma1: standard deviation for the left part of the distribution (s < mu)
-        :param sigma2: standard deviation for the right part of the distribution (s >= mu)
-        :return: probability density value for the given saccade length s
+        Args:
+            s: saccade length
+            mu: mean of the distribution
+            sigma1: standard deviation for the left part of the distribution (s < mu)
+            sigma2: standard deviation for the right part of the distribution (s >= mu)
+
+        Returns:
+            probability density value for the given saccade length s
         """
         Z = np.sqrt(np.pi / 2) * (sigma1 + sigma2)  # pdf normalization constant
         sigma = sigma1 if s < mu else sigma2
         return np.exp(-((s - mu) ** 2 / (2 * (sigma**2)))) / Z
 
     def calculate_saccade_proba(self, s: float) -> float:
-        """
-        :param s: saccade length
-        :return: The probability of the saccade length s.
+        """Calculates saccade probability.
+
+        Args:
+            s: saccade length
+
+        Returns:
+            The probability of the saccade length s.
         """
         progression_proba = self.psi * self.nassym(
             s, self.mu_p, self.sigma_p1, self.sigma_p2
@@ -786,15 +817,16 @@ class SaccadeUnlikelihood(MeasureTransformer):
 
 
 class HHTFeatures(BaseTransformer):
-    """
-    Extracts features from the Hilbert-Huang Transform (HHT) of the scanpath.
+    """Hilbert-Huang Transform.
 
-    :param max_imfs: maximum number of intrinsic mode functions (IMFs) to extract
-    :param features: list of features to extract from the HHT (aggregation functions, special features)
-    List of special functions: ['entropy', 'energy', 'dom_freq', 'sample_entropy', 'complexity_index']
-    :return: features extracted from the HHT
-    """
+    Args:
+        max_imfs: maximum number of intrinsic mode functions (IMFs) to extract
+        features: list of features to extract from the HHT (aggregation functions, special features)
+            List of special functions: ['entropy', 'energy', 'dom_freq', 'sample_entropy', 'complexity_index']
 
+    Returns:
+        features extracted from the HHT
+    """
     def __init__(
         self,
         max_imfs: int = -1,
@@ -838,11 +870,13 @@ class HHTFeatures(BaseTransformer):
         return self
 
     def dominant_freq(self, imf_data: np.ndarray) -> List[float]:
-        """
-        Calculates dominant frequency of the intrinsic mode functions (IMFs) using FFT.
+        """Calculates dominant frequency of the intrinsic mode functions (IMFs) using FFT.
 
-        :param imf_data: intrinsic mode functions (IMFs) data
-        :return: dominant frequency of each IMF
+        Args:
+            imf_data: intrinsic mode functions (IMFs) data
+
+        Returns:
+            dominant frequency of each IMF
         """
         imf_fft = fft2(imf_data, axes=(0, 1))
         dom_freq = []
@@ -852,11 +886,13 @@ class HHTFeatures(BaseTransformer):
         return dom_freq
 
     def coarse_grain(self, imf_data: np.ndarray, scale: int = 5) -> np.ndarray:
-        """
-        Calculates coarse-grained standard deviation of the intrinsic mode functions (IMFs).
+        """Calculates coarse-grained standard deviation of the intrinsic mode functions (IMFs).
 
-        :param imf_data: intrinsic mode functions (IMFs) data
-        :return: coarse-grained standard deviation of each IMF
+        Args:
+            imf_data: intrinsic mode functions (IMFs) data
+
+        Returns:
+            coarse-grained standard deviation of each IMF
         """
         cg = []
         for imf in imf_data:
@@ -873,15 +909,16 @@ class HHTFeatures(BaseTransformer):
     def sample_entropy(
         self, imf_data: np.ndarray, m: int = 1, r: float = 0.2
     ) -> List[float]:
-        """
-        Calculates sample entropy of the intrinsic mode functions (IMFs).
+        """Calculates sample entropy of the intrinsic mode functions (IMFs).
 
-        :param imf_data: intrinsic mode functions (IMFs) data
-        :param m: length of sequences to compare
-        :param r: tolerance for accepting mathces
-        :return: sample entropy of each IMF
-        """
+        Args:
+            imf_data: intrinsic mode functions (IMFs) data
+            m: length of sequences to compare
+            r: tolerance for accepting mathces
 
+        Returns:
+            sample entropy of each IMF
+        """
         se = []
         for imf in imf_data:
             cur_imf = imf.flatten()
@@ -900,16 +937,17 @@ class HHTFeatures(BaseTransformer):
     def complexity_index(
         self, imf_data: np.ndarray, m: int = 5, r: float = 0.20, max_scale: int = 2
     ) -> List[float]:
-        """
-        Calculates complexity index of the intrinsic mode functions (IMFs).
+        """Calculates complexity index of the intrinsic mode functions (IMFs).
 
-        :param imf_data: intrinsic mode functions (IMFs) data
-        :param m: length of sequences for sample entropy
-        :param r: tolerance for sample entropy
-        :param max_scale: maximum scale for coarse-graning
-        :return: complexity index of each IMF
-        """
+        Args:
+            imf_data: intrinsic mode functions (IMFs) data
+            m: length of sequences for sample entropy
+            r: tolerance for sample entropy
+            max_scale: maximum scale for coarse-graining
 
+        Returns:
+            complexity index of each IMF
+        """
         cis = []
         for imf in imf_data:
             ci = 0
@@ -920,11 +958,13 @@ class HHTFeatures(BaseTransformer):
         return cis
 
     def calculate_features(self, data: pd.DataFrame) -> List[float]:
-        """
-        Feature extraction from the HHT.
+        """Feature extraction from the HHT.
 
-        :param data: 1D array of the HHT signal
-        :returns: list of features extracted from the HHT
+        Args:
+            data: 1D array of the HHT signal
+
+        Returns:
+            list of features extracted from the HHT
         """
 
         cols = [self.x, self.y]

@@ -1,10 +1,11 @@
+import pandas as pd
 import eyefeatures.features.measures as eye_measures
 import eyefeatures.features.stats as eye_stats
 import eyefeatures.features.scanpath_dist as eye_dist
 from eyefeatures.features.extractor import Extractor
 
 # load your pd.DataFrame with gazes
-data = ...
+data = pd.read_csv('<your_data>.csv')  # read your dataframe
 
 # define all required features & columns in single class
 extractor = Extractor(
@@ -21,8 +22,8 @@ extractor = Extractor(
             }
         )
     ],
-    x='norm_pos_x',                                  # column with x-coordinate of fixations
-    y='norm_pos_y',                                  # column with y-coordinate of fixations
+    x='fixation_x',                                  # column with x-coordinate of fixations
+    y='fixation_y',                                  # column with y-coordinate of fixations
     t='timestamp',                                   # column with timestamp
     duration='duration',                             # column with duration in ms
     dispersion='dispersion',                         # column with dispersion

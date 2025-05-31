@@ -1,5 +1,5 @@
 import warnings
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, Dict, List, Tuple, Union, Callable
 
 import numpy as np
 import pandas as pd
@@ -82,8 +82,31 @@ class BaseTransformer(BaseEstimator, TransformerMixin):
         return X if self.return_df else X.values
 
 
-# TODO features_names_in_ прокинуть для всех базовых классов
-class Extractor(BaseEstimator, TransformerMixin):  # TODO rename to FeatureExtractor
+class Extractor(BaseEstimator, TransformerMixin):
+    """Meta Transformer that encapsulates the logic of feature extraction,
+    providing ``fit``/``transform`` API.
+
+    Args:
+        features: List of feature transformers to use.
+        x: X coordinate column name.
+        y: Y coordinate column name.
+        t: timeseries coordinate column name.
+        duration: fixation duration column name.
+        dispersion: fixation dispersion column name.
+        aoi: AOI column name.
+        path_pk: list of columns by which to calculate expected path.
+        pk: list of columns to use as primary key.
+        expected_paths_method: the method to calculate expected path.
+        extra: used in combination with ``aggr_extra``. List of columns of input
+            dataframe (on ``transform``) to aggregate alongside with other
+            feature transformers, using aggregation function ``aggr_extra``.
+        aggr_extra: aggregation function (pandas str or custom callable) to apply
+            with ``extra`` argument.
+        warn: whether to enable warnings.
+        leave_pk: if True, then input ``pk`` columns are present in output dataframe
+            (after ``transform``).
+        return_df: if True, then pandas DataFrame is returned, else np.ndarray.
+    """
     def __init__(
         self,
         features: List[BaseTransformer] = None,
@@ -97,7 +120,7 @@ class Extractor(BaseEstimator, TransformerMixin):  # TODO rename to FeatureExtra
         pk: List[str] = None,
         expected_paths_method: str = "mean",
         extra: List[str] = None,
-        aggr_extra: str = None,
+        aggr_extra: Callable | str = None,
         warn: bool = True,
         leave_pk: bool = False,
         return_df: bool = True,

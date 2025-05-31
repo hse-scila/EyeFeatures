@@ -454,7 +454,7 @@ class RegressionFeatures(StatsTransformer):
 
 
 class MicroSaccadeFeatures(StatsTransformer):
-    """Micro Saccade Features
+    """Micro Saccade Features.
     The transformer identities saccades, and then selects micro saccades
     from them using user-defined set of rules.
 
@@ -520,7 +520,7 @@ class MicroSaccadeFeatures(StatsTransformer):
 
 
 class FixationFeatures(StatsTransformer):
-    """Fixation Features Transformer
+    """Fixation Features Transformer.
     The transformer uses input fixations to extract features.
     """
     def __init__(self, **kwargs):

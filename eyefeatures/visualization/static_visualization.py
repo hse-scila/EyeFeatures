@@ -56,51 +56,51 @@ def scanpath_visualization(
     is_gray: bool = False,
     dpi: float = 100.0,
 ):
-    """
-    Function for scanpath visualization and aoi visualization.
+    """Function for scanpath and/or aoi visualization.
 
-    :param data_: DataFrame with fixations.
-    :param x: x coordinate of fixation.
-    :param y: y coordinate of fixation.
-    :param duration: duration of fixation.
-    :param dispersion: dispersion of fixation.
-    :param size_column: label of the column, which is responsible for the size of the fixations(points on plot).\n
-                        It can be duration, dispersion, etc.
-    :param shape_column: label of the column, which is responsible for the shape of the fixations(points on plot).
-    :param time_stamps: time stamps of fixations.
-    :param aoi: AOI of fixations.
-    :param img_path: path to the background image.
-    :param fig_size: size of plot.
-    :param points_width: width of points.
-    :param path_width: width of path.
-    :param points_color: color of points.
-    :param path_color: color of path.
-    :param points_enumeration: whether to enumerate points.
-    :param add_regressions: whether to add regressions.
-    :param regression_color: color of regressions.
-    :param micro_sac_color: color of microsaccades.
-    :param is_vectors: whether to visualize saccades as vectors
-    :param min_dispersion: minimum dispersion.
-    :param max_velocity: maximum velocity.
-    :param aoi_c: colormap for AOI.
-    :param only_points: whether to only show points.
-    :param seq_colormap: whether to show sequentially-colored saccades.
-    :param show_hull: whether to show hull of AOI.
-    :param show_legend: whether to show legend.
-    :param path_to_img: path to save the plot image.
-    :param with_axes: whether to show axes.
-    :param axes_limits: limits of axes.
-    :param rule: must be either 1) tuple of quadrants direction to classify
-                regressions, 1st quadrant being upper-right square of plane and counting
-                anti-clockwise or 2) tuple of angles in degrees (0 <= angle <= 360).
-    :param deviation: if None, then `rule` is interpreted as quadrants. Otherwise,
-                    `rule` is interpreted as angles. If integer, then is a +-deviation for all angles.
-                    If tuple of integers, then must be of the same length as `rule`, each value being
-                    a corresponding deviation for each angle. Angle = 0 is positive x-axis direction,
-                    rotating anti-clockwise.
-    :param return_ndarray: whether to return numpy array of the plot image(returns RGBA array).
-    :param show_plot: whether to show the plot.
-    :param is_gray: whether to use the gray scale.
+    Args:
+        data_: DataFrame with fixations.
+        x: x coordinate of fixation.
+        y: y coordinate of fixation.
+        duration: duration of fixation.
+        dispersion: dispersion of fixation.
+        size_column: label of the column, which is responsible for the size of the fixations(points on plot).\n
+                     It can be duration, dispersion, etc.
+        shape_column: label of the column, which is responsible for the shape of the fixations(points on plot).
+        time_stamps: time stamps of fixations.
+        aoi: AOI of fixations.
+        img_path: path to the background image.
+        fig_size: size of plot.
+        points_width: width of points.
+        path_width: width of path.
+        points_color: color of points.
+        path_color: color of path.
+        points_enumeration: whether to enumerate points.
+        add_regressions: whether to add regressions.
+        regression_color: color of regressions.
+        micro_sac_color: color of microsaccades.
+        is_vectors: whether to visualize saccades as vectors
+        min_dispersion: minimum dispersion.
+        max_velocity: maximum velocity.
+        aoi_c: colormap for AOI.
+        only_points: whether to only show points.
+        seq_colormap: whether to show sequentially-colored saccades.
+        show_hull: whether to show hull of AOI.
+        show_legend: whether to show legend.
+        path_to_img: path to save the plot image.
+        with_axes: whether to show axes.
+        axes_limits: limits of axes.
+        rule: must be either 1) tuple of quadrants direction to classify
+             regressions, 1st quadrant being upper-right square of plane and counting
+             anti-clockwise or 2) tuple of angles in degrees (0 <= angle <= 360).
+        deviation: if None, then `rule` is interpreted as quadrants. Otherwise,
+                 `rule` is interpreted as angles. If integer, then is a +-deviation for all angles.
+                 If tuple of integers, then must be of the same length as `rule`, each value being
+                 a corresponding deviation for each angle. Angle = 0 is positive x-axis direction,
+                 rotating anti-clockwise.
+        return_ndarray: whether to return numpy array of the plot image(returns RGBA array).
+        show_plot: whether to show the plot.
+        is_gray: whether to use the gray scale.
     """
     plt.figure(figsize=fig_size)
     eps = 1e-8
@@ -412,21 +412,23 @@ def get_visualizations(
     dpi: float = 100.0,
     pk: List[str] = None,
 ):
-    """
-    Gets visualizations.
+    """Get visualizations.
 
-    :param data: Dataframe with fixations
-    :param patterns: List of Visualizations
-    :param pk: list of column names used to split pd.DataFrame.
+    Args:
+        data: input dataframe with fixations.
+        x: X coordinate column name.
+        y: Y coordinate column name.
+        shape: height and width in pixels.
+        pattern: visualization class to use.
+        dpi: dpi for images.
+        pk: list of column names used to split pd.DataFrame.
 
-    Returns
-    -------
-    output: (ndarray)
-        [n, m, fig, fig, c]\n
-         n   : instances\n
-         m   : patterns\n
-         fig : fig size\n
-         c   : (3 - RGB image; 1 - gray scaled image)
+    Returns:
+        output: tensor of shape [n, m, fig, fig, c], where\n
+             n   : instances\n
+             m   : patterns\n
+             fig : fig size\n
+             c   : (3 - RGB image; 1 - gray scaled image)
     """
     arr = []
     if pk is None:

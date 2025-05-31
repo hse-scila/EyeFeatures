@@ -1,4 +1,4 @@
-Individual Normalization
+IndividualNormalization
 ========================
 
 .. currentmodule:: eyefeatures.features.shift

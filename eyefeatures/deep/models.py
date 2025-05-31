@@ -7,25 +7,21 @@ from torch.nn import functional as F
 from torch_geometric.nn import GCNConv, GINConv, global_mean_pool
 from tqdm import tqdm
 
-from eyefeatures.features.complex import get_heatmaps
-
 
 class VGGBlock(nn.Module):
-    """
-    A VGG-style convolutional block consisting of a convolution layer, batch normalization, and ReLU activation.
+    """A VGG-style convolutional block consisting of a
+    convolution layer, batch normalization, and ReLU activation.
 
-    :param in_channels: (int) Number of input channels.
-    :param out_channels: (int) Number of output channels.
-    :param kernel_size: (int, optional) Size of the convolution kernel. Default is 3.
-    :param padding: (int, optional) Padding for the convolution layer. Default is 1.
-    :param stride: (int, optional) Stride for the convolution layer. Default is 1.
+    Args:
+        in_channels: (int) Number of input channels.
+        out_channels: (int) Number of output channels.
+        kernel_size: (int, optional) Size of the convolution kernel. Default is 3.
+        padding: (int, optional) Padding for the convolution layer. Default is 1.
+        stride: (int, optional) Stride for the convolution layer. Default is 1.
 
-    Returns
-    -------
-    x: (Tensor)
+    Returns:
         Output tensor after applying the convolution, batch normalization, and ReLU activation.
     """
-
     def __init__(
         self,
         in_channels: int,
@@ -47,21 +43,18 @@ class VGGBlock(nn.Module):
 
 
 class ResnetBlock(nn.Module):
-    """
-    A ResNet-style residual block consisting of two convolution layers with skip connections.
+    """A ResNet-style residual block consisting of two convolution layers with skip connections.
 
-    :param in_channels (int): Number of input channels.
-    :param out_channels (int): Number of output channels.
-    :param kernel_size (int, optional): Size of the convolution kernel. Default is 3.
-    :param padding (int, optional): Padding for the convolution layers. Default is 1.
-    :param stride (int, optional): Stride for the convolution layers. Default is 1.
+    Args:
+        in_channels (int): Number of input channels.
+        out_channels (int): Number of output channels.
+        kernel_size (int, optional): Size of the convolution kernel. Default is 3.
+        padding (int, optional): Padding for the convolution layers. Default is 1.
+        stride (int, optional): Stride for the convolution layers. Default is 1.
 
-    Returns
-    -------
-    out: (Tensor)
+    Returns:
         Output tensor after applying residual connection and ReLU activation.
     """
-
     def __init__(
         self,
         in_channels: int,
@@ -99,20 +92,19 @@ class ResnetBlock(nn.Module):
 
 
 class InceptionBlock(nn.Module):
-    """
-    An Inception-style block consisting of multiple convolution branches operating on different scales.
+    """An Inception-style block consisting of multiple
+    convolution branches operating on different scales.
 
-    :param in_channels: (int) Number of input channels.
-    :param ch1x1: (int) Number of output channels for the 1x1 convolution branch.
-    :param ch3x3_reduce: (int) Number of output channels for the 1x1 convolution before the 3x3 convolution.
-    :param ch3x3: (int) Number of output channels for the 3x3 convolution branch.
-    :param ch5x5_reduce: (int) Number of output channels for the 1x1 convolution before the 5x5 convolution.
-    :param ch5x5: (int) Number of output channels for the 5x5 convolution branch.
-    :param pool_proj: (int) Number of output channels for the 1x1 convolution after the max pooling branch.
+    Args:
+        in_channels: (int) Number of input channels.
+        ch1x1: (int) Number of output channels for the 1x1 convolution branch.
+        ch3x3_reduce: (int) Number of output channels for the 1x1 convolution before the 3x3 convolution.
+        ch3x3: (int) Number of output channels for the 3x3 convolution branch.
+        ch5x5_reduce: (int) Number of output channels for the 1x1 convolution before the 5x5 convolution.
+        ch5x5: (int) Number of output channels for the 5x5 convolution branch.
+        pool_proj: (int) Number of output channels for the 1x1 convolution after the max pooling branch.
 
-    Return
-    -------
-    outputs: (Tensor)
+    Returns:
         Concatenated output tensor from all branches.
     """
 
@@ -151,24 +143,22 @@ class InceptionBlock(nn.Module):
         return torch.cat(outputs, 1)
 
 
-class DepthwiseSeparableConv(nn.Module):
-    """
-    Depthwise separable convolution, which consists of a depthwise convolution followed by a pointwise convolution.
+class DSCBlock(nn.Module):
+    """Depthwise separable convolution, which consists of a depthwise
+    convolution followed by a pointwise convolution.
 
-    :param in_channels: (int) Number of input channels.
-    :param out_channels: (int) Number of output channels.
-    :param kernel_size: (int, optional) Size of the convolution kernel. Default is 3.
-    :param stride: (int, optional) Stride for the convolution layers. Default is 1.
-    :param padding: (int, optional) Padding for the convolution layers. Default is 1.
+    Args:
+        in_channels: (int) Number of input channels.
+        out_channels: (int) Number of output channels.
+        kernel_size: (int, optional) Size of the convolution kernel. Default is 3.
+        stride: (int, optional) Stride for the convolution layers. Default is 1.
+        padding: (int, optional) Padding for the convolution layers. Default is 1.
 
-    Returns
-    -------
-    x: (Tensor)
+    Returns:
         Output tensor after applying depthwise and pointwise convolutions, batch normalization, and ReLU activation.
     """
-
     def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, padding=1):
-        super(DepthwiseSeparableConv, self).__init__()
+        super(DSCBlock, self).__init__()
         self.depthwise = nn.Conv2d(
             in_channels,
             in_channels,
@@ -194,7 +184,7 @@ _blocks = {
     "VGG_block": VGGBlock,
     "Resnet_block": ResnetBlock,
     "Inception_block": InceptionBlock,
-    "DepthwiseConvBlock": DepthwiseSeparableConv,
+    "DSC_block": DSCBlock,
 }
 
 
@@ -203,19 +193,18 @@ def create_simple_CNN(
     in_channels: int,
     shape: Tuple[int, int] = None,
 ):
-    """
-    Creates a simple CNN based on the provided configuration.
+    """Creates a simple CNN based on the provided configuration.
 
-    :param config: (Dict) Configuration dictionary where each key represents a layer/block and its corresponding parameters.
-    :param in_channels: (int) Number of input channels for the first layer.
-    :param shape: (Tuple[int, int], optional) Input shape for the CNN. If provided, checks that the final output shape is valid.
+    Args:
+        config: (Dict) Configuration dictionary where each key represents a layer/block and its corresponding parameters.
+        in_channels: (int) Number of input channels for the first layer.
+        shape: (Tuple[int, int], optional) Input shape for the CNN. If provided, checks that the final output shape is valid.
 
-    Returns
-    -------
-    cnn: (nn.Sequential)
-        Sequential CNN model.
-    shape: (Tuple[int, int], optional)
-        Final output shape, if provided.
+    Returns: (nn.Sequential, Tuple[int, int]) or nn.Sequential
+        cnn: (nn.Sequential)
+            Sequential CNN model.
+        shape: (Tuple[int, int], optional)
+            Final output shape, if provided.
     """
 
     modules = list()
@@ -265,20 +254,18 @@ class SimpleRNN(nn.Module):
         bidirectional=False,
         pre_rnn_linear_size=None,
     ):
-        """
-        A simple recurrent neural network (RNN) module that supports RNN, LSTM, and GRU architectures.
+        """A simple recurrent neural network (RNN) module
+        that supports RNN, LSTM, and GRU architectures.
 
-        :param rnn_type: (str) Type of RNN ('RNN', 'LSTM', or 'GRU').
-        :param input_size: (int) Number of input features.
-        :param hidden_size: (int) Number of hidden units.
-        :param output_size: (int) Number of output units.
-        :param num_layers: (int, optional) Number of RNN layers. Default is 1.
-        :param bidirectional: (bool, optional) Whether the RNN is bidirectional. Default is False.
-        :param pre_rnn_linear_size: (int, optional) Size of the optional linear layer before the RNN.
+        Args:
+            rnn_type: (str) Type of RNN ('RNN', 'LSTM', or 'GRU').
+            input_size: (int) Number of input features.
+            hidden_size: (int) Number of hidden units.
+            num_layers: (int, optional) Number of RNN layers. Default is 1.
+            bidirectional: (bool, optional) Whether the RNN is bidirectional. Default is False.
+            pre_rnn_linear_size: (int, optional) Size of the optional linear layer before the RNN.
 
-        Returns
-        -------
-        output: (Tensor)
+        Returns:
             Output tensor after the RNN and fully connected layer.
         """
         super(SimpleRNN, self).__init__()
@@ -359,18 +346,17 @@ class SimpleRNN(nn.Module):
 
 
 class VitNet(nn.Module):
-    """
-    Parent class for a vision-and-text network that fuses CNN and RNN-based representations using concatenation or addition.
+    """Parent class for a vision-and-text network that
+    fuses CNN and RNN-based representations using
+    concatenation or addition.
 
-    :param CNN: (nn.Module) CNN backbone for processing image data.
-    :param RNN: (nn.Module) RNN backbone for processing sequence data.
-    :param input_dim: (int) Input dimension for the RNN.
-    :param projected_dim: (int) Dimension of the projected sequence representation.
-    :param fusion_mode: (str, optional) Fusion mode ('concat' or 'add'). Default is 'concat'.
-    :param activation: (nn.Module, optional) Activation function applied after fusion. Default is None.
-    :param embed_dim: (int, optional) Embedding dimension for the projected features. Default is 128.
+    Args:
+        CNN: (nn.Module) CNN backbone for processing image data.
+        RNN: (nn.Module) RNN backbone for processing sequence data.
+        fusion_mode: (str, optional) Fusion mode ('concat' or 'add'). Default is 'concat'.
+        activation: (nn.Module, optional) Activation function applied after fusion. Default is None.
+        embed_dim: (int, optional) Embedding dimension for the projected features. Default is 128.
     """
-
     def __init__(self, CNN, RNN, fusion_mode="concat", activation=None, embed_dim=32):
         super(VitNet, self).__init__()
         self.CNN = CNN
@@ -396,7 +382,9 @@ class VitNet(nn.Module):
         if self.fusion_mode == "add":
             x = x_1 + x_2
         elif self.fusion_mode == "concat":
-            x = torch.cat([x_1, x_2], axis=1)
+            x = torch.cat([x_1, x_2], dim=1)
+        else:
+            raise NotImplementedError(f"Fusion mode {self.fusion_mode} is not implemented.")
 
         if self.activation is not None:
             x = self.activation(x)
@@ -405,17 +393,18 @@ class VitNet(nn.Module):
 
 
 class VitNetWithCrossAttention(VitNet):
-    """
-    Child class extending VitNet by adding cross-attention between image and sequence representations.
+    """Child class extending VitNet by adding cross-attention
+    between image and sequence representations.
 
-    :param CNN: (nn.Module) CNN backbone for processing image data.
-    :param RNN: (nn.Module) RNN backbone for processing sequence data.
-    :param input_dim: (int) Input dimension for the RNN.
-    :param projected_dim: (int) Dimension of the projected sequence representation.
-    :param cross_attention_fusion_mode: (str, optional) Fusion mode after cross-attention ('concat' or 'add'). Default is 'concat'.
-    :param activation: (nn.Module, optional) Activation function applied after fusion. Default is None.
-    :param embed_dim: (int, optional) Embedding dimension for the projected features. Default is 128.
-    :param return_attention_weights: (bool, optional) Whether to return attention weights. Default is False.
+    Args:
+        CNN: (nn.Module) CNN backbone for processing image data.
+        RNN: (nn.Module) RNN backbone for processing sequence data.
+        input_dim: (int) Input dimension for the RNN.
+        projected_dim: (int) Dimension of the projected sequence representation.
+        cross_attention_fusion_mode: (str, optional) Fusion mode after cross-attention ('concat' or 'add'). Default is 'concat'.
+        activation: (nn.Module, optional) Activation function applied after fusion. Default is None.
+        embed_dim: (int, optional) Embedding dimension for the projected features. Default is 128.
+        return_attention_weights: (bool, optional) Whether to return attention weights. Default is False.
     """
 
     def __init__(
@@ -481,20 +470,18 @@ class VitNetWithCrossAttention(VitNet):
 
 
 class GCN(torch.nn.Module):
-    """
-    A graph convolutional network (GCN) with optional learnable node embeddings.
+    """A graph convolutional network (GCN)
+    with optional learnable node embeddings.
 
-    Parameters:
-    :param num_nodes: (int) Number of nodes in the graph.
-    :param feature_dim: (int) Dimensionality of node features.
-    :param embedding_dim: (int) Dimensionality of the learnable node embeddings.
-    :param layer_sizes: (List[int]) List of hidden layer sizes for each GCN layer.
-    :param out_channels: (int) Number of output channels.
-    :param use_embeddings: (bool, optional) Whether to use learnable embeddings. Default is True.
+    Args:
+        num_nodes: (int) Number of nodes in the graph.
+        feature_dim: (int) Dimensionality of node features.
+        embedding_dim: (int) Dimensionality of the learnable node embeddings.
+        layer_sizes: (List[int]) List of hidden layer sizes for each GCN layer.
+        out_channels: (int) Number of output channels.
+        use_embeddings: (bool, optional) Whether to use learnable embeddings. Default is True.
 
-    Returns
-    -------
-    x: (Tensor)
+    Returns:
         Output tensor after graph convolutions and global mean pooling.
     """
 
@@ -543,19 +530,17 @@ class GCN(torch.nn.Module):
 
 
 class GIN(torch.nn.Module):
-    """
-    A graph isomorphism network (GIN) with shared embeddings for nodes across graphs.
+    """A graph isomorphism network (GIN) with shared
+    embeddings for nodes across graphs.
 
-    Parameters:
-    :param num_common_nodes: (int) Number of shared nodes across graphs.
-    :param feature_dim: (int) Dimensionality of node features.
-    :param embedding_dim: (int) Dimensionality of the shared node embeddings.
-    :param layer_sizes: (List[int]) List of hidden layer sizes for each GIN layer.
-    :param out_channels: (int) Number of output channels.
+    Args:
+        num_common_nodes: (int) Number of shared nodes across graphs.
+        feature_dim: (int) Dimensionality of node features.
+        embedding_dim: (int) Dimensionality of the shared node embeddings.
+        layer_sizes: (List[int]) List of hidden layer sizes for each GIN layer.
+        out_channels: (int) Number of output channels.
 
-    Returns
-    -------
-    x: (Tensor)
+    Returns:
         Output tensor after GIN layers and global mean pooling.
     """
 
@@ -598,26 +583,24 @@ class GIN(torch.nn.Module):
 
 
 class BaseModel(pl.LightningModule):
-    """
-    A base PyTorch Lightning module for neural networks with optional custom optimizer and scheduler.
+    """A base PyTorch Lightning module for neural networks
+    with optional custom optimizer and scheduler.
 
-    :param backbone: (Union[nn.ModuleList, nn.Module]) The feature extraction backbone model.
-    :param output_size: (int) Size of the final output layer.
-    :param hidden_layers: (Tuple, optional) Tuple of hidden layer sizes. Default is empty.
-    :param activation: (nn.Module, optional) Activation function to apply between layers. Default is ReLU.
-    :param learning_rate: (float, optional) Learning rate for the optimizer. Default is 1e-3.
-    :param optimizer_class: (Callable, optional) Optimizer class to use. Default is AdamW.
-    :param optimizer_params: (dict, optional) Additional parameters for the optimizer. Default is None.
-    :param scheduler_class: (Callable, optional) Scheduler class to use. Default is None.
-    :param scheduler_params: (dict, optional) Additional parameters for the scheduler. Default is None.
-    :param loss_fn: (Callable, optional) Loss function to use. Default is None.
+    Args:
+        backbone: (Union[nn.ModuleList, nn.Module]) The feature extraction backbone model.
+        output_size: (int) Size of the final output layer.
+        hidden_layers: (Tuple, optional) Tuple of hidden layer sizes. Default is empty.
+        activation: (nn.Module, optional) Activation function to apply between layers. Default is ReLU.
+        learning_rate: (float, optional) Learning rate for the optimizer. Default is 1e-3.
+        optimizer_class: (Callable, optional) Optimizer class to use. Default is AdamW.
+        optimizer_params: (dict, optional) Additional parameters for the optimizer. Default is None.
+        scheduler_class: (Callable, optional) Scheduler class to use. Default is None.
+        scheduler_params: (dict, optional) Additional parameters for the scheduler. Default is None.
+        loss_fn: (Callable, optional) Loss function to use. Default is None.
 
-    Returns
-    -------
-    x: (Tensor)
+    Returns:
         Output after the forward pass through the network.
     """
-
     def __init__(
         self,
         backbone: Union[nn.ModuleList, nn.Module],
@@ -699,26 +682,23 @@ import torchmetrics
 
 
 class Classifier(BaseModel):
-    """
-    A classification model built on top of the BaseModel, with additional accuracy, precision, recall, and F1-score tracking.
+    """A classification model built on top of the BaseModel,
+    with additional accuracy, precision, recall, and F1-score tracking.
 
-    Parameters:
-    :param backbone: (Union[nn.ModuleList, nn.Module]) The feature extraction backbone model.
-    :param n_classes: (int) Number of output classes.
-    :param classifier_hidden_layers: (Tuple, optional) Tuple of hidden layer sizes for the classifier. Default is empty.
-    :param classifier_activation: (nn.Module, optional) Activation function to use in the classifier. Default is ReLU.
-    :param learning_rate: (float, optional) Learning rate for the optimizer. Default is 1e-3.
-    :param optimizer_class: (Callable, optional) Optimizer class to use. Default is AdamW.
-    :param optimizer_params: (dict, optional) Additional parameters for the optimizer. Default is None.
-    :param scheduler_class: (Callable, optional) Scheduler class to use. Default is None.
-    :param scheduler_params: (dict, optional) Additional parameters for the scheduler. Default is None.
+    Args:
+        backbone: (Union[nn.ModuleList, nn.Module]) The feature extraction backbone model.
+        n_classes: (int) Number of output classes.
+        classifier_hidden_layers: (Tuple, optional) Tuple of hidden layer sizes for the classifier. Default is empty.
+        classifier_activation: (nn.Module, optional) Activation function to use in the classifier. Default is ReLU.
+        learning_rate: (float, optional) Learning rate for the optimizer. Default is 1e-3.
+        optimizer_class: (Callable, optional) Optimizer class to use. Default is AdamW.
+        optimizer_params: (dict, optional) Additional parameters for the optimizer. Default is None.
+        scheduler_class: (Callable, optional) Scheduler class to use. Default is None.
+        scheduler_params: (dict, optional) Additional parameters for the scheduler. Default is None.
 
-    Returns
-    -------
-    logits: (Tensor)
+    Returns:
         Output logits after the forward pass through the classifier.
     """
-
     def __init__(
         self,
         backbone: Union[nn.ModuleList, nn.Module],
@@ -847,6 +827,23 @@ class Classifier(BaseModel):
 
 
 class Regressor(BaseModel):
+    """A regression model built on top of the BaseModel,
+    using mean squared error loss.
+
+    Args:
+        backbone: (Union[nn.ModuleList, nn.Module]) The feature extraction backbone model.
+        output_dim: (int) Dimensionality of the regression output.
+        regressor_hidden_layers: (Tuple, optional) Tuple of hidden layer sizes for the regressor. Default is empty.
+        regressor_activation: (nn.Module, optional) Activation function to use in the regressor. Default is ReLU.
+        learning_rate: (float, optional) Learning rate for the optimizer. Default is 1e-3.
+        optimizer_class: (Callable, optional) Optimizer class to use. Default is AdamW.
+        optimizer_params: (dict, optional) Additional parameters for the optimizer. Default is None.
+        scheduler_class: (Callable, optional) Scheduler class to use. Default is None.
+        scheduler_params: (dict, optional) Additional parameters for the scheduler. Default is None.
+
+    Returns:
+        Regression output after the forward pass.
+    """
     def __init__(
         self,
         backbone: Union[nn.ModuleList, nn.Module],
@@ -859,25 +856,6 @@ class Regressor(BaseModel):
         scheduler_class: Optional[Callable] = None,
         scheduler_params: Optional[dict] = None,
     ):
-        """
-        A regression model built on top of the BaseModel, using mean squared error loss.
-
-        Parameters:
-        :param backbone: (Union[nn.ModuleList, nn.Module]) The feature extraction backbone model.
-        :param output_dim: (int) Dimensionality of the regression output.
-        :param regressor_hidden_layers: (Tuple, optional) Tuple of hidden layer sizes for the regressor. Default is empty.
-        :param regressor_activation: (nn.Module, optional) Activation function to use in the regressor. Default is ReLU.
-        :param learning_rate: (float, optional) Learning rate for the optimizer. Default is 1e-3.
-        :param optimizer_class: (Callable, optional) Optimizer class to use. Default is AdamW.
-        :param optimizer_params: (dict, optional) Additional parameters for the optimizer. Default is None.
-        :param scheduler_class: (Callable, optional) Scheduler class to use. Default is None.
-        :param scheduler_params: (dict, optional) Additional parameters for the scheduler. Default is None.
-
-        Returns
-        -------
-        output: (Tensor)
-            Regression output after the forward pass.
-        """
         super().__init__(
             backbone=backbone,
             output_size=output_dim,

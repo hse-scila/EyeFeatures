@@ -11,7 +11,7 @@ In simple words, the module coheres all features that are functions from scanpat
 This could be used in ``scikit-learn`` pipeline, giving an object (like person reading the text)
 a mean saccade length.
 
-For convenience, there is ``Extractor`` meta-class. :ref:`Usage example <extractor_usage_example>`.
+For convenience, there is the :ref:`Extractor <extractor>` meta-class.
 
 There are four submodules that work with that type of features and provide ``fit``/``transform``
 interface.
@@ -39,8 +39,8 @@ Measures
 ********
 
 The collection of algorithms for timeseries. 2D Scanpath (series of fixations) is treated
-as 3D timeseries (third axis is time). One can find Hurst Exponent and Hilbert
-Huang Transform methods helpful.
+as 3D timeseries (third axis is time). One can find Hurst Exponent, Hilbert
+Huang Transform, and different entropy-based methods helpful.
 
 Refer to ``measures`` submodule.
 
@@ -74,7 +74,7 @@ networks or other custom analysis.
 There are two submodules that work with that type of features.
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
 
    complex/index
    scanpath_complex/index
@@ -88,9 +88,17 @@ scanpath heatmaps, MTF, Recurrence Quantification Analysis (RQA) matrix, and oth
 Refer to ``complex`` submodule.
 
 Complex Scanpath Distances
-*************************
+**************************
 
 The collection of algorithms to aggregate several scanpaths. There are similarity/distance
 matrix calculations, spectral/optimal leaf matrix reorderings, and more.
 
 Refer to ``scanpath_complex`` submodule.
+
+Extractor
+---------
+
+.. toctree::
+    :maxdepth: 1
+
+    extractor

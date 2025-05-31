@@ -10,7 +10,7 @@ The library can be installed via pip:
     pip install eyefeatures
 
 Main Dependencies
-------------
+-----------------
 - Python 3.12
 - ``numpy``
 - ``pandas``
