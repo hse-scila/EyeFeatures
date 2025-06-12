@@ -37,6 +37,7 @@ class ShapeBased(BaseAOIPreprocessor):
                     4: "c" in the ellipse equation\n
                     5: angle of inclination of th ellipse in radians (:math:`\\alpha`)\n
     """
+
     def __init__(
         self,
         x: str = None,
@@ -447,6 +448,7 @@ class OverlapClustering(BaseAOIPreprocessor):
         aoi_name: name of AOI column.
         eps: additional length to sum of radius
     """
+
     def __init__(
         self,
         x: str = None,
@@ -560,6 +562,7 @@ class AOIExtractor(BaseEstimator, TransformerMixin):
         aoi_name: name of AOI column.
         show_best: if true, then return the best method for each instance
     """
+
     def __init__(
         self,
         methods: List[BaseAOIPreprocessor],
@@ -711,6 +714,7 @@ class AOIMatcher(BaseEstimator, TransformerMixin):
                0: any number the areas of interest.\n
                integer > 0: count of the areas of interest.
     """
+
     def __init__(
         self,
         x: str,
@@ -840,8 +844,6 @@ class AOIMatcher(BaseEstimator, TransformerMixin):
                         )
                         intersection = -1
                         new_name = None
-                        prev_height = -1
-                        prev_width = -1
                         for cur_area in areas_names:
                             cur_x_max, cur_y_max, cur_x_min, cur_y_min = (
                                 cur_fixations[cur_fixations[self.aoi] == cur_area][
@@ -868,8 +870,7 @@ class AOIMatcher(BaseEstimator, TransformerMixin):
                             ):
                                 intersection = width * height
                                 new_name = cur_area
-                                # prev_width = x_max - x_min
-                                # prev_height = y_max - y_min
+
                         used.append(new_name)
                         to_zip.append(key)
                     len_of_used = len(used)
