@@ -32,7 +32,7 @@ Recurrence matrix :math:`R` is defined as
     \text{ where } L_{min} - \text{ minimum line length}, \, P(l) - \text{probability of diagonal lines of length } l
 
 * Liminarity measures the percentage of recurrence points forming
-  vertical or horizontal lines of length at least $L_{min}$:
+  vertical or horizontal lines of length at least :math:`L_{min}`:
 
 .. math::
     \text{LAM} = \frac{50 \left( \sum_{\text{HL}} \text{HL} + \sum_{\text{VL}} \text{VL}\right)}{\sum_{i=1}^n \sum_{j=i+1}^n R_{ij}},

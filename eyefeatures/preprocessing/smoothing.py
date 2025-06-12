@@ -11,7 +11,7 @@ from eyefeatures.preprocessing.base import BaseSmoothingPreprocessor
 class SavGolFilter(
     BaseSmoothingPreprocessor
 ):  # TODO 2D SG filter: https://github.com/espdev/sgolay2
-    """Savitzkiy-Golay filter. 'x' and 'y' directions are filtered independently,
+    """Savitzky-Golay filter. 'x' and 'y' directions are filtered independently,
     time is ignored. Parameters are passed to `scipy.signal.savgol_filter`.
 
     Notes:
@@ -60,7 +60,7 @@ class SavGolFilter(
 
 
 class FIRFilter(BaseSmoothingPreprocessor):  # TODO 2D version?
-    """FIR filter. Convolution with RIR kernel along 'x' and 'y'.
+    """FIR filter. Convolution with FIR kernel along 'x' and 'y'.
     `kwargs` are passed to `scipy.signal.firwin` to determine the kernel.
 
     Args:

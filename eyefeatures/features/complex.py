@@ -148,7 +148,7 @@ def get_rqa(
         data: input Dataframe with fixations.
         x: X coordinate column name.
         y: Y coordinate column name.
-        metric: callable metric on R^2 points.
+        metric: callable metric on :math:`\mathbb{R}^2` points.
         rho: threshold radius.
 
     Returns:

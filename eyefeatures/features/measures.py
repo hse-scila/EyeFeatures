@@ -609,7 +609,8 @@ class CorrelationDimension(MeasureTransformer):
 
 
 class RQAMeasures(BaseTransformer):
-    """Calculates Reccurence (REC), Determinism (DET), Laminarity (LAM) and Center of Recurrence Mass (CORM) measures.
+    """Calculates Recurrence (REC), Determinism (DET), Laminarity (LAM) and Center of Recurrence Mass (CORM) measures.
+    These are parts of the Recurrence Quantification Analysis.
 
     Args:
         metric: callable metric on R^2 points
