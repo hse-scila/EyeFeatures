@@ -57,6 +57,7 @@ build-backend = "poetry.core.masonry.api"
 
 [project]
 license = {file = "LICENSE"}
+name = "eyefeatures"
 authors = [
     {name = "Kondaurov Zakhar"},
     {name = "Tikhonov Daniil"},
