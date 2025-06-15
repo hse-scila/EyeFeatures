@@ -23,16 +23,21 @@ def _check_shape(shape: Tuple[int, int]):
         assert k > 0, f"Integers in 'shape' must be positive, got '{k}'."
 
 
-def get_heatmap(x: NDArray, y: NDArray, shape: Tuple[int, int], check: bool = True):
-    """
-    Get heatmap from scanpath (given coordinates are scaled and sorted in time) using
+def get_heatmap(
+    x: NDArray, y: NDArray, shape: Tuple[int, int], check: bool = True
+) -> np.ndarray:
+    """Get heatmap from scanpath (given coordinates are scaled and sorted in time) using
     Gaussian KDE.
-    :param x: x coordinates of scanpath.
-    :param y: y coordinates of scanpath.
-    :param shape: if tuple with single integer, then square matrix is returned, otherwise k must be (height, width)
-                  tuple and rectangular matrix is returned.
-    :param check: whether to check 'shape' for correct typing.
-    :return: heatmap matrix.
+
+    Args:
+        x: X coordinate column name.
+        y: Y coordinate column name.
+        shape: if tuple with single integer, then square matrix is returned, otherwise k must be (height, width)
+               tuple and rectangular matrix is returned.
+        check: whether to check 'shape' for correct typing.
+
+    Returns:
+        heatmap matrix.
     """
     if check:
         _check_shape(shape)
@@ -53,9 +58,20 @@ def get_heatmap(x: NDArray, y: NDArray, shape: Tuple[int, int], check: bool = Tr
 
 def get_heatmaps(
     data: pd.DataFrame, x: str, y: str, shape: Tuple[int, int], pk: List[str] = None
-):
-    """
-    Convenience wrapper for get_heatmap function.
+) -> np.ndarray:
+    """Get heatmaps from scanpaths (given coordinates are scaled and sorted in time) using
+    Gaussian KDE.
+
+    Args:
+        data: input Dataframe with fixations.
+        x: X coordinate column name.
+        y: Y coordinate column name.
+        shape: if tuple with single integer, then square matrix is returned, otherwise k must be (height, width)
+               tuple and rectangular matrix is returned.
+        pk: List of columns being primary key.
+
+    Returns:
+        heatmap matrices.
     """
     _check_shape(shape)
 
@@ -76,15 +92,17 @@ def get_heatmaps(
 
 
 # =========================== PCA ===========================
-def pca(matrix: NDArray, p: int, cum_sum: float = None):
-    """
-    PCA compression.
+def pca(matrix: NDArray, p: int, cum_sum: float = None) -> np.ndarray:
+    """PCA compression.
 
-    :param matrix: matrix to get principal components from (n x m)
-    :param p: number of first principal components to leave
-    :param cum_sum: instead of p, leave such number of principal components, that 0.0 <= a_cum_sum <= 1.0
+    Args:
+        matrix: matrix to get principal components from (n x m)
+        p: number of first principal components to leave
+        cum_sum: instead of p, leave such number of principal components, that 0.0 <= a_cum_sum <= 1.0
                     fraction of information is conserved.
-    :return: matrix of eigenvectors (m x m), projection (n x p), rows means (n x 1)
+
+    Returns:
+        matrix of eigenvectors (m x m), projection (n x p), rows means (n x 1)
     """
     assert len(matrix.shape) == 2, "'matrix' should be a matrix"
     assert 0 <= p <= matrix.shape[0], "given 'matrix' is n x m, 0 <= p <= n must hold"
@@ -124,15 +142,17 @@ def pca(matrix: NDArray, p: int, cum_sum: float = None):
 def get_rqa(
     data: pd.DataFrame, x: str, y: str, metric: Callable, rho: float
 ) -> np.ndarray:
-    """
-    Calculates recurrence quantification analysis matrix based on given fixations.
-    :param data: dataframe containing fixations
-    :param x: column name of x-coordinate
-    :param y: column name of y-coordinate
-    :param metric: callable metric on R^2 points
-    :param rho: threshold radius
+    """Calculates recurrence quantification analysis matrix based on given fixations.
 
-    :return: rqa matrix
+    Args:
+        data: input Dataframe with fixations.
+        x: X coordinate column name.
+        y: Y coordinate column name.
+        metric: callable metric on :math:`\mathbb{R}^2` points.
+        rho: threshold radius.
+
+    Returns:
+        rqa matrix.
     """
     fixations = data[[x, y]].values
     n = len(fixations)
@@ -156,19 +176,21 @@ def get_mtf(
     output_size: Union[int, float] = 1.0,
     shrink_strategy: Literal["max", "mean", "normal"] = "normal",
     flatten: bool = False,
-) -> np.array:
-    """
-    Calculates Markov Transition Field for (x,y) coordinates.
-    :param data: dataframe containing fixation coordinates.
-    :param x: x-coordinate column name.
-    :param y: y-coordinate column name.
-    :param n_bins: number of bins to discretize time series into.
-    :param output_size: fraction between 0 and 1. Specifies fraction of input series length to shrink output to.
-    :param shrink_strategy: strategy to use for convolution while shrinking. Ignored if 'output_size' is equal to
-                            size of 'data'.
-    :param flatten: bool, whether to flatten the array.
+) -> np.ndarray:
+    """Calculates Markov Transition Field for (x,y) coordinates.
 
-    :returns: tensor of shape (2, n_coords, n_coords), where n_coords is the length of input dataframe.
+    Args:
+        data: input Dataframe with fixations.
+        x: X coordinate column name.
+        y: Y coordinate column name.
+        n_bins: number of bins to discretize time series into.
+        output_size: fraction between 0 and 1. Specifies fraction of input series length to shrink output to.
+        shrink_strategy: strategy to use for convolution while shrinking. Ignored if 'output_size' is equal to
+                         size of 'data'.
+        flatten: bool, whether to flatten the array.
+
+    Returns:
+        tensor of shape (2, n_coords, n_coords), where n_coords is the length of input dataframe.
     """
     if isinstance(output_size, float):
         assert 0.0 < output_size <= 1.0, "Must be 0 < output_size <= 1."
@@ -207,7 +229,7 @@ def get_mtf(
     return fixations_mtf.flatten() if flatten else fixations_mtf
 
 
-def _get_mtf(a: np.array, n_bins: int) -> np.array:
+def _get_mtf(a: np.ndarray, n_bins: int) -> np.ndarray:
     assert len(a.shape) == 2, "Array of shape (n_samples, n_timestamps) must be passed."
     n_samples, n_timestamps = a.shape
 
@@ -244,16 +266,20 @@ def _shrink_matrix(
     height: int,
     width: int,
     strategy: Literal["max", "mean", "normal"] = "normal",
-) -> np.array:
-    """
-    Shrinks matrix to be close to output_size x output_size.
-    :param mat: 2d matrix (image channel).
-    :param height: height of shrunk matrix.
-    :param width: width of shrunk matrix.
-    :param strategy: strategy to use while shrinking.
-            * 'mean' - 2d convolution with uniform kernel.
-            * 'normal' - 2d convolution with Gauss kernel.
-            * 'max' - max pooling, resulting image is the closest possible to provided 'size'.
+) -> np.ndarray:
+    """Shrinks matrix to be close to output_size x output_size.
+
+    Args:
+        mat: 2d matrix (image channel).
+        height: height of shrunk matrix.
+        width: width of shrunk matrix.
+        strategy: strategy to use while shrinking.
+         * 'mean' - 2d convolution with uniform kernel.
+         * 'normal' - 2d convolution with Gauss kernel.
+         * 'max' - max pooling, resulting image is the closest possible to provided 'size'.
+
+    Returns:
+        shrunk matrix.
     """
     ih, iw = mat.shape
     oh, ow = height, width
@@ -291,7 +317,7 @@ def _shrink_matrix(
     return shrunk_mat
 
 
-def _gaussian_kernel(size, sigma) -> np.array:
+def _gaussian_kernel(size, sigma) -> np.ndarray:
     if size % 2 == 0:
         x = (np.arange(-size / 2, size / 2, 1) + 0.5).reshape(1, -1)
     else:
@@ -316,22 +342,23 @@ def get_gaf(
     field_type: Literal["difference", "sum"] = "difference",
     to_polar: Literal["regular", "cosine"] = "cosine",
     flatten: bool = False,
-) -> np.array:
-    """
-    Calculates Gramian Angular Field for (x,y) coordinates.
+) -> np.ndarray:
+    """Calculates Gramian Angular Field for (x,y) coordinates.
 
-    :param data: dataframe containing fixation coordinates.
-    :param x: x-coordinate column name.
-    :param y: y-coordinate column name.
-    :param t: timestamps column name.
-    :param field_type: which type of field to calculate. If "difference", then GADF is returned,
-                       otherwise ("sum") GASF is returned.
-    :param to_polar: conversion from cartesian to polar coordinates.
-                    * 'regular': standard conversion calculating arctan(y/x).
-                    * 'cosine': angle is calculated as cosine of series data, radius is taken as timestamps.
-    :param flatten: bool, whether to flatten the array.
+    Args:
+        data: input Dataframe with fixations.
+        x: X coordinate column name.
+        y: Y coordinate column name.
+        t: timestamps column name.
+        field_type: which type of field to calculate. If "difference", then GADF is returned,
+                    otherwise ("sum") GASF is returned.
+        to_polar: conversion from cartesian to polar coordinates.
+                 * 'regular': standard conversion calculating arctan(y/x).
+                 * 'cosine': angle is calculated as cosine of series data, radius is taken as timestamps.
+        flatten: bool, whether to flatten the array.
 
-    :returns: tensor of shape (2, n_coords, n_coords), where n_coords is the length of input dataframe.
+    Returns:
+        tensor of shape (2, n_coords, n_coords), where n_coords is the length of input dataframe.
     """
     assert field_type in (
         "difference",
@@ -354,10 +381,11 @@ def _get_gaf(
     t: np.array,
     field_type: Literal["difference", "sum"],
     to_polar: Literal["regular", "cosine"],
-) -> np.array:
+) -> np.ndarray:
     """
-    :param a: array of shape (n_samples, n_timestamps) being angular values.
-    :param t: array of shape (n_timestamps,) being timestamps for all samples in 'a' or
+    Args:
+        a: array of shape (n_samples, n_timestamps) being angular values.
+        t: array of shape (n_timestamps,) being timestamps for all samples in 'a' or
                              (n_samples, n_timestamps) being timestamps of corresponding angular values in 'a',
                                                        i.e. a[i, :] are expected to be the angles at time t[i, :].
     """
@@ -398,28 +426,26 @@ def _get_gaf(
     return gaf
 
 
-def _rescale(a: np.array) -> np.array:
-    """
-    Linearly map array to [-1, 1].
-    """
+def _rescale(a: np.array) -> np.ndarray:
+    """Linearly map array to [-1, 1]."""
     amm = _minmax(a)
     return amm * 2 - 1
 
 
-def _minmax(a: np.array) -> np.array:
+def _minmax(a: np.array) -> np.ndarray:
     min_, max_ = a.min(), a.max()
     if min_ == max_:
         return a if min_ == 0.0 else np.ones(a.shape, dtype=a.dtype)
     return (a - min_) / (max_ - min_)
 
 
-def _car2pol(x: np.array, f_x: np.array) -> Tuple[np.array, np.array]:
+def _car2pol(x: np.array, f_x: np.array) -> Tuple[np.ndarray, np.ndarray]:
     rho = np.sqrt(x**2 + f_x**2)
     phi = np.arctan2(f_x, x)
     return rho, phi
 
 
-def _encode_car(x: np.array, t: np.array) -> Tuple[np.array, np.array]:
+def _encode_car(x: np.array, t: np.array) -> Tuple[np.ndarray, np.ndarray]:
     rho = t
     phi = np.arccos(_rescale(x))
     return rho, phi
@@ -428,17 +454,19 @@ def _encode_car(x: np.array, t: np.array) -> Tuple[np.array, np.array]:
 # =========================== HILBERT CURVE ===========================
 def get_hilbert_curve_enc(
     data: pd.DataFrame, x: str, y: str, scale: bool = True, p: int = 4
-) -> np.array:
-    """
-    Map scanpath to values on Hilbert curve and encode to single feature vector.
+) -> np.ndarray:
+    """Map scanpath to values on Hilbert curve and encode to single feature vector.
 
-    :param data: dataframe containing fixation coordinates.
-    :param x: x-coordinate column name.
-    :param y: y-coordinate column name.
-    :param scale: whether to scale the scanpath to [0, 1] before mapping to Hilbert curve. If false, then
-    :param p: order of Hilbert curve, unit square is divided into (2^p)x(2^p) smaller squares.
+    Args:
+        data: input Dataframe with fixations.
+        x: X coordinate column name.
+        y: Y coordinate column name.
+        scale: whether to scale the scanpath to [0, 1] before mapping to Hilbert curve. If false, then
+        p: order of Hilbert curve, unit square is divided into (2^p)x(2^p) smaller squares.
               Higher value of p indicates better locality preservation.
-    :return: scanpath encoding in 2^p-dimensional feature space using 1D Hilbert curve.
+
+    Returns:
+        scanpath encoding in 2^p-dimensional feature space using 1D Hilbert curve.
     """
     n = 2**p
     mapping = get_hilbert_curve(
@@ -453,17 +481,19 @@ def get_hilbert_curve_enc(
 
 def get_hilbert_curve(
     data: pd.DataFrame, x: str, y: str, scale: bool = True, p: int = 4
-) -> np.array:
-    """
-    Map scanpath to points on 1D Hilbert curve.
+) -> np.ndarray:
+    """Map scanpath to points on 1D Hilbert curve.
 
-    :param data: dataframe containing fixation coordinates.
-    :param x: x-coordinate column name.
-    :param y: y-coordinate column name.
-    :param scale: whether to scale the scanpath to [0, 1] before mapping to Hilbert curve. If false, then
-    :param p: order of Hilbert curve, unit square is divided into (2^p)x(2^p) smaller squares.
+    Args:
+        data: input Dataframe with fixations.
+        x: X coordinate column name.
+        y: Y coordinate column name.
+        scale: whether to scale the scanpath to [0, 1] before mapping to Hilbert curve. If false, then
+        p: order of Hilbert curve, unit square is divided into (2^p)x(2^p) smaller squares.
               Higher value of p indicates better locality preservation.
-    :return: scanpath mapping to 1D Hilbert curve.
+
+    Returns:
+        scanpath mapping to 1D Hilbert curve.
     """
     x, y = data[x].values, data[y].values
     n_fixations = len(x)
@@ -491,16 +521,19 @@ def get_hilbert_curve(
 
 
 def xy2h(x: int, y: int, p: int) -> int:
-    """
-    Mapping of 2D space to 1D using Hilbert curve.
+    """Mapping of 2D space to 1D using Hilbert curve.
 
-    :param x: x-coordinate of a point, 0 <= x < 2^p.
-    :param y: y-coordinate of a point, 0 <= y < 2^p.
-    :param p: order of Hilbert curve, unit square is divided into (2^p)x(2^p) smaller squares.
+    Args:
+        x: x-coordinate of a point, 0 <= x < 2^p.
+        y: y-coordinate of a point, 0 <= y < 2^p.
+        p: order of Hilbert curve, unit square is divided into (2^p)x(2^p) smaller squares.
               Higher value of p indicates better locality preservation.
-    :return: corresponding point on 1D Hilbert curve.
 
-    Algorithm: https://people.math.sc.edu/Burkardt/py_src/hilbert_curve/hilbert_curve.py.
+    Returns:
+        corresponding point on 1D Hilbert curve.
+
+    Notes:
+        Algorithm: https://people.math.sc.edu/Burkardt/py_src/hilbert_curve/hilbert_curve.py.
     """
     n = 2**p
 
@@ -521,12 +554,14 @@ def xy2h(x: int, y: int, p: int) -> int:
 
 
 def hilbert_huang_transform(data: np.ndarray, max_imf: int = 1) -> np.ndarray:
-    """
-    Perform Hilbert-Huang transform on a given data sequence.
+    """Perform Hilbert-Huang transform on a given data sequence.
 
-    :param data: input sequence of form (x, y) coordinates
-    :param max_imf: maximum number of intrinsic mode functions to extract
-    :return: np.ndarray: intrinsic mode functions from an input data vector
+    Args:
+        data: input sequence of form (x, y) coordinates
+        max_imf: maximum number of intrinsic mode functions to extract
+
+    Returns:
+        intrinsic mode functions from an input data vector
     """
 
     emd = EMD2D()
@@ -535,18 +570,18 @@ def hilbert_huang_transform(data: np.ndarray, max_imf: int = 1) -> np.ndarray:
 
 
 # =========================== PERSISTENCE CURVE ===========================
-
-
 def vietoris_rips_filtration(
-    scanpath: np.array, max_dim: int = 2, max_radius: float = 1.0
+    scanpath: np.ndarray, max_dim: int = 2, max_radius: float = 1.0
 ):
-    """
-    Compute the Vietoris-Rips filtration for a point cloud.
+    """Compute the Vietoris-Rips filtration for a point cloud.
 
-    :param point_cloud: scanpath data as a numpy array of shape (n, 2)
-    :param max_dim: maximum dimension for persistent homology
-    :param max_radius: maximum radius for the filtration
-    :return: persistence diagram and simplex tree
+    Args:
+        scanpath: scanpath data as a numpy array of shape (n, 2).
+        max_dim: maximum dimension for persistent homology.
+        max_radius: maximum radius for the filtration.
+
+    Returns:
+        persistence diagram and simplex tree.
     """
 
     rips_complex = gd.RipsComplex(points=scanpath, max_edge_length=max_radius)
@@ -556,16 +591,16 @@ def vietoris_rips_filtration(
     return persistence, simplex_tree
 
 
-def lower_star_filtration(time_series: np.ndarray, max_dim: int = 1):
-    """
-    Compute the Lower Star filtration for a time series.
+def lower_star_filtration(time_series: np.ndarray, persistence_dim_max: bool = False):
+    """Compute the Lower Star filtration for a time series.
 
-    :param time_series: time series data
-    :param max_dim: maximum dimension for persistent homology
-    :param persistence: persistence diagram.
+    Args:
+        time_series: time series data.
+        persistence_dim_max: If true, the persistent homology for the maximal dimension in the
+            complex is computed. If False, it is ignored. Default is False.
     """
 
-    simplex_tree = gd.SimplexTree()
+    simplex_tree = gd.SimplexTree(persistence_dim_max=persistence_dim_max)
 
     for i, val in enumerate(time_series):
         simplex_tree.insert([i], filtration=val)
@@ -577,12 +612,14 @@ def lower_star_filtration(time_series: np.ndarray, max_dim: int = 1):
 
 
 def persistence_curve(persistence_diagram: List[Tuple | np.ndarray], t: float):
-    """
-    Compute the persistence curve for a persistence diagram at time t.
+    """Compute the persistence curve for a persistence diagram at time t.
 
-    :param persistence_diagram: persistence diagram [(birth, death), ...]
-    :param t: threshold time for persistence curve
-    :return: sum of persistence intervals active at time t
+    Args:
+        persistence_diagram: persistence diagram [(birth, death), ...].
+        t: threshold time for persistence curve.
+
+    Returns:
+        sum of persistence intervals active at time t.
     """
     total_persistence = sum(
         (death - birth) for birth, death in persistence_diagram if birth <= t <= death
@@ -591,12 +628,14 @@ def persistence_curve(persistence_diagram: List[Tuple | np.ndarray], t: float):
 
 
 def persistence_entropy_curve(persistence_diagram: List[Tuple | np.ndarray], t: float):
-    """
-    Compute the persistence entropy curve for a persistence diagram at time t.
+    """Compute the persistence entropy curve for a persistence diagram at time t.
 
-    :param persistence_diagram: persistence diagram [(birth, death), ...]
-    :param t: threshold time for persistence entropy curve
-    :return: entropy value at time t
+    Args:
+        persistence_diagram: persistence diagram [(birth, death), ...].
+        t: threshold time for persistence entropy curve.
+
+    Returns:
+        entropy value at time t.
     """
 
     intervals = [
@@ -621,16 +660,18 @@ def calculate_topological_features(
     max_dim: int = 2,
     time_steps: int = 100,
 ):
-    """
-    Calculate topological features (persistence curve and persistence entropy) for a scanpath.
+    """Calculate topological features (persistence curve and persistence entropy) for a scanpath.
 
-    :param scanpath: scanpath data array of shape (n, 2)
-    :param time_series: 1d array of time series data (e.g. x or y coordinates over time)
-    :param max_radius: maximum radius for Vietoris-Rips filtration
-    :param max_time: maximum threshold for the persistence curve
-    :param max_dim: maximum dimension for persistent homology
-    :param time_steps: number of time steps for evaluating the persistence curve and entropy
-    :return: values of persistence curve at each time step, Values of persistence entropy at each time step
+    Args:
+        scanpath: scanpath data array of shape (n, 2).
+        time_series: 1d array of time series data (e.g. x or y coordinates over time).
+        max_radius: maximum radius for Vietoris-Rips filtration.
+        max_time: maximum threshold for the persistence curve.
+        max_dim: maximum dimension for persistent homology.
+        time_steps: number of time steps for evaluating the persistence curve and entropy.
+
+    Returns:
+        values of persistence curve at each time step, Values of persistence entropy at each time step.
     """
 
     persistence_vr, _ = vietoris_rips_filtration(

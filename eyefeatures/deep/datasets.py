@@ -1,7 +1,7 @@
 import warnings
 from copy import copy
 from functools import partial
-from typing import List, Tuple, Union
+from typing import List, Tuple, Union, Callable
 
 import numpy as np
 import pandas as pd
@@ -27,24 +27,22 @@ def iterative_split(
     'maintains balanced representation with respect
     to order-th label combinations.'
 
-    :param df: Input dataframe to split.
-    :param y: Labels corresponding to the dataframe.
-    :param test_size: Proportion of the dataset to include in the test split.
-    :param stratify_columns: List of column names to stratify by.
+    Args:
+        df (pd.DataFrame): Input dataframe to split.
+        y (np.ndarray): Labels corresponding to the dataframe.
+        test_size (float): Proportion of the dataset to include in the test split.
+        stratify_columns (List[str]): List of column names to stratify by.
 
-    Returns
-    -------
-    X_train: pd.DataFrame
-        Training split of the dataframe.
-    X_test: pd.DataFrame
-        Test split of the dataframe.
-    y_train: ArrayLike
-        Training labels.
-    y_test: ArrayLike
-        Test labels.
-    Notes
-    -----
-    From https://madewithml.com/courses/mlops/splitting/#stratified-split
+    Returns:
+        tuple (pd.DataFrame, pd.DataFrame, np.ndarray, np.ndarray): A tuple
+            (X_train, X_test, y_train, y_test):
+                (1) Training split of the dataframe.
+                (2) Test split of the dataframe.
+                (3) Training labels.
+                (4) Test labels.
+
+    Note:
+        From https://madewithml.com/courses/mlops/splitting/#stratified-split
     """
     # One-hot encode the stratify columns and concatenate them
     one_hot_cols = [pd.get_dummies(df[col]) for col in stratify_columns]
@@ -62,18 +60,16 @@ def iterative_split(
 
 
 def _coord_to_grid(coords: np.array, xlim: Tuple, ylim: Tuple, shape: Tuple):
-    """
-    Maps 2D coordinates to grid indices based on the grid resolution.
+    """Maps 2D coordinates to grid indices based on the grid resolution.
 
-    :param coords: Array of coordinates to map.
-    :param xlim: The x-axis limits (x_min, x_max).
-    :param ylim: The y-axis limits (y_min, y_max).
-    :param shape: The shape of the grid (rows, cols).
+    Args:
+        coords (np.ndarray): Array of coordinates to map.
+        xlim: The x-axis limits (x_min, x_max).
+        ylim: The y-axis limits (y_min, y_max).
+        shape: The shape of the grid (rows, cols).
 
-    Returns
-    -------
-    (i, j): Tuple[int, int]
-        The grid indices corresponding to the coordinates.
+    Returns:
+        tuple(int, int): A tuple (i, j) - the grid indices corresponding to the coordinates.
     """
 
     i = (((coords[:, 0] - xlim[0]) / (xlim[1] - xlim[0])) * shape[0]).astype(int)
@@ -82,33 +78,32 @@ def _coord_to_grid(coords: np.array, xlim: Tuple, ylim: Tuple, shape: Tuple):
 
 
 def _cell_index(i: int, j: int, shape: Tuple[int, int]):
-    """
-    Maps grid indices (i, j) to a 1D cell index based on the grid shape.
+    """Maps grid indices (i, j) to a 1D cell index based on the grid shape.
 
-    :param i: Row index in the grid.
-    :param j: Column index in the grid.
-    :param shape: The shape of the grid (rows, cols).
+    Args:
+        i (int): Row index in the grid.
+        j (int): Column index in the grid.
+        shape (tuple(int,int)): The shape of the grid (rows, cols).
 
-    Returns
-    -------
-    index: int
-        The 1D cell index.
+    Returns:
+        int:  The 1D cell index.
     """
 
     return i * shape[1] + j
 
 
 def _calculate_cell_center(i: int, j: int, xlim: Tuple, ylim: Tuple, shape: Tuple):
-    """
-    Calculates the center coordinates of a grid cell.
+    """Calculates the center coordinates of a grid cell.
 
-    :param i: Row index of the cell.
-    :param j: Column index of the cell.
-    :param xlim: Limits of the x-axis (x_min, x_max).
-    :param ylim: Limits of the y-axis (y_min, y_max).
-    :param shape: Shape of the grid (rows, cols).
+    Args:
+        i (int): Row index in the grid.
+        j (int): Column index in the grid.
+        xlim: The x-axis limits (x_min, x_max).
+        ylim: The y-axis limits (y_min, y_max).
+        shape: The shape of the grid (rows, cols).
 
-    Returns
+    Returns:
+        tuple(float,float):
     -------
     x_center, y_center: Tuple[float, float]
         Center coordinates of the grid cell.
@@ -144,33 +139,32 @@ def _calculate_length_vectorized(coords: np.array):
 def create_edge_list_and_cumulative_features(
     df, add_duration, x_col, y_col, xlim, ylim, shape, directed=True
 ):
-    """
-    Creates an edge list and computes cumulative node features (total duration, total saccade lengths, and cell center coordinates).
+    """Creates an edge list and computes cumulative node features (total duration, total saccade lengths, and cell center coordinates).
     These features are normalized by their respective maximum values. Also computes edge features based on the sum of edge lengths.
 
-    :param df: DataFrame containing the coordinates and other node features.
-    :param x_col: Column name in df for the x coordinates.
-    :param y_col: Column name in df for the y coordinates.
-    :param duration_col: Column name in df for the duration between consecutive points (optional).
-    :param xlim: Tuple (x_min, x_max) defining the bounds for the x-axis.
-    :param ylim: Tuple (y_min, y_max) defining the bounds for the y-axis.
-    :param shape: Tuple (x_res, y_res) defining the resolution of the grid.
-    :param directed: If True, the graph is directional; if False, bidirectional edges are created.
+    Args:
+        df: DataFrame containing the coordinates and other node features.
+        x_col: Column name in df for the x coordinates.
+        y_col: Column name in df for the y coordinates.
+        add_duration: Column name in df for the duration between consecutive points (optional).
+        xlim: Tuple (x_min, x_max) defining the bounds for the x-axis.
+        ylim: Tuple (y_min, y_max) defining the bounds for the y-axis.
+        shape: Tuple (x_res, y_res) defining the resolution of the grid.
+        directed: If True, the graph is directional; if False, bidirectional edges are created.
 
-    Returns
-    -------
-    edge_list:
-        List of edges as pairs of node indices.
-    edge_features:
-        List of normalized edge features (sum of lengths of corresponding edges).
-    node_mapping:
-        Mapping of old node indices to new compacted indices.
-    cumulative_node_features:
-        A dictionary containing normalized cumulative features:\n
-        - 'total_duration': Normalized total duration at each node.\n
-        - 'total_saccade_length_to': Normalized total saccade length directed to each node.\n
-        - 'total_saccade_length_from': Normalized total saccade length originating from each node.\n
-        - 'cell_centers': Coordinates of the center of each cell as node features.\n
+    Returns:
+        edge_list:
+            List of edges as pairs of node indices.
+        edge_features:
+            List of normalized edge features (sum of lengths of corresponding edges).
+        node_mapping:
+            Mapping of old node indices to new compacted indices.
+        cumulative_node_features:
+            A dictionary containing normalized cumulative features:\n
+            - 'total_duration': Normalized total duration at each node.\n
+            - 'total_saccade_length_to': Normalized total saccade length directed to each node.\n
+            - 'total_saccade_length_from': Normalized total saccade length originating from each node.\n
+            - 'cell_centers': Coordinates of the center of each cell as node features.\n
     """
 
     coords = df[[x_col, y_col]].values
@@ -255,23 +249,22 @@ def create_edge_list_and_cumulative_features(
 def create_graph_data_from_dataframe(
     df, y, x_col, y_col, add_duration, xlim, ylim, shape, directed=True
 ):
-    """
-    Converts a DataFrame into a PyTorch Geometric Data object for GCN training.
-    Includes cumulative node features (total duration, total saccade length to/from node, and cell center coordinates).
+    """Converts a DataFrame into a PyTorch Geometric Data object for GCN training.
+    Includes cumulative node features (total duration, total saccade
+    length to/from node, and cell center coordinates).
     Edge features are based on the sum of lengths of corresponding edges.
 
-    :param df: DataFrame containing the coordinates and other node features.
-    :param x_col: Column name in df for the x coordinates.
-    :param y_col: Column name in df for the y coordinates.
-    :param duration_col: Column name in df for the duration between consecutive points (optional).
-    :param xlim: Tuple (x_min, x_max) defining the bounds for the x-axis.
-    :param ylim: Tuple (y_min, y_max) defining the bounds for the y-axis.
-    :param shape: Tuple (x_res, y_res) defining the resolution of the grid.
-    :param directed: If True, the graph is directional; if False, bidirectional edges are created.
+    Args:
+        df: DataFrame containing the coordinates and other node features.
+        x_col: Column name in df for the x coordinates.
+        y_col: Column name in df for the y coordinates.
+        add_duration: Column name in df for the duration between consecutive points (optional).
+        xlim: Tuple (x_min, x_max) defining the bounds for the x-axis.
+        ylim: Tuple (y_min, y_max) defining the bounds for the y-axis.
+        shape: Tuple (x_res, y_res) defining the resolution of the grid.
+        directed: If True, the graph is directional; if False, bidirectional edges are created.
 
-    Returns
-    -------
-    data:
+    Returns:
         A PyTorch Geometric Data object containing the graph and its features.
     """
 
@@ -325,24 +318,21 @@ _representations = {
 
 
 class Dataset2D(Dataset):
-    """
-    Custom dataset for 2D image-based representations derived from gaze data.
+    """Custom dataset for 2D image-based representations derived from gaze data.
 
-    :param X: (pd.DataFrame) Input data.
-    :param y: (ArrayLike) Labels for the data.
-    :param pk: (List[str]) List of primary keys for grouping.
-    :param shape: (Union[Tuple[int], int]) Shape of the images.
-    :param representations: (List[str]) List of representation types.
-    :param upload_to_cuda: (bool) If True, upload the data to the GPU. Default: False.
-    :param transforms: (Optional) Transformations to apply to the data.
+    Args:
+        X: Input data.
+        Y: Labels for the data.
+        pk: List of primary keys for grouping.
+        shape: Shape of the images.
+        representations: List of representation types.
+        upload_to_cuda: If True, upload the data to the GPU. Default: False.
+        transforms: Transformations to apply to the data.
     """
-
     def __init__(
         self,
         X: pd.DataFrame,
         Y: ArrayLike,
-        x: str,
-        y: str,
         pk: List[str],
         shape: Union[Tuple[int], int],
         representations: List[str],
@@ -410,28 +400,25 @@ def _get_features(X, features, x, y, t, pk):
 
 
 class DatasetTimeSeries(Dataset):
-    """
-    Custom dataset for time-series data.
+    """Custom dataset for time-series data.
 
-    :param X: (pd.DataFrame) Input time-series data.
-    :param y: (ArrayLike) Labels for the data.
-    :param pk: (List[str]) Primary keys for grouping.
-    :param shape: (Union[Tuple[int], int]) Shape of the data samples.
-    :param features: (List[str]) List of features to extract.
-    :param upload_to_cuda: (bool) If True, upload the data to the GPU. Default: False.
-    :param transforms: (Optional) Transformations to apply to the data.
+    Args:
+        X: Input time-series data.
+        Y: Labels for the data.
+        pk: Primary keys for grouping.
+        features: List of features to extract.
+        transforms: Transformations to apply to the data.
+        max_length: maximum length of scanpath.
     """
 
     def __init__(
         self,
         X: pd.DataFrame,
         Y: ArrayLike,
-        x: str,
-        y: str,
         pk: List[str],
         features: List[str],
-        transforms=None,
-        max_length=10,
+        transforms: Callable = None,
+        max_length: int = 10,
     ):
         self.pmk = pk
         self.X = _get_features(X, features, x, y, t=None, pk=pk)
@@ -451,9 +438,11 @@ class DatasetTimeSeries(Dataset):
         return len(self.X)
 
     def __getitem__(self, idx: int):
-        if self.transforms is None:
-            X = self.X[idx]
-            label = self.Y[idx]
+        X = self.X[idx]
+        label = self.Y[idx]
+
+        if self.transforms:
+            X = self.transforms(X)
 
         return {
             "sequences": torch.tensor(X, dtype=torch.float),
@@ -500,14 +489,14 @@ class DatasetTimeSeries(Dataset):
 
 
 class TimeSeries_2D_Dataset(Dataset):
-    """
-    Composite dataset that combines image and time-series data.
+    """Composite dataset that combines image and time-series data.
 
-    :param image_dataset: (Dataset) Dataset containing image data.
-    :param sequence_dataset: (Dataset) Dataset containing sequence data.
+    Args:
+        image_dataset: Dataset containing image data.
+        sequence_dataset: Dataset containing sequence data.
     """
 
-    def __init__(self, image_dataset, sequence_dataset):
+    def __init__(self, image_dataset: Dataset, sequence_dataset: Dataset):
         # Ensure both datasets have the same length
         assert len(image_dataset) == len(
             sequence_dataset
@@ -553,20 +542,22 @@ class TimeSeries_2D_Dataset(Dataset):
 
 
 class GridGraphDataset(Dataset):
-    """
-    Custom dataset for generating grid-based graph representations from spatial coordinates.
+    """Custom dataset for generating grid-based graph
+    representations from spatial coordinates.
 
-    :param X: (pd.DataFrame) Input dataframe.
-    :param y: (ArrayLike) Labels for the data.
-    :param pk: (List[str]) Primary keys for grouping.
-    :param features: (List[str]) List of features to extract.
-    :param x_col, y_col: (str) Column names for x and y coordinates.
-    :param duration_col: (str) Column name for time durations.
-    :param xlim: (Tuple) Limits of the x-axis.
-    :param ylim: (Tuple) Limits of the y-axis.
-    :param shape: (Tuple) Shape of the grid.
-    :param directed: (bool) Whether the graph is directed.
-    :param transforms: (Optional) Transformations to apply to the data.
+    Args:
+        X: Input dataframe.
+        Y: Labels for the data.
+        x: X coordinate column name.
+        y: Y coordinate column name.
+        pk: Primary keys for grouping.
+        x_col, y_col: Column names for x and y coordinates.
+        add_duration: Column name for time durations.
+        xlim: Limits of the x-axis.
+        ylim: Limits of the y-axis.
+        shape: Shape of the grid.
+        directed: Whether the graph is directed.
+        transforms: Transformations to apply to the data.
     """
 
     def __init__(
@@ -575,13 +566,13 @@ class GridGraphDataset(Dataset):
         Y: ArrayLike,
         x: str,
         y: str,
-        add_duration: bool,
+        add_duration: str,
         pk: List[str],
         xlim: Tuple[float, float] = (0, 1),
         ylim: Tuple[float, float] = (0, 1),
         shape: Tuple[int, int] = (10, 10),
-        directed=True,
-        transforms=None,
+        directed: bool = True,
+        transforms: Callable = None,
     ):
         super(GridGraphDataset, self).__init__()
         self.transform = transforms
@@ -623,15 +614,17 @@ class GridGraphDataset(Dataset):
 
 
 class DatasetLightningBase(pl.LightningDataModule):
-    """
-    Base PyTorch Lightning DataModule for managing datasets and dataloaders.
+    """Base PyTorch Lightning DataModule for managing datasets and dataloaders.
 
-    :param X: (pd.DataFrame) Input data.
-    :param y: (ArrayLike) Labels for the data.
-    :param pk: (List[str]) Primary keys for grouping.
-    :param test_size: (int) Test size for the train-validation split.
-    :param batch_size: (int) Batch size for the dataloaders.
-    :param split_type: (str) Type of train-validation split.
+    Args:
+        X: Input data.
+        y: Labels for the data.
+        x: X coordinate column name.
+        y: Y coordinate column name.
+        pk: Primary keys for grouping.
+        test_size: Test size for the train-validation split.
+        batch_size: Batch size for the dataloaders.
+        split_type: Type of train-validation split.
     """
 
     def __init__(
@@ -730,9 +723,7 @@ class DatasetLightningBase(pl.LightningDataModule):
 
 
 class DatasetLightning2D(DatasetLightningBase):
-    """
-    PyTorch Lightning DataModule for 2D datasets and dataloaders.
-    """
+    """PyTorch Lightning DataModule for 2D datasets and dataloaders."""
 
     def __init__(
         self,
@@ -750,6 +741,8 @@ class DatasetLightning2D(DatasetLightningBase):
         super().__init__(X, Y, x, y, pk, test_size, batch_size, split_type)
         self.shape = shape
         self.representations = representations
+        self.train_dataset = None
+        self.val_dataset = None
 
     def create_train_val_datasets(self, X_train, y_train, X_val, y_val):
         self.train_dataset = Dataset2D(
@@ -773,9 +766,7 @@ class DatasetLightning2D(DatasetLightningBase):
 
 
 class DatasetLightningTimeSeries(DatasetLightningBase):
-    """
-    PyTorch Lightning DataModule for Time Series datasets and dataloaders.
-    """
+    """PyTorch Lightning DataModule for Time Series datasets and dataloaders."""
 
     def __init__(
         self,
@@ -816,9 +807,7 @@ class DatasetLightningTimeSeries(DatasetLightningBase):
 
 
 class DatasetLightningTimeSeries2D(DatasetLightningBase):
-    """
-    PyTorch Lightning DataModule for Time Series 2D datasets and dataloaders.
-    """
+    """PyTorch Lightning DataModule for Time Series 2D datasets and dataloaders."""
 
     def __init__(
         self,

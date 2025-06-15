@@ -22,11 +22,7 @@ def scanpath_visualization(
     data_: pd.DataFrame,
     x: str,
     y: str,
-    duration: str = None,
-    dispersion: str = None,
-    size_column: str = None,
     shape_column: str = None,
-    time_stamps: str = None,
     aoi: str = None,
     img_path: str = None,
     fig_size: tuple[float, float] = (10.0, 10.0),
@@ -37,10 +33,7 @@ def scanpath_visualization(
     points_enumeration: bool = False,
     add_regressions: bool = False,
     regression_color: str = "red",
-    micro_sac_color: str = None,
     is_vectors: bool = False,
-    min_dispersion: float = 1.2,
-    max_velocity: float = 4.7,
     aoi_c: Dict[str, str] = None,
     only_points: bool = False,
     seq_colormap: bool = False,
@@ -56,54 +49,49 @@ def scanpath_visualization(
     is_gray: bool = False,
     dpi: float = 100.0,
 ):
-    """
-    Function for scanpath visualization and aoi visualization.
+    """Function for scanpath and/or aoi visualization.
 
-    :param data_: DataFrame with fixations.
-    :param x: x coordinate of fixation.
-    :param y: y coordinate of fixation.
-    :param duration: duration of fixation.
-    :param dispersion: dispersion of fixation.
-    :param size_column: label of the column, which is responsible for the size of the fixations(points on plot).\n
-                        It can be duration, dispersion, etc.
-    :param shape_column: label of the column, which is responsible for the shape of the fixations(points on plot).
-    :param time_stamps: time stamps of fixations.
-    :param aoi: AOI of fixations.
-    :param img_path: path to the background image.
-    :param fig_size: size of plot.
-    :param points_width: width of points.
-    :param path_width: width of path.
-    :param points_color: color of points.
-    :param path_color: color of path.
-    :param points_enumeration: whether to enumerate points.
-    :param add_regressions: whether to add regressions.
-    :param regression_color: color of regressions.
-    :param micro_sac_color: color of microsaccades.
-    :param is_vectors: whether to visualize saccades as vectors
-    :param min_dispersion: minimum dispersion.
-    :param max_velocity: maximum velocity.
-    :param aoi_c: colormap for AOI.
-    :param only_points: whether to only show points.
-    :param seq_colormap: whether to show sequentially-colored saccades.
-    :param show_hull: whether to show hull of AOI.
-    :param show_legend: whether to show legend.
-    :param path_to_img: path to save the plot image.
-    :param with_axes: whether to show axes.
-    :param axes_limits: limits of axes.
-    :param rule: must be either 1) tuple of quadrants direction to classify
-                regressions, 1st quadrant being upper-right square of plane and counting
-                anti-clockwise or 2) tuple of angles in degrees (0 <= angle <= 360).
-    :param deviation: if None, then `rule` is interpreted as quadrants. Otherwise,
-                    `rule` is interpreted as angles. If integer, then is a +-deviation for all angles.
-                    If tuple of integers, then must be of the same length as `rule`, each value being
-                    a corresponding deviation for each angle. Angle = 0 is positive x-axis direction,
-                    rotating anti-clockwise.
-    :param return_ndarray: whether to return numpy array of the plot image(returns RGBA array).
-    :param show_plot: whether to show the plot.
-    :param is_gray: whether to use the gray scale.
+    Args:
+        data_: DataFrame with fixations.
+        x: x coordinate of fixation.
+        y: y coordinate of fixation.
+        size_column: label of the column, which is responsible for the size of the fixations(points on plot).\n
+                     It can be duration, dispersion, etc.
+        shape_column: label of the column, which is responsible for the shape of the fixations(points on plot).
+        aoi: AOI of fixations.
+        img_path: path to the background image.
+        fig_size: size of plot.
+        points_width: width of points.
+        path_width: width of path.
+        points_color: color of points.
+        path_color: color of path.
+        points_enumeration: whether to enumerate points.
+        add_regressions: whether to add regressions.
+        regression_color: color of regressions.
+        is_vectors: whether to visualize saccades as vectors
+        aoi_c: colormap for AOI.
+        only_points: whether to only show points.
+        seq_colormap: whether to show sequentially-colored saccades.
+        show_hull: whether to show hull of AOI.
+        show_legend: whether to show legend.
+        path_to_img: path to save the plot image.
+        with_axes: whether to show axes.
+        axes_limits: limits of axes.
+        rule: must be either 1) tuple of quadrants direction to classify
+             regressions, 1st quadrant being upper-right square of plane and counting
+             anti-clockwise or 2) tuple of angles in degrees (0 <= angle <= 360).
+        deviation: if None, then `rule` is interpreted as quadrants. Otherwise,
+                 `rule` is interpreted as angles. If integer, then is a +-deviation for all angles.
+                 If tuple of integers, then must be of the same length as `rule`, each value being
+                 a corresponding deviation for each angle. Angle = 0 is positive x-axis direction,
+                 rotating anti-clockwise.
+        return_ndarray: whether to return numpy array of the plot image(returns RGBA array).
+        show_plot: whether to show the plot.
+        is_gray: whether to use the gray scale.
+        dpi: dpi for output image.
     """
     plt.figure(figsize=fig_size)
-    eps = 1e-8
+
     marks = ("o", "^", "s", "*", "p")
     legend = dict()
     data = data_.copy()
@@ -114,8 +102,6 @@ def scanpath_visualization(
     data.reset_index(inplace=True, drop=True)
     X, Y = data[x], data[y]
     dX, dY = data[x].diff(), data[y].diff()
-    XY = pd.concat([dX, dY], axis=1)
-    fixation_size = np.full(X.shape[0], points_width)
 
     if shape_column is not None:
         intervals = np.linspace(0, data[shape_column].max(), 6)
@@ -140,11 +126,6 @@ def scanpath_visualization(
             for i in range(len(data[aoi].unique())):
                 aoi_c[data[aoi].unique()[i]] = get_aoi_cm(i)
         data["color"] = data[aoi].map(aoi_c)
-    # print(data["color"])
-    if size_column is not None:  # Not used
-        size = data[size_column]
-        size /= size.max()
-        fixation_size = np.array(size * points_width)
 
     plt.axis(axes_limits)
 
@@ -160,6 +141,7 @@ def scanpath_visualization(
                 marker=markers[i],
                 edgecolors="black",
                 label=legend[marks[i - 1]],
+                s=points_width,
             )
         else:
             plt.scatter(
@@ -168,6 +150,7 @@ def scanpath_visualization(
                 color=data["color"][data["mark"] == markers[i]],
                 marker=markers[i],
                 edgecolors="black",
+                s=points_width,
             )
 
     if aoi is not None and show_hull:
@@ -251,7 +234,7 @@ def scanpath_visualization(
                     scale=1,
                     width=path_width,
                     edgecolor="yellow",
-                    linewidth=path_width / 2,
+                    linewidth=path_width,
                 )
             if add_regressions:
                 mask = _select_regressions(dX, dY, rule, deviation)
@@ -271,37 +254,8 @@ def scanpath_visualization(
                             scale=1,
                             width=path_width,
                             edgecolor="yellow",
-                            linewidth=path_width / 2,
+                            linewidth=path_width,
                         )
-
-        if (
-            micro_sac_color is not None
-        ):  # TODO (doesn't work with normalized coordinates)
-            assert (
-                dispersion is not None
-            ), "Error: provide 'dispersion' column before calling visualization"
-            assert (
-                time_stamps is not None
-            ), "Error: provide 'time_stamps' column before calling visualization"
-            assert (
-                duration is not None
-            ), "Error: provide 'duration' column before calling visualization"
-            dr = np.sqrt(dX**2 + dY**2)
-            dt = data[time_stamps] - (data[time_stamps] + data[duration] / 1000).shift(
-                1
-            )
-            v = dr / (dt + eps)
-
-            mic_sac = data[(data[dispersion] > min_dispersion) & (v < max_velocity)]
-            mic_sacX = np.array([(X.iloc[i - 1], X.iloc[i]) for i in mic_sac.index])
-            mic_sacY = np.array([(Y.iloc[i - 1], Y.iloc[i]) for i in mic_sac.index])
-            for i in range(len(mic_sacX)):
-                plt.plot(
-                    mic_sacX[i],
-                    mic_sacY[i],
-                    color=micro_sac_color,
-                    linewidth=path_width,
-                )
 
     if not with_axes:
         plt.axis("off")
@@ -330,11 +284,7 @@ class Visualization(BaseEstimator, TransformerMixin):
         self,
         x: str,
         y: str,
-        duration: str = None,
-        dispersion: str = None,
-        size_column: str = None,
         shape_column: str = None,
-        time_stamps: str = None,
         aoi: str = None,
         img_path: str = None,
         fig_size: tuple[float, float] = (10.0, 10.0),
@@ -345,10 +295,7 @@ class Visualization(BaseEstimator, TransformerMixin):
         points_enumeration: bool = False,
         add_regressions: bool = False,
         regression_color: str = "red",
-        micro_sac_color: str = None,
         is_vectors: bool = False,
-        min_dispersion: float = 1.2,
-        max_velocity: float = 4.7,
         aoi_c: Dict[str, str] = None,
         only_points: bool = False,
         seq_colormap: bool = False,
@@ -363,11 +310,7 @@ class Visualization(BaseEstimator, TransformerMixin):
     ):
         self.x = x
         self.y = y
-        self.duration = duration
-        self.dispersion = dispersion
-        self.size_column = size_column
         self.shape_column = shape_column
-        self.time_stamps = time_stamps
         self.aoi = aoi
         self.img_path = img_path
         self.fig_size = fig_size
@@ -376,10 +319,7 @@ class Visualization(BaseEstimator, TransformerMixin):
         self.path_color = path_color
         self.add_regressions = add_regressions
         self.regression_color = regression_color
-        self.micro_sac_color = micro_sac_color
         self.is_vectors = is_vectors
-        self.min_dispersion = min_dispersion
-        self.max_velocity = max_velocity
         self.show_legend = show_legend
         self.path_to_img = path_to_img
         self.path_width = path_width
@@ -412,27 +352,26 @@ def get_visualizations(
     dpi: float = 100.0,
     pk: List[str] = None,
 ):
-    """
-    Gets visualizations.
+    """Get visualizations.
 
-    :param data: Dataframe with fixations
-    :param patterns: List of Visualizations
-    :param pk: list of column names used to split pd.DataFrame.
+    Args:
+        data: input dataframe with fixations.
+        x: X coordinate column name.
+        y: Y coordinate column name.
+        shape: height and width in pixels.
+        pattern: visualization class to use.
+        dpi: dpi for images.
+        pk: list of column names used to split pd.DataFrame.
 
-    Returns
-    -------
-    output: (ndarray)
-        [n, m, fig, fig, c]\n
-         n   : instances\n
-         m   : patterns\n
-         fig : fig size\n
-         c   : (3 - RGB image; 1 - gray scaled image)
+    Returns:
+        output: tensor of shape [n, m, fig, fig, c], where\n
+             n   : instances\n
+             m   : patterns\n
+             fig : fig size\n
+             c   : (3 - RGB image; 1 - gray scaled image)
     """
     arr = []
     if pk is None:
-        res = []
-        # for pattern in patterns:
-        #     res.append(pattern.transform(data))
         if pattern == "baseline":
             res = baseline_visualization(data, x, y, shape)
         elif pattern == "aoi":
@@ -500,7 +439,6 @@ def aoi_visualization(
     y: str,
     shape: tuple[int, int] = (10, 10),
     aoi: str = "AOI",
-    size_column: str = None,
     shape_column: str = None,
     img_path: str = None,
     points_width: float = 75,
@@ -521,7 +459,6 @@ def aoi_visualization(
         data_,
         x,
         y,
-        size_column=size_column,
         shape_column=shape_column,
         aoi=aoi,
         img_path=img_path,
@@ -548,20 +485,13 @@ def saccade_visualization(
     x: str,
     y: str,
     shape: tuple[int, int] = (10, 10),
-    size_column: str = None,
     shape_column: str = None,
-    duration: str = None,
-    dispersion: str = None,
-    time_stamps: str = None,
     img_path: str = None,
     path_width: float = 1,
     path_color: str = "green",
     add_regressions: bool = False,
     regression_color: str = "red",
-    micro_sac_color: str = None,
     is_vectors: bool = False,
-    min_dispersion: float = 1.2,
-    max_velocity: float = 4.7,
     seq_colormap: bool = False,
     show_legend: bool = False,
     path_to_img: str = None,
@@ -577,11 +507,7 @@ def saccade_visualization(
         data_,
         x,
         y,
-        size_column=size_column,
         shape_column=shape_column,
-        duration=duration,
-        dispersion=dispersion,
-        time_stamps=time_stamps,
         img_path=img_path,
         fig_size=shape,
         path_width=path_width,
@@ -595,10 +521,7 @@ def saccade_visualization(
         path_color=path_color,
         regression_color=regression_color,
         add_regressions=add_regressions,
-        micro_sac_color=micro_sac_color,
         is_vectors=is_vectors,
-        min_dispersion=min_dispersion,
-        max_velocity=max_velocity,
         return_ndarray=return_ndarray,
         show_plot=show_plot,
         dpi=dpi,

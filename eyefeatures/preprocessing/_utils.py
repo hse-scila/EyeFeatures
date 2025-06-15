@@ -120,6 +120,9 @@ def _welzl_algorithm(points: NDArray, border: List[int], N: int):
     return _welzl_algorithm(points, border.copy(), N - 1)
 
 
-def _get_MEC(points: NDArray):
-    points = points.copy()
-    return _welzl_algorithm(points, [], len(points))
+def _get_MEC(points: NDArray, trunc: int | None = 100):
+    n = points.shape[0]
+    if trunc and n > trunc:
+        indexes = np.random.choice(a=np.arange(n), size=trunc, replace=False)
+        points = points[indexes, ...]
+    return _welzl_algorithm(points.copy(), [], len(points))

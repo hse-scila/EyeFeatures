@@ -7,11 +7,25 @@ from numba import jit
 from tqdm import tqdm
 
 from eyefeatures.features.extractor import BaseTransformer
-from eyefeatures.features.scanpath_complex import _get_fill_path, get_expected_path
+from eyefeatures.features.scanpath_complex import (_get_fill_path,
+                                                   get_expected_path)
 from eyefeatures.utils import Types, _split_dataframe
 
 
 class DistanceTransformer(BaseTransformer):
+    """Base Transformer for distance-based features.
+
+    Args:
+        x: X coordinate column name.
+        y: Y coordinate column name.
+        duration: duration column name (milliseconds expected).
+        path_pk: List of column names of groups to calculate expected path.
+        pk: List of column names used to split pd.Dataframe.
+        expected_paths: Dict which was obtained from method get_expected_path.
+        fill_path: pd.DataFrame path which was obtained from method get_fill_path.
+        expected_paths_method: method to calculate expected path ("mean" or "fwp").
+        return_df: Return pd.Dataframe object or np.ndarray.
+    """
     def __init__(
         self,
         x: str = None,
@@ -24,18 +38,6 @@ class DistanceTransformer(BaseTransformer):
         expected_paths_method: str = "mean",
         return_df: bool = True,
     ):
-        """
-        :param x: Column name of x-coordinate
-        :param y: Column name of y-coordinate
-        :param duration: Column name of fixation duration
-        :param path_pk: List of column names of groups to calculate expected path
-        :param pk: List of column names used to split pd.Dataframe
-        :param expected_paths: Dict which was obtained from method get_expected_path
-        :param fill_path: pd.DataFrame path which was obtained from method get_fill_path
-        :param expected_paths_method: method to calculate expected path ("mean" or "fwp")
-        :param return_df: Return pd.Dataframe object or np.ndarray
-        """
-
         self.fill_path = fill_path
         self.requires_duration = False
         self.expected_paths = expected_paths
@@ -97,7 +99,19 @@ class DistanceTransformer(BaseTransformer):
 
 
 class SimpleDistances(DistanceTransformer):
-    """Calculates simple distances using given methods."""
+    """Calculates simple distances using given methods.
+
+    Args:
+        methods: list of methods to use ("euc", "hau", "dfr", "eye", "man", "dtw").
+        x: X coordinate column name.
+        y: Y coordinate column name.
+        path_pk: List of column names of groups to calculate expected path.
+        pk: List of column names used to split pd.Dataframe.
+        expected_paths: Dict which was obtained from method get_expected_path.
+        fill_path: pd.DataFrame path which was obtained from method get_fill_path.
+        expected_paths_method: method to calculate expected path ("mean" or "fwp").
+        return_df: Return pd.Dataframe object or np.ndarray.
+    """
 
     def __init__(
         self,
@@ -111,17 +125,6 @@ class SimpleDistances(DistanceTransformer):
         expected_paths_method: str = "mean",
         return_df: bool = True,
     ):
-        """
-        :param methods: list of methods to use ("euc", "hau", "dfr", "eye", "man", "dtw")
-        :param x: Column name of x-coordinate
-        :param y: Column name of y-coordinate
-        :param path_pk: List of column names of groups to calculate expected path
-        :param pk: List of column names used to split pd.Dataframe
-        :param expected_paths: Dict which was returned from get_expected_path method with the same params
-        :param fill_path: pd.DataFrame path which was returned from get_fill_path method for the same expected_paths
-        :param expected_paths_method: method to calculate expected path ("mean" or "fwp")
-        :param return_df: Return pd.Dataframe object else np.ndarray
-        """
 
         super(SimpleDistances, self).__init__(
             x=x,
@@ -172,7 +175,9 @@ class SimpleDistances(DistanceTransformer):
             )
             dataframes.append(self._methods_cls[method].transform(data_part))
 
-        features_df = pd.concat(dataframes, axis=1).add_suffix('_'+self.expected_paths_method)
+        features_df = pd.concat(dataframes, axis=1).add_suffix(
+            "_" + self.expected_paths_method
+        )
         return features_df if self.return_df else features_df.values
 
 
@@ -276,7 +281,21 @@ class DTWDist(DistanceTransformer):
 
 
 class ScanMatchDist(DistanceTransformer):
-    """Calculates ScanMatch distance between given and expected scanpaths."""
+    """Calculates ScanMatch distance between given and expected scanpaths.
+
+    Args:
+        x: X coordinate column name.
+        y: Y coordinate column name.
+        duration: Column name of fixations duration.
+        path_pk: List of column names of groups to calculate expected path.
+        pk: List of column names used to split pd.Dataframe.
+        sub_mat: Substitute costs matrix of size 20x20 (for AOI differentiating).
+        t_bin: Temporal bin for quantifying fixation durations.
+        expected_paths: Dict which was obtained from method get_expected_path.
+        fill_path: pd.DataFrame path which was obtained from method get_fill_path.
+        expected_paths_method: method to calculate expected path ("mean" or "fwp").
+        return_df: Return pd.Dataframe object or np.ndarray.
+    """
 
     def __init__(
         self,
@@ -292,20 +311,6 @@ class ScanMatchDist(DistanceTransformer):
         expected_paths_method: str = "mean",
         return_df: bool = True,
     ):
-        """
-        :param x: Column name of x-coordinate
-        :param y: Column name of y-coordinate
-        :param duration: Column name of fixations duration
-        :param path_pk: List of column names of groups to calculate expected path
-        :param pk: List of column names used to split pd.Dataframe
-        :param sub_mat: Substitute costs matrix of size 20x20 (for AOI differentiating)
-        :param t_bin: Temporal bin for quantifying fixation durations
-        :param expected_paths: Dict which was returned from get_expected_path method with the same params
-        :param fill_path: pd.DataFrame path which was returned from get_fill_path method for the same expected_paths
-        :param expected_paths_method: method to calculate expected path ("mean" or "fwp")
-        :param return_df: Return pd.Dataframe object else np.ndarray
-        """
-
         self.t_bin = t_bin
         self.sub_mat = sub_mat
         if sub_mat.shape != (20, 20):
@@ -368,7 +373,9 @@ class ScanMatchDist(DistanceTransformer):
             )
             features.append([dist])
 
-        features_df = pd.DataFrame(data=features, columns=columns, index=group_names).add_suffix('_'+self.expected_paths_method)
+        features_df = pd.DataFrame(
+            data=features, columns=columns, index=group_names
+        ).add_suffix("_" + self.expected_paths_method)
         return features_df if self.return_df else features_df.values
 
     def __repr__(self, **kwargs):
@@ -475,7 +482,19 @@ class DFDist(DistanceTransformer):
 
 
 class TDEDist(DistanceTransformer):
-    """Calculates Time Delay Embedding distance between given and expected scanpaths."""
+    """Calculates Time Delay Embedding distance between given and expected scanpaths.
+
+    Args:
+        k: Number of scanpath batches
+        x: X coordinate column name.
+        y: Y coordinate column name.
+        path_pk: List of column names of groups to calculate expected path.
+        pk: List of column names used to split pd.Dataframe.
+        expected_paths: Dict which was obtained from method get_expected_path.
+        fill_path: pd.DataFrame path which was obtained from method get_fill_path.
+        expected_paths_method: method to calculate expected path ("mean" or "fwp").
+        return_df: Return pd.Dataframe object or np.ndarray.
+    """
 
     def __init__(
         self,
@@ -489,18 +508,6 @@ class TDEDist(DistanceTransformer):
         expected_paths_method: str = "mean",
         return_df: bool = True,
     ):
-        """
-        :param k: Number of scanpath batches
-        :param x: Column name of x-coordinate
-        :param y: Column name of y-coordinate
-        :param path_pk: List of column names of groups to calculate expected path
-        :param pk: List of column names used to split pd.Dataframe
-        :param expected_paths: Dict which was returned from get_expected_path method with the same params
-        :param fill_path: pd.DataFrame path which was returned from get_fill_path method for the same expected_paths
-        :param expected_paths_method: method to calculate expected path ("mean" or "fwp")
-        :param return_df: Return pd.Dataframe object else np.ndarray
-        """
-
         self.k = k
         if self.k <= 0:
             raise ValueError("k must be positive")
@@ -541,12 +548,25 @@ class TDEDist(DistanceTransformer):
             dist = calc_tde_dist(group_path[[self.x, self.y]], expected_path, k=self.k)
             features.append([dist])
 
-        features_df = pd.DataFrame(data=features, columns=columns, index=group_names).add_suffix('_'+self.expected_paths_method)
+        features_df = pd.DataFrame(
+            data=features, columns=columns, index=group_names
+        ).add_suffix("_" + self.expected_paths_method)
         return features_df if self.return_df else features_df.values
 
 
 class MultiMatchDist(DistanceTransformer):
-    """Calculates MultiMatch distance between given and expected scanpaths."""
+    """Calculates MultiMatch distance between given and expected scanpaths.
+
+    Args:
+        x: X coordinate column name.
+        y: Y coordinate column name.
+        duration: Column name of fixations duration.
+        path_pk: List of column names of groups to calculate expected path.
+        pk: List of column names used to split pd.Dataframe.
+        expected_paths: Dict which was obtained from method get_expected_path.
+        fill_path: pd.DataFrame path which was obtained from method get_fill_path.
+        expected_paths_method: method to calculate expected path ("mean" or "fwp").
+        return_df: Return pd.Dataframe object or np.ndarray."""
 
     def __init__(
         self,
@@ -560,18 +580,6 @@ class MultiMatchDist(DistanceTransformer):
         expected_paths_method: str = "mean",
         return_df: bool = True,
     ):
-        """
-        :param x: Column name of x-coordinate
-        :param y: Column name of y-coordinate
-        :param duration: Column name of fixations duration
-        :param path_pk: List of column names of groups to calculate expected path
-        :param pk: List of column names used to split pd.Dataframe
-        :param expected_paths: Dict which was returned from get_expected_path method with the same params
-        :param fill_path: pd.DataFrame path which was returned from get_fill_path method for the same expected_paths
-        :param expected_paths_method: method to calculate expected path ("mean" or "fwp")
-        :param return_df: Return pd.Dataframe object else np.ndarray
-        """
-
         super(MultiMatchDist, self).__init__(
             x=x,
             y=y,
@@ -623,7 +631,9 @@ class MultiMatchDist(DistanceTransformer):
             )
             features.append([shape, angle, length, pos, duration])
 
-        features_df = pd.DataFrame(data=features, columns=columns, index=group_names).add_suffix('_'+self.expected_paths_method)
+        features_df = pd.DataFrame(
+            data=features, columns=columns, index=group_names
+        ).add_suffix("_" + self.expected_paths_method)
         return features_df if self.return_df else features_df.values
 
 
@@ -646,33 +656,31 @@ def _transform_path(path: pd.DataFrame, t_bin: int) -> str:
 
 
 def calc_euc_dist(p: pd.DataFrame, q: pd.DataFrame) -> float:
-    """
-    Calculates Euclidean distance between paths p and q
+    """Calculates Euclidean distance between paths p and q.
 
-    :param p: pd.DataFrame containing columns (x, y) only
-    :param q: pd.DataFrame containing columns (x, y) only
+    Args:
+        p: pd.DataFrame containing columns (x, y) only.
+        q: pd.DataFrame containing columns (x, y) only.
     """
-
     dist = np.nan
     length = min(len(p), len(q))
     if length > 0:
         p_aligned = p.values[:length]
         q_aligned = q.values[:length]
         dist = ((p_aligned - q_aligned) ** 2).sum()
-    if dist==np.nan:
+    if dist == np.nan:
         print(length, p_aligned, q_aligned)
 
     return dist
 
 
 def calc_hau_dist(p: pd.DataFrame, q: pd.DataFrame) -> float:
-    """
-    Calculates Hausdorff distance between paths p and q
+    """Calculates Hausdorff distance between paths p and q
 
-    :param p: pd.DataFrame containing columns (x, y) only
-    :param q: pd.DataFrame containing columns (x, y) only
+    Args:
+        p: pd.DataFrame containing columns (x, y) only.
+        q: pd.DataFrame containing columns (x, y) only.
     """
-
     dist = np.nan
     if len(p) * len(q) > 0:
         p_data = p.values
@@ -704,13 +712,12 @@ def calc_hau_dist(p: pd.DataFrame, q: pd.DataFrame) -> float:
 
 
 def calc_dtw_dist(p: pd.DataFrame, q: pd.DataFrame) -> float:
-    """
-    Calculates Dynamic Time Warp distance between paths p and q
+    """Calculates Dynamic Time Warp distance between paths p and q.
 
-    :param p: pd.DataFrame containing columns (x, y) only
-    :param q: pd.DataFrame containing columns (x, y) only
+    Args:
+        p: pd.DataFrame containing columns (x, y) only.
+        q: pd.DataFrame containing columns (x, y) only.
     """
-
     dist = np.nan
     if len(p) * len(q) > 0:
         p_data = p.values
@@ -739,15 +746,14 @@ def calc_scan_match_dist(
     sub_mat: np.ndarray = np.ones((20, 20)),
     t_bin: int = 20,
 ) -> float:
-    """
-    Calculates ScanMatch distance between paths p and q
+    """Calculates ScanMatch distance between paths p and q.
 
-    :param p: pd.DataFrame containing columns (x, y, duration) only
-    :param q: pd.DataFrame containing columns (x, y, duration) only
-    :param sub_mat: substitute costs matrix of shape 20x20 used for AOI differentiating
-    :param t_bin: temporal bin for quantifying fixation durations
+    Args:
+        p: pd.DataFrame containing columns (x, y) only.
+        q: pd.DataFrame containing columns (x, y) only.
+        sub_mat: substitute costs matrix of shape 20x20 used for AOI differentiating.
+        t_bin: temporal bin for quantifying fixation durations.
     """
-
     dist = np.nan
     if len(p) * len(q) > 0:
         p_x, p_y, _ = p.columns
@@ -778,13 +784,12 @@ def calc_scan_match_dist(
 
 
 def calc_man_dist(p: pd.DataFrame, q: pd.DataFrame) -> float:
-    """
-    Calculates Mannan distance between paths p and q
+    """Calculates Mannan distance between paths p and q.
 
-    :param p: pd.DataFrame containing columns (x, y) only
-    :param q: pd.DataFrame containing columns (x, y) only
+    Args:
+        p: pd.DataFrame containing columns (x, y) only.
+        q: pd.DataFrame containing columns (x, y) only.
     """
-
     dist = np.nan
     if len(p) * len(q) > 0:
         p_data = p.values
@@ -803,13 +808,12 @@ def calc_man_dist(p: pd.DataFrame, q: pd.DataFrame) -> float:
 
 
 def calc_eye_dist(p: pd.DataFrame, q: pd.DataFrame) -> float:
-    """
-    Calculates EyeDist distance between paths p and q
+    """Calculates EyeDist distance between paths p and q.
 
-    :param p: pd.DataFrame containing columns (x, y) only
-    :param q: pd.DataFrame containing columns (x, y) only
+    Args:
+        p: pd.DataFrame containing columns (x, y) only.
+        q: pd.DataFrame containing columns (x, y) only.
     """
-
     dist = np.nan
     if len(p) * len(q) > 0:
         p_data = p.values
@@ -827,13 +831,12 @@ def calc_eye_dist(p: pd.DataFrame, q: pd.DataFrame) -> float:
 
 
 def calc_dfr_dist(p: pd.DataFrame, q: pd.DataFrame) -> float:
-    """
-    Calculates Discrete Frechet distance between paths p and q
+    """Calculates Discrete Frechet distance between paths p and q.
 
-    :param p: pd.DataFrame containing columns (x, y) only
-    :param q: pd.DataFrame containing columns (x, y) only
+    Args:
+        p: pd.DataFrame containing columns (x, y) only.
+        q: pd.DataFrame containing columns (x, y) only.
     """
-
     dist = np.nan
     if len(p) * len(q) > 0:
         p_data = p.values
@@ -859,14 +862,13 @@ def calc_dfr_dist(p: pd.DataFrame, q: pd.DataFrame) -> float:
 
 
 def calc_tde_dist(p: pd.DataFrame, q: pd.DataFrame, k: int = 1) -> float:
-    """
-    Calculates Time Delay Embedding distance between paths p and q
+    """Calculates Time Delay Embedding distance between paths p and q.
 
-    :param p: pd.DataFrame containing columns (x, y) only
-    :param q: pd.DataFrame containing columns (x, y) only
-    :param k: number of scanpath batches
+    Args:
+        p: pd.DataFrame containing columns (x, y) only.
+        q: pd.DataFrame containing columns (x, y) only.
+        k: number of scanpath batches
     """
-
     dist = np.nan
     if k <= 0:
         raise ValueError("k must be positive")
@@ -890,13 +892,12 @@ def calc_tde_dist(p: pd.DataFrame, q: pd.DataFrame, k: int = 1) -> float:
 def calc_mm_features(
     p: pd.DataFrame, q: pd.DataFrame
 ) -> Tuple[float, float, float, float, float]:
-    """
-    Calculates MultiMatch features between paths p and q
+    """Calculates MultiMatch features between paths p and q.
 
-    :param p: pd.DataFrame containing columns (x, y, duration) only
-    :param q: pd.DataFrame containing columns (x, y, duration) only
+    Args:
+        p: pd.DataFrame containing columns (x, y) only.
+        q: pd.DataFrame containing columns (x, y) only.
     """
-
     n, m = len(p), len(q)
     if n < 2 or m < 2:
         return np.nan, np.nan, np.nan, np.nan, np.nan

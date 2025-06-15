@@ -1,13 +1,12 @@
-from typing import Any, Dict, List, Tuple, Union
+import warnings
+from typing import Any, Dict, List, Tuple, Union, Callable
 
 import numpy as np
 import pandas as pd
-import warnings
-from numba import jit
-from tqdm import tqdm
 from sklearn.base import BaseEstimator, TransformerMixin
+from tqdm import tqdm
 
-from eyefeatures.utils import _split_dataframe
+from eyefeatures.utils import _get_id, _get_objs, _split_dataframe
 
 
 class BaseTransformer(BaseEstimator, TransformerMixin):
@@ -83,8 +82,31 @@ class BaseTransformer(BaseEstimator, TransformerMixin):
         return X if self.return_df else X.values
 
 
-# TODO features_names_in_ прокинуть для всех базовых классов
-class Extractor(BaseEstimator, TransformerMixin):  # TODO rename to FeatureExtractor
+class Extractor(BaseEstimator, TransformerMixin):
+    """Meta Transformer that encapsulates the logic of feature extraction,
+    providing ``fit``/``transform`` API.
+
+    Args:
+        features: List of feature transformers to use.
+        x: X coordinate column name.
+        y: Y coordinate column name.
+        t: timeseries coordinate column name.
+        duration: fixation duration column name.
+        dispersion: fixation dispersion column name.
+        aoi: AOI column name.
+        path_pk: list of columns by which to calculate expected path.
+        pk: list of columns to use as primary key.
+        expected_paths_method: the method to calculate expected path.
+        extra: used in combination with ``aggr_extra``. List of columns of input
+            dataframe (on ``transform``) to aggregate alongside with other
+            feature transformers, using aggregation function ``aggr_extra``.
+        aggr_extra: aggregation function (pandas str or custom callable) to apply
+            with ``extra`` argument.
+        warn: whether to enable warnings.
+        leave_pk: if True, then input ``pk`` columns are present in output dataframe
+            (after ``transform``).
+        return_df: if True, then pandas DataFrame is returned, else np.ndarray.
+    """
     def __init__(
         self,
         features: List[BaseTransformer] = None,
@@ -98,8 +120,9 @@ class Extractor(BaseEstimator, TransformerMixin):  # TODO rename to FeatureExtra
         pk: List[str] = None,
         expected_paths_method: str = "mean",
         extra: List[str] = None,
-        aggr_extra: str = None,
+        aggr_extra: Callable | str = None,
         warn: bool = True,
+        leave_pk: bool = False,
         return_df: bool = True,
     ):
         self.features = features
@@ -115,6 +138,7 @@ class Extractor(BaseEstimator, TransformerMixin):  # TODO rename to FeatureExtra
         self.extra = extra
         self.aggr_extra = aggr_extra
         self.warn = warn
+        self.leave_pk = leave_pk
         self.return_df = return_df
         self.is_fitted = False
 
@@ -127,8 +151,10 @@ class Extractor(BaseEstimator, TransformerMixin):  # TODO rename to FeatureExtra
             )  # split by pk
             for group_id, group_X in groups:
                 if group_X.isnull().values.any() and self.warn:
-                    warnings.warn(f"Group {group_id} has missing values. Dropping them.",
-                                  stacklevel=5)
+                    warnings.warn(
+                        f"Group {group_id} has missing values. Dropping them.",
+                        stacklevel=5,
+                    )
             X = X.dropna()
         return X, y
 
@@ -163,24 +189,24 @@ class Extractor(BaseEstimator, TransformerMixin):  # TODO rename to FeatureExtra
             return X if self.return_df else X.values
 
         gathered_features = []
-        data_df: pd.DataFrame = X#[
-            #[self.x, self.y, self.t, self.duration, self.dispersion]
-        #]
-
-        #if self.pk is not None:
-        #    data_df = pd.concat([data_df, X[self.pk]], axis=1)
-
-        #if self.aoi is not None:
-        #    data_df = pd.concat([data_df, X[self.aoi]], axis=1)
+        data_df: pd.DataFrame = X
 
         for feature in tqdm(self.features):
             gathered_features.append(feature.transform(data_df))
 
-        if self.extra is not None:  # TODO remove because accepts single agg method?
-            gathered_features.append(
-                X[self.extra].groupby(self.pk).apply(self.aggr_extra)
-            )
+        if self.extra is not None:
+            columns = self.pk + [col for col in self.extra if col not in self.pk]
+            extra_df = data_df[columns].groupby(self.pk).apply(self.aggr_extra)
+            extra_df.index = [_get_id(index) for index in extra_df.index]
+            gathered_features.append(extra_df)
 
         features_df = pd.concat(gathered_features, axis=1)
+        if self.leave_pk:
+            index = features_df.index.values
+            index_as_cols = [_get_objs(id_) for id_ in index]
+            for index_i in range(len(self.pk)):
+                features_df[self.pk[index_i]] = [
+                    objs[index_i] for objs in index_as_cols
+                ]
 
         return features_df if self.return_df else features_df.values

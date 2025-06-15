@@ -3,7 +3,6 @@ from typing import Dict, List, Union
 import numpy as np
 import pandas as pd
 import scipy
-from numba import jit
 
 from eyefeatures.preprocessing._utils import _get_distance, _get_MEC
 from eyefeatures.preprocessing.base import BaseFixationPreprocessor
@@ -11,8 +10,7 @@ from eyefeatures.preprocessing.base import BaseFixationPreprocessor
 
 # ======== FIXATION PREPROCESSORS ========
 class IVT(BaseFixationPreprocessor):
-    """
-    Velocity Threshold Identification.
+    """Velocity Threshold Identification.
     Complexity: O(n) for single group.
     """
 
@@ -112,8 +110,8 @@ class IVT(BaseFixationPreprocessor):
 
 
 class IDT(BaseFixationPreprocessor):
-    """
-    Dispersion Threshold Identification.
+    """Dispersion Threshold Identification.
+
     Complexity: O(n * W)  for single group, where W is size of maximum window.
     Worst case is O(n^2) for W = n.
     """
@@ -290,15 +288,15 @@ class IDT(BaseFixationPreprocessor):
 
 
 class IHMM(BaseFixationPreprocessor):
-    """
-    Hidden Markov Model Identification.
+    """Hidden Markov Model Identification. Based on Viterbi algorithm.
     Complexity: O(n^2) for single group.
 
-    :param fix2sac: probability of transition from fixation to saccade.
-    :param sac2fix: probability of transition from saccade to fixation.
-    :param fix_distrib: distribution of fixations.
-    :param sac_distrib: distribution of saccades.
-    :param distrib_params: 'auto' for default params and dict {"fixation": params1, "saccade": params2}, where
+    Args:
+        fix2sac: probability of transition from fixation to saccade.
+        sac2fix: probability of transition from saccade to fixation.
+        fix_distrib: distribution of fixations.
+        sac_distrib: distribution of saccades.
+        distrib_params: 'auto' for default params and dict {"fixation": params1, "saccade": params2}, where
            "params" are arguments for  appropriate `scipy.stats` function.
     """
 
@@ -477,8 +475,7 @@ class IHMM(BaseFixationPreprocessor):
         return fixations_df
 
     def _viterbi(self, observations, states, sp, tp, ep):
-        """
-        Computes hidden states vector Q s.t. probability
+        """Computes hidden states vector Q s.t. probability
         of observing vector 'observations' given sp, tp, and ep is maximum.\n
         st ~ states\n
         sp ~ start_probs\n
