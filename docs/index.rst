@@ -12,9 +12,3 @@ Eyetracking Features Library
    quickstart
    api/index
    contribution
-
-Indices and Tables
-==================
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
