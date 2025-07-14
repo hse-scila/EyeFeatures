@@ -21,12 +21,14 @@ class IVT(BaseFixationPreprocessor):
         y: str,
         t: str,
         threshold: float,
+        min_duration: float,
         distance: str = "euc",
         pk: List[str] = None,
         eps: float = 1e-10,
     ):
         super().__init__(x=x, y=y, t=t, pk=pk)
         self.threshold = threshold
+        self.min_duration = min_duration
         self.distance = distance
         self.eps = eps
 
@@ -106,6 +108,7 @@ class IVT(BaseFixationPreprocessor):
             "saccade2_angle",
         )
         fixations_df = self._compute_feats(fixations_df, feats)
+        fixations_df = fixations_df[fixations_df["duration"] >= self.min_duration]
 
         return fixations_df
 
@@ -302,6 +305,11 @@ class IDT(BaseFixationPreprocessor):
                 "dispersion": "max",  # just for API, window has same values
             }
         )
+
+        if len(fixations_df) <= 1:
+            raise RuntimeError(f"Found only {len(fixations_df)} fixations, you either provided "
+                               f"infeasible constraints or have a mismatch of units in data "
+                               f"and constraints.")
 
         fixations_df["diameters"] = diameters
         fixations_df["centers"] = centers
