@@ -445,7 +445,7 @@ class RegressionFeatures(StatsTransformer):
                 sac_spd = dr / (dt + self.eps)
                 feat_arr = sac_spd[sm][tm]
             elif feat_nm == "mask":
-                feat_arr = sm
+                feat_arr = pd.Series(sm)
             else:
                 raise NotImplemented(feat_nm)
             feats.append((feat_nm, feat_arr))
@@ -511,7 +511,7 @@ class MicroSaccadeFeatures(StatsTransformer):
                 sac_spd = dr / (dt + self.eps)
                 feat_arr = sac_spd[sm][tm]
             elif feat_nm == "mask":
-                feat_arr = sm
+                feat_arr = pd.Series(sm)
             else:
                 raise NotImplemented(feat_nm)
             feats.append((feat_nm, feat_arr))
