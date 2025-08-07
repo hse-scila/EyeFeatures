@@ -1,4 +1,4 @@
-from typing import Dict, List, Union, Callable
+from typing import Callable, Dict, List, Union
 
 import numpy as np
 import pandas as pd
@@ -148,7 +148,9 @@ class IDT(BaseFixationPreprocessor):
         assert self.min_duration is not None, self._err_no_field(m, "min_duration")
         assert self.min_duration > 0, f"'min_duration' must be non-negative."
         assert self.max_duration is not None, self._err_no_field(m, "max_duration")
-        assert self.max_duration > self.min_duration, f"'max_duration' must be greater than min_duration."
+        assert (
+            self.max_duration > self.min_duration
+        ), f"'max_duration' must be greater than min_duration."
         assert self.max_dispersion is not None, self._err_no_field(m, "min_duration")
         assert self.max_dispersion > 0, f"'max_dispersion' must be non-negative."
 
@@ -174,7 +176,6 @@ class IDT(BaseFixationPreprocessor):
                 maxt[t + 1, i] = max(maxt[t, i], maxt[t, i + (1 << t)])
         return mint, maxt
 
-
     @staticmethod
     def _rmq(table: np.ndarray, l: int, r: int, f: Callable):
         """RMQ on range [l, r)."""
@@ -182,7 +183,9 @@ class IDT(BaseFixationPreprocessor):
         t = int(np.log2(r - l))
         return f(table[t, l], table[t, r - (1 << t)])
 
-    def _get_disp_window(self, l: int, r: int, mintx, maxtx, minty, maxty) -> [int, float]:
+    def _get_disp_window(
+        self, l: int, r: int, mintx, maxtx, minty, maxty
+    ) -> [int, float]:
         """Binary search to find the widest dispersion window in [l, r]."""
 
         right_border = l
@@ -196,9 +199,7 @@ class IDT(BaseFixationPreprocessor):
             maxx = self._rmq(maxtx, left_border, m + 1, max)
             maxy = self._rmq(maxty, left_border, m + 1, max)
             disp = _get_distance(
-                np.array([minx, miny]),
-                np.array([maxx, maxy]),
-                self.distance
+                np.array([minx, miny]), np.array([maxx, maxy]), self.distance
             )
             if disp <= self.max_dispersion:
                 right_border = m
@@ -252,15 +253,19 @@ class IDT(BaseFixationPreprocessor):
             if dur_right_border == -1:
                 break
 
-            disp_right_border, window_disp = self._get_disp_window(l, dur_right_border, mintx, maxtx, minty, maxty)
+            disp_right_border, window_disp = self._get_disp_window(
+                l, dur_right_border, mintx, maxtx, minty, maxty
+            )
 
             # max_duration and max_dispersion satisfied
             if t[disp_right_border] - t[l] < self.min_duration:
                 l += 1
                 continue
 
-            fixations[l : disp_right_border] = fixation_id  # [l, dur_right_border] is single fixation
-            disp[l : disp_right_border] = window_disp
+            fixations[l:disp_right_border] = (
+                fixation_id  # [l, dur_right_border] is single fixation
+            )
+            disp[l:disp_right_border] = window_disp
 
             fixation_id += 1
             l = disp_right_border + 1
@@ -307,9 +312,11 @@ class IDT(BaseFixationPreprocessor):
         )
 
         if len(fixations_df) <= 1:
-            raise RuntimeError(f"Found only {len(fixations_df)} fixations, you either provided "
-                               f"infeasible constraints or have a mismatch of units in data "
-                               f"and constraints.")
+            raise RuntimeError(
+                f"Found only {len(fixations_df)} fixations, you either provided "
+                f"infeasible constraints or have a mismatch of units in data "
+                f"and constraints."
+            )
 
         fixations_df["diameters"] = diameters
         fixations_df["centers"] = centers

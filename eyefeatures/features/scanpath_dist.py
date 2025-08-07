@@ -26,6 +26,7 @@ class DistanceTransformer(BaseTransformer):
         expected_paths_method: method to calculate expected path ("mean" or "fwp").
         return_df: Return pd.Dataframe object or np.ndarray.
     """
+
     def __init__(
         self,
         x: str = None,

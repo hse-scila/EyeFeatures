@@ -27,6 +27,7 @@ class MeasureTransformer(ABC, BaseTransformer):
         return_df: whether to return output as DataFrame or numpy array.
         feature_name: Column name for resulting feature.
     """
+
     def __init__(
         self,
         x: str = None,
@@ -85,6 +86,7 @@ class HurstExponent(MeasureTransformer):
         eps: division epsilon.
         return_df: Return pd.Dataframe object else np.ndarray.
     """
+
     def __init__(
         self,
         n_iters=10,
@@ -166,6 +168,7 @@ class HurstExponent(MeasureTransformer):
 
 class ShannonEntropy(BaseTransformer):
     """Shannon Entropy."""
+
     def __init__(
         self,
         aoi: str = None,
@@ -224,6 +227,7 @@ class ShannonEntropy(BaseTransformer):
 
 class SpectralEntropy(MeasureTransformer):
     """Spectral Entropy."""
+
     def __init__(
         self,
         x: str = None,
@@ -252,6 +256,7 @@ class FuzzyEntropy(MeasureTransformer):
         m: embedding dimension
         r: tolerance threshold for matches acceptance (usually std)
     """
+
     def __init__(
         self,
         x: str = None,
@@ -294,6 +299,7 @@ class SampleEntropy(MeasureTransformer):
         m: embedding dimension
         r: tolerance threshold for matches acceptance (usually std)
     """
+
     def __init__(
         self,
         m: int = 2,
@@ -331,6 +337,7 @@ class SampleEntropy(MeasureTransformer):
 
 class IncrementalEntropy(MeasureTransformer):
     """Incremental Entropy."""
+
     def __init__(
         self,
         x: str = None,
@@ -363,6 +370,7 @@ class GriddedDistributionEntropy(MeasureTransformer):
     Args:
         grid_size: the number of bins (grid cells) for creating the histogram
     """
+
     def __init__(
         self,
         grid_size: int = 10,
@@ -401,6 +409,7 @@ class PhaseEntropy(MeasureTransformer):
         m: embedding dimension
         tau: time delay for phase space reconstruction, the lag between each point in the phase space vectors.
     """
+
     def __init__(
         self,
         m: int = 2,
@@ -446,6 +455,7 @@ class LyapunovExponent(MeasureTransformer):
         tau: time delay for phase space reconstruction
         T: time steps to average the divergence over
     """
+
     def __init__(
         self,
         m: int = 2,
@@ -509,6 +519,7 @@ class FractalDimension(MeasureTransformer):
         m: embedding dimension
         tau: time delay for phase space reconstruction
     """
+
     def __init__(
         self,
         m: int = 2,
@@ -564,6 +575,7 @@ class CorrelationDimension(MeasureTransformer):
         tau: time delay for phase space reconstruction
         r: radius threshold for correlation sum
     """
+
     def __init__(
         self,
         m: int = 2,
@@ -618,6 +630,7 @@ class RQAMeasures(BaseTransformer):
         min_length: min length of lines
         measures: list of measure to calculate (corresponding str)
     """
+
     def __init__(
         self,
         metric: Callable = euclidean,
@@ -828,6 +841,7 @@ class HHTFeatures(BaseTransformer):
     Returns:
         features extracted from the HHT
     """
+
     def __init__(
         self,
         max_imfs: int = -1,

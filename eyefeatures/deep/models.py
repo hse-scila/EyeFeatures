@@ -22,6 +22,7 @@ class VGGBlock(nn.Module):
     Returns:
         Output tensor after applying the convolution, batch normalization, and ReLU activation.
     """
+
     def __init__(
         self,
         in_channels: int,
@@ -55,6 +56,7 @@ class ResnetBlock(nn.Module):
     Returns:
         Output tensor after applying residual connection and ReLU activation.
     """
+
     def __init__(
         self,
         in_channels: int,
@@ -157,6 +159,7 @@ class DSCBlock(nn.Module):
     Returns:
         Output tensor after applying depthwise and pointwise convolutions, batch normalization, and ReLU activation.
     """
+
     def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, padding=1):
         super(DSCBlock, self).__init__()
         self.depthwise = nn.Conv2d(
@@ -357,6 +360,7 @@ class VitNet(nn.Module):
         activation: (nn.Module, optional) Activation function applied after fusion. Default is None.
         embed_dim: (int, optional) Embedding dimension for the projected features. Default is 128.
     """
+
     def __init__(self, CNN, RNN, fusion_mode="concat", activation=None, embed_dim=32):
         super(VitNet, self).__init__()
         self.CNN = CNN
@@ -384,7 +388,9 @@ class VitNet(nn.Module):
         elif self.fusion_mode == "concat":
             x = torch.cat([x_1, x_2], dim=1)
         else:
-            raise NotImplementedError(f"Fusion mode {self.fusion_mode} is not implemented.")
+            raise NotImplementedError(
+                f"Fusion mode {self.fusion_mode} is not implemented."
+            )
 
         if self.activation is not None:
             x = self.activation(x)
@@ -601,6 +607,7 @@ class BaseModel(pl.LightningModule):
     Returns:
         Output after the forward pass through the network.
     """
+
     def __init__(
         self,
         backbone: Union[nn.ModuleList, nn.Module],
@@ -699,6 +706,7 @@ class Classifier(BaseModel):
     Returns:
         Output logits after the forward pass through the classifier.
     """
+
     def __init__(
         self,
         backbone: Union[nn.ModuleList, nn.Module],
@@ -844,6 +852,7 @@ class Regressor(BaseModel):
     Returns:
         Regression output after the forward pass.
     """
+
     def __init__(
         self,
         backbone: Union[nn.ModuleList, nn.Module],
