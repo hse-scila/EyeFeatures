@@ -7,12 +7,8 @@ import pandas as pd
 from numpy.typing import NDArray
 
 from eyefeatures.features.extractor import BaseTransformer
-from eyefeatures.utils import (
-    Types,
-    _calc_dt,
-    _select_regressions,
-    _split_dataframe
-)
+from eyefeatures.utils import (Types, _calc_dt, _select_regressions,
+                               _split_dataframe)
 
 
 class StatsTransformer(BaseTransformer):
@@ -34,6 +30,7 @@ class StatsTransformer(BaseTransformer):
         return_df: whether to return output as DataFrame or numpy array.
         warn: whether to enable warnings.
     """
+
     def __init__(
         self,
         features_stats: Dict[str, List[str]],
@@ -375,6 +372,7 @@ class RegressionFeatures(StatsTransformer):
             a corresponding deviation for each angle. Angle = 0 is positive x-axis direction,
             rotating anti-clockwise.
     """
+
     def __init__(
         self,
         rule: Tuple[int, ...],
@@ -445,7 +443,7 @@ class RegressionFeatures(StatsTransformer):
                 sac_spd = dr / (dt + self.eps)
                 feat_arr = sac_spd[sm][tm]
             elif feat_nm == "mask":
-                feat_arr = sm
+                feat_arr = pd.Series(sm)
             else:
                 raise NotImplemented(feat_nm)
             feats.append((feat_nm, feat_arr))
@@ -462,6 +460,7 @@ class MicroSaccadeFeatures(StatsTransformer):
         min_dispersion: minimum dispersion of fixation.
         max_speed: maximum speed between fixations.
     """
+
     def __init__(self, min_dispersion: float, max_speed: float, **kwargs):
         super().__init__(**kwargs)
         self.available_feats = ("length", "acceleration", "speed", "mask")
@@ -511,7 +510,7 @@ class MicroSaccadeFeatures(StatsTransformer):
                 sac_spd = dr / (dt + self.eps)
                 feat_arr = sac_spd[sm][tm]
             elif feat_nm == "mask":
-                feat_arr = sm
+                feat_arr = pd.Series(sm)
             else:
                 raise NotImplemented(feat_nm)
             feats.append((feat_nm, feat_arr))
@@ -523,6 +522,7 @@ class FixationFeatures(StatsTransformer):
     """Fixation Features Transformer.
     The transformer uses input fixations to extract features.
     """
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.available_feats = ("duration", "vad")

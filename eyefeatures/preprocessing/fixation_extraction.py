@@ -1,4 +1,4 @@
-from typing import Dict, List, Union
+from typing import Callable, Dict, List, Union
 
 import numpy as np
 import pandas as pd
@@ -11,7 +11,8 @@ from eyefeatures.preprocessing.base import BaseFixationPreprocessor
 # ======== FIXATION PREPROCESSORS ========
 class IVT(BaseFixationPreprocessor):
     """Velocity Threshold Identification.
-    Complexity: O(n) for single group.
+
+    Complexity: O(n).
     """
 
     def __init__(
@@ -20,12 +21,14 @@ class IVT(BaseFixationPreprocessor):
         y: str,
         t: str,
         threshold: float,
+        min_duration: float,
         distance: str = "euc",
         pk: List[str] = None,
         eps: float = 1e-10,
     ):
         super().__init__(x=x, y=y, t=t, pk=pk)
         self.threshold = threshold
+        self.min_duration = min_duration
         self.distance = distance
         self.eps = eps
 
@@ -105,6 +108,7 @@ class IVT(BaseFixationPreprocessor):
             "saccade2_angle",
         )
         fixations_df = self._compute_feats(fixations_df, feats)
+        fixations_df = fixations_df[fixations_df["duration"] >= self.min_duration]
 
         return fixations_df
 
@@ -112,8 +116,7 @@ class IVT(BaseFixationPreprocessor):
 class IDT(BaseFixationPreprocessor):
     """Dispersion Threshold Identification.
 
-    Complexity: O(n * W)  for single group, where W is size of maximum window.
-    Worst case is O(n^2) for W = n.
+    Complexity: O(n^2 * log n) worst case, O(n * log n) average.
     """
 
     def __init__(
@@ -122,6 +125,7 @@ class IDT(BaseFixationPreprocessor):
         y: str,
         t: str,
         min_duration: float,
+        max_duration: float,
         max_dispersion: float,
         distance: str = "euc",  # norm in R^2 for distance calculation
         pk: List[str] = None,
@@ -129,6 +133,7 @@ class IDT(BaseFixationPreprocessor):
     ):
         super().__init__(x=x, y=y, t=t, pk=pk)
         self.min_duration = min_duration
+        self.max_duration = max_duration
         self.max_dispersion = max_dispersion
         self.distance = distance
         self.eps = eps
@@ -142,6 +147,10 @@ class IDT(BaseFixationPreprocessor):
         assert self.t is not None, self._err_no_field(m, "t")
         assert self.min_duration is not None, self._err_no_field(m, "min_duration")
         assert self.min_duration > 0, f"'min_duration' must be non-negative."
+        assert self.max_duration is not None, self._err_no_field(m, "max_duration")
+        assert (
+            self.max_duration > self.min_duration
+        ), f"'max_duration' must be greater than min_duration."
         assert self.max_dispersion is not None, self._err_no_field(m, "min_duration")
         assert self.max_dispersion > 0, f"'max_dispersion' must be non-negative."
 
@@ -149,6 +158,67 @@ class IDT(BaseFixationPreprocessor):
             f"'distance' must be one of ({', '.join(self.available_distances)}),"
             f"got {self.distance}."
         )
+
+    @staticmethod
+    def _build_sparse_tables(a):
+        n = a.shape[0]
+        logn = int(np.ceil(np.log2(n)))
+
+        mint = np.zeros((logn, n))
+        maxt = np.zeros((logn, n))
+
+        mint[0] = a
+        maxt[0] = a
+
+        for t in range(logn - 1):
+            for i in range(n - (2 << t) + 1):
+                mint[t + 1, i] = min(mint[t, i], mint[t, i + (1 << t)])
+                maxt[t + 1, i] = max(maxt[t, i], maxt[t, i + (1 << t)])
+        return mint, maxt
+
+    @staticmethod
+    def _rmq(table: np.ndarray, l: int, r: int, f: Callable):
+        """RMQ on range [l, r)."""
+
+        t = int(np.log2(r - l))
+        return f(table[t, l], table[t, r - (1 << t)])
+
+    def _get_disp_window(
+        self, l: int, r: int, mintx, maxtx, minty, maxty
+    ) -> [int, float]:
+        """Binary search to find the widest dispersion window in [l, r]."""
+
+        right_border = l
+        left_border = l
+        window_disp = -np.inf
+        while r >= l:
+            m = l + int((r - l) / 2)
+
+            minx = self._rmq(mintx, left_border, m + 1, min)
+            miny = self._rmq(minty, left_border, m + 1, min)
+            maxx = self._rmq(maxtx, left_border, m + 1, max)
+            maxy = self._rmq(maxty, left_border, m + 1, max)
+            disp = _get_distance(
+                np.array([minx, miny]), np.array([maxx, maxy]), self.distance
+            )
+            if disp <= self.max_dispersion:
+                right_border = m
+                window_disp = disp
+                l = m + 1
+            else:
+                r = m - 1
+        return right_border, window_disp
+
+    def _get_dur_window(self, l: int, r: int, t: np.ndarray) -> [int, int]:
+        """Sliding window to find the widest duration window in [l, r]."""
+
+        right_border = l
+        end_time = t[l] + self.max_duration
+        while right_border + 1 <= r and t[right_border + 1] < end_time:
+            right_border += 1
+
+        start_time = t[l] + self.min_duration
+        return right_border if t[right_border + 1] >= start_time else -1
 
     # @jit(forceobj=True, looplift=True)
     def _preprocess(self, X: pd.DataFrame) -> pd.DataFrame:
@@ -163,74 +233,44 @@ class IDT(BaseFixationPreprocessor):
         vel = dist / (dt + self.eps)
 
         n = len(vel)
-        is_fixation = np.zeros(n)
-
-        cur = 0
-        last = 0  # [cur, last]
+        fixations = np.zeros(n)
+        fixation_id = 1
         disp = np.full(n, -np.inf)
 
-        while cur < n:
-            # initiate time for window
-            end_time = t[cur] + self.min_duration
+        # === IDT Algorithm ===
+        l = 0
+        r = n - 1  # [l, r]
+        mintx, maxtx = self._build_sparse_tables(x)
+        minty, maxty = self._build_sparse_tables(y)
 
-            # invariant:
-            # 1. current window's dispersion <= max_dispersion
-            # 2. current window's duration < min_duration
-            # so, algorithm classifies first correct window as fixation
-            # TODO: implement approaches: widest possible window,
-            #  some other characteristic
+        # restrictions on duration and dispersion are considered consequently
+        while l < n:
+            # 1. Maintain the widest duration window using sliding window.
+            # 2. Inside, find the widest dispersion window using binary search.
+            # 3. Classify gazes from window in step 2 as fixation and continue.
 
-            # seek for first point to exceed end_time
-            skip_gazes = False
-            window_disp = -np.inf
-            while last < n - 1 and t[last] <= end_time:
-                next_idx = last + 1
-                next_point = np.array(x[next_idx], y[next_idx])
-
-                # update distances in window
-                next_point_disp = -np.inf
-                j = (
-                    -1
-                )  # index of gaze with which 'last'-th gaze achieved max dispersion
-                for i in range(cur, next_idx):  # [cur, next_idx) == [cur, last]
-                    d = _get_distance(
-                        np.array(x[i], y[i]), next_point, distance=self.distance
-                    )
-
-                    disp[i] = max(disp[i], d)
-                    if next_point_disp < d:
-                        next_point_disp = d
-                        j = i
-
-                # check for dispersion
-                if next_point_disp > self.max_dispersion:
-                    # gazes [cur, j] cannot be part of fixation -> skip them
-                    disp[j + 1 : next_idx] = -np.inf
-                    cur = j + 1
-                    last = j + 1
-                    skip_gazes = True
-                    break
-
-                window_disp = max(window_disp, next_point_disp)
-                disp[next_idx] = next_point_disp
-                last = next_idx  # last = last + 1
-
-            if skip_gazes:
-                continue
-
-            # if (last + 1 == len(df)) and there is not enough points
-            if t[last] <= end_time:
+            dur_right_border = self._get_dur_window(l, r, t)
+            if dur_right_border == -1:
                 break
 
-            # here we have correct window with duration >= min_duration
-            # and dispersion <= max_dispersion.
-            # Window could be extended further.
-            is_fixation[cur : last + 1] = 1  # [cur, last] is single fixation
-            disp[cur : last + 1] = window_disp
-            cur = last + 1
-            last = last + 1
+            disp_right_border, window_disp = self._get_disp_window(
+                l, dur_right_border, mintx, maxtx, minty, maxty
+            )
 
-        fixations = self._squash_fixations(is_fixation)
+            # max_duration and max_dispersion satisfied
+            if t[disp_right_border] - t[l] < self.min_duration:
+                l += 1
+                continue
+
+            fixations[l:disp_right_border] = (
+                fixation_id  # [l, dur_right_border] is single fixation
+            )
+            disp[l:disp_right_border] = window_disp
+
+            fixation_id += 1
+            l = disp_right_border + 1
+
+        # === IDT Algorithm ===
 
         fixations_df = pd.DataFrame(
             data={
@@ -270,6 +310,13 @@ class IDT(BaseFixationPreprocessor):
                 "dispersion": "max",  # just for API, window has same values
             }
         )
+
+        if len(fixations_df) <= 1:
+            raise RuntimeError(
+                f"Found only {len(fixations_df)} fixations, you either provided "
+                f"infeasible constraints or have a mismatch of units in data "
+                f"and constraints."
+            )
 
         fixations_df["diameters"] = diameters
         fixations_df["centers"] = centers

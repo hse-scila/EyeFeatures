@@ -1,7 +1,7 @@
 import warnings
 from copy import copy
 from functools import partial
-from typing import List, Tuple, Union, Callable
+from typing import Callable, List, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -329,6 +329,7 @@ class Dataset2D(Dataset):
         upload_to_cuda: If True, upload the data to the GPU. Default: False.
         transforms: Transformations to apply to the data.
     """
+
     def __init__(
         self,
         X: pd.DataFrame,

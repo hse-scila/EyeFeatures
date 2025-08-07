@@ -1,5 +1,5 @@
 import warnings
-from typing import Any, Dict, List, Tuple, Union, Callable
+from typing import Any, Callable, Dict, List, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -107,6 +107,7 @@ class Extractor(BaseEstimator, TransformerMixin):
             (after ``transform``).
         return_df: if True, then pandas DataFrame is returned, else np.ndarray.
     """
+
     def __init__(
         self,
         features: List[BaseTransformer] = None,

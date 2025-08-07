@@ -22,6 +22,7 @@ class IndividualNormalization(TransformerMixin):
             new columns are created.
         return_df: whether to return output as DataFrame or numpy array.
     """
+
     def __init__(
         self,
         pk: List[str] | Tuple[List[str]],
