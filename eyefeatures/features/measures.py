@@ -77,6 +77,7 @@ class HurstExponent(MeasureTransformer):
     """Approximates Hurst Exponent using R/S analysis.
 
     Args:
+        x: coordinate column name (1D Hurst exponent currently available).
         n_iters: number of iterations to complete. Note: data must be of length more than :math:`2^{n\_iters}`.
         fill_strategy: how to make vector be length of power of :math:`2`. If "reduce", then all values
             after :math:`2^k`-th are removed, where :math:`n < 2^{(k + 1)}`. Other strategies specify the value
@@ -89,13 +90,14 @@ class HurstExponent(MeasureTransformer):
 
     def __init__(
         self,
+        x='x',
         n_iters=10,
         fill_strategy: Literal["mean", "reduce", "last"] = "last",
         pk: List[str] = None,
         eps: float = 1e-22,
         return_df: bool = True,
     ):
-        super().__init__(pk=pk, return_df=return_df, feature_name="hurst_exponent")
+        super().__init__(x=x, pk=pk, return_df=return_df, feature_name="hurst_exponent")
         self.n_iters = n_iters
         self.fill_strategy = fill_strategy
         self.eps = eps
