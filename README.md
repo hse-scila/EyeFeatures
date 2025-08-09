@@ -23,8 +23,16 @@ Documentation for the latest version can be found [here](https://eyefeatures-doc
 
 ## Tutorials
 
-You can find notebooks with tutorials devoted to different parts of the library in this repository
-in [tutorials](https://github.com/hse-scila/EyeFeatures/tree/main/tutorials) folder.
+Here are package tutorials devoted to different parts of the library:
+
+| Tutorial                                                                                                                 | Notebook                                                                                                                                                                |
+|--------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [Simple Features Tutorial](https://github.com/hse-scila/EyeFeatures/tree/main/tutorials/features_tutorial.ipynb)         | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://github.com/hse-scila/EyeFeatures/tree/main/tutorials/features_tutorial.ipynb)      |
+| [Complex Features Tutorial](https://github.com/hse-scila/EyeFeatures/tree/main/tutorials/complex_tutorial.ipynb)         | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://github.com/hse-scila/EyeFeatures/tree/main/tutorials/complex_tutorial.ipynb)       |
+| [Gazes Preprocessing Tutorial](https://github.com/hse-scila/EyeFeatures/tree/main/tutorials/preprocessing_tutorial.ipynb) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://github.com/hse-scila/EyeFeatures/tree/main/tutorials/preprocessing_tutorial.ipynb) |
+| [AOI Definition Tutorial](https://github.com/hse-scila/EyeFeatures/tree/main/tutorials/AOI_definition_tutorial.ipynb)    | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://github.com/hse-scila/EyeFeatures/tree/main/tutorials/AOI_definition_tutorial.ipynb) |
+| [Visualization Tutorial](https://github.com/hse-scila/EyeFeatures/tree/main/tutorials/visualization_tutorial.ipynb)      | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://github.com/hse-scila/EyeFeatures/tree/main/tutorials/visualization_tutorial.ipynb) |
+| [Deep Learning Tutorial](https://github.com/hse-scila/EyeFeatures/tree/main/tutorials/DL_tutorial.ipynb)                 | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://github.com/hse-scila/EyeFeatures/tree/main/tutorials/DL_tutorial.ipynb)            |
 
 ## Coming soon
 
