@@ -269,7 +269,7 @@ class StatsTransformer(BaseTransformer):
                         feat_stats: List[str] = self.features_stats[feat_nm]
 
                         if not feat_arr.empty:  # group_X with AOI was not empty
-                            stats_group = [feat_arr.apply(stat) for stat in feat_stats]
+                            stats_group = [feat_arr.agg(func=stat) for stat in feat_stats]
 
                         else:  # no AOI for given group
                             stats_group = [None for _ in feat_stats]
