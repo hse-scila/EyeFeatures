@@ -218,8 +218,3 @@ def _cut_matrix(mat: np.array, n: int, axis: int) -> np.array:
     else:
         mat = mat[:, w // 2 - n // 2 : w // 2 + n // 2 + d]
     return mat
-
-def _apply_agg(series: pd.Series, func: Union[Callable, str]) -> Any:
-    if isinstance(func, str):
-        return series.apply(func)
-    return series.agg(func=func, axis=0)
