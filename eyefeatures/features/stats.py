@@ -8,7 +8,7 @@ from numpy.typing import NDArray
 
 from eyefeatures.features.extractor import BaseTransformer
 from eyefeatures.utils import (Types, _calc_dt, _select_regressions,
-                               _split_dataframe)
+                               _split_dataframe, _apply_agg)
 
 
 class StatsTransformer(BaseTransformer):
@@ -269,7 +269,8 @@ class StatsTransformer(BaseTransformer):
                         feat_stats: List[str] = self.features_stats[feat_nm]
 
                         if not feat_arr.empty:  # group_X with AOI was not empty
-                            stats_group = [feat_arr.apply(stat) for stat in feat_stats]
+                            stats_group = [_apply_agg(feat_arr, stat) for stat in feat_stats]
+                            # stats_group = [feat_arr.apply(func=stat, axis=0) for stat in feat_stats]
 
                         else:  # no AOI for given group
                             stats_group = [None for _ in feat_stats]
