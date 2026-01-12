@@ -35,7 +35,7 @@ jobs:
       - name: Install Poetry
         run: pip install poetry
       - name: Install dependencies
-        run: poetry install --with test
+        run: poetry install --with test,deep
       - name: Run tests with coverage
         run: poetry run pytest --cov=eyefeatures --cov-report=xml --cov-report=term-missing --cov-fail-under=80
       - name: Upload coverage to Codecov
