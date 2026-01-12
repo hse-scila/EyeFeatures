@@ -69,7 +69,8 @@ def _coord_to_grid(coords: np.array, xlim: Tuple, ylim: Tuple, shape: Tuple):
         shape: The shape of the grid (rows, cols).
 
     Returns:
-        tuple(int, int): A tuple (i, j) - the grid indices corresponding to the coordinates.
+        tuple(int, int): A tuple (i, j) - the grid indices
+        corresponding to the coordinates.
     """
 
     i = (((coords[:, 0] - xlim[0]) / (xlim[1] - xlim[0])) * shape[0]).astype(int)
@@ -139,32 +140,37 @@ def _calculate_length_vectorized(coords: np.array):
 def create_edge_list_and_cumulative_features(
     df, add_duration, x_col, y_col, xlim, ylim, shape, directed=True
 ):
-    """Creates an edge list and computes cumulative node features (total duration, total saccade lengths, and cell center coordinates).
-    These features are normalized by their respective maximum values. Also computes edge features based on the sum of edge lengths.
+    """Creates an edge list and computes cumulative node
+        features (total duration, total saccade lengths, and cell
+        center coordinates). These features are normalized by their
+        respective maximum values. Also computes edge features based
+        on the sum of edge lengths.
 
-    Args:
-        df: DataFrame containing the coordinates and other node features.
-        x_col: Column name in df for the x coordinates.
-        y_col: Column name in df for the y coordinates.
-        add_duration: Column name in df for the duration between consecutive points (optional).
-        xlim: Tuple (x_min, x_max) defining the bounds for the x-axis.
-        ylim: Tuple (y_min, y_max) defining the bounds for the y-axis.
-        shape: Tuple (x_res, y_res) defining the resolution of the grid.
-        directed: If True, the graph is directional; if False, bidirectional edges are created.
+        Args:
+            df: DataFrame containing the coordinates and other node features.
+            x_col: Column name in df for the x coordinates.
+            y_col: Column name in df for the y coordinates.
+            add_duration: Column name in df for the duration between
+                consecutive points (optional).
+            xlim: Tuple (x_min, x_max) defining the bounds for the x-axis.
+            ylim: Tuple (y_min, y_max) defining the bounds for the y-axis.
+            shape: Tuple (x_res, y_res) defining the resolution of the grid.
+            directed: If True, the graph is directional; if False, bidirectional
+                edges are created.
 
     Returns:
-        edge_list:
-            List of edges as pairs of node indices.
-        edge_features:
-            List of normalized edge features (sum of lengths of corresponding edges).
-        node_mapping:
-            Mapping of old node indices to new compacted indices.
-        cumulative_node_features:
-            A dictionary containing normalized cumulative features:\n
-            - 'total_duration': Normalized total duration at each node.\n
-            - 'total_saccade_length_to': Normalized total saccade length directed to each node.\n
-            - 'total_saccade_length_from': Normalized total saccade length originating from each node.\n
-            - 'cell_centers': Coordinates of the center of each cell as node features.\n
+        edge_list: List of edges as pairs of node indices.
+        edge_features: Normalized edge features (sum of edge lengths).
+        node_mapping: Mapping of old node indices to new compacted indices.
+        cumulative_node_features: Normalized cumulative node features:
+
+            * ``total_duration``: Total duration at each node, normalized.
+            * ``total_saccade_length_to``: Total saccade length directed to
+                each node, normalized.
+            * ``total_saccade_length_from``: Total saccade length originating
+                from each node, normalized.
+            * ``cell_centers``: Coordinates of the center of each cell.
+
     """
 
     coords = df[[x_col, y_col]].values
@@ -222,9 +228,12 @@ def create_edge_list_and_cumulative_features(
         cell_centers[src_node] = [x_center, y_center]
 
     # Normalize cumulative features by their respective maximum values
-    total_durations /= np.max(total_durations)
-    total_saccade_length_to /= np.max(total_saccade_length_to)
-    total_saccade_length_from /= np.max(total_saccade_length_from)
+    if np.max(total_durations) > 0:
+        total_durations /= np.max(total_durations)
+    if np.max(total_saccade_length_to) > 0:
+        total_saccade_length_to /= np.max(total_saccade_length_to)
+    if np.max(total_saccade_length_from) > 0:
+        total_saccade_length_from /= np.max(total_saccade_length_from)
 
     # Normalize edge features (sum of lengths) by their maximum value
     if edge_length_sum:  # Ensure there are edges to normalize
@@ -258,11 +267,13 @@ def create_graph_data_from_dataframe(
         df: DataFrame containing the coordinates and other node features.
         x_col: Column name in df for the x coordinates.
         y_col: Column name in df for the y coordinates.
-        add_duration: Column name in df for the duration between consecutive points (optional).
+        add_duration: Column name in df for the duration between consecutive
+            points (optional).
         xlim: Tuple (x_min, x_max) defining the bounds for the x-axis.
         ylim: Tuple (y_min, y_max) defining the bounds for the y-axis.
         shape: Tuple (x_res, y_res) defining the resolution of the grid.
-        directed: If True, the graph is directional; if False, bidirectional edges are created.
+        directed: If True, the graph is directional; if False, bidirectional
+            edges are created.
 
     Returns:
         A PyTorch Geometric Data object containing the graph and its features.
@@ -334,6 +345,8 @@ class Dataset2D(Dataset):
         self,
         X: pd.DataFrame,
         Y: ArrayLike,
+        x: str,
+        y: str,
         pk: List[str],
         shape: Union[Tuple[int], int],
         representations: List[str],
@@ -346,7 +359,7 @@ class Dataset2D(Dataset):
                 torch.tensor(
                     _representations[i](X, x, y, pk=pk, shape=shape),
                     dtype=torch.float32,
-                )
+                ).unsqueeze(1)
                 for i in representations
             ],
             dim=1,
@@ -416,6 +429,8 @@ class DatasetTimeSeries(Dataset):
         self,
         X: pd.DataFrame,
         Y: ArrayLike,
+        x: str,
+        y: str,
         pk: List[str],
         features: List[str],
         transforms: Callable = None,
@@ -676,8 +691,9 @@ class DatasetLightningBase(pl.LightningDataModule):
         if len(self.pk) == 1 or self.split_type == "simple":
             if self.split_type != "simple":
                 warnings.warn(
-                    """Ignoring split type. 
-                              Split type cannot != "simple" if there is single primary key."""
+                    """Ignoring split type.
+                        Split type cannot != "simple" if there is a
+                        single primary key."""
                 )
             groups_train, groups_val = train_test_split(
                 groups, test_size=self.test_size
@@ -694,22 +710,26 @@ class DatasetLightningBase(pl.LightningDataModule):
                 )
                 groups_train = groups_train[groups_train[i].isin(gr)]
                 groups_val = groups_val[~groups_val[i].isin(gr)]
-        elif self.split_type == "all_categories_repetetive":
+        elif self.split_type == "all_categories_repetitive":
             groups_train, groups_val = iterative_split(groups, self.test_size, self.pk)
-        elif self.split_type == "first_category_repetetive":
+        elif self.split_type == "first_category_repetitive":
             groups_train, groups_val = train_test_split(
                 groups, test_size=self.test_size, stratify=groups.iloc[:, 0]
             )
         elif self.split_type == "first_category_unique":
-            groups_train, groups_val = train_test_split(
-                groups.iloc[:, 0].drop_duplicates(), test_size=self.test_size
+            pk_col = self.pk[0]
+            unique_vals = groups[pk_col].drop_duplicates()
+            vals_train, vals_val = train_test_split(
+                unique_vals, test_size=self.test_size
             )
-            pk = groups.iloc[:, 0]
+            groups_train = groups[groups[pk_col].isin(vals_train)]
+            groups_val = groups[groups[pk_col].isin(vals_val)]
         else:
             raise ValueError(
-                f"""Invalid split type: {self.split_type}. 
-                             Supported split types are: simple, first_category_unique, first_category_repetetive, 
-                             all_categories_unique, all_categories_repetetive."""
+                f"""Invalid split type: {self.split_type}.
+                    Supported split types are: simple,
+                    first_category_unique, first_category_repetitive,
+                    all_categories_unique, all_categories_repetitive."""
             )
 
         X_train = self.X.merge(groups_train, on=pk)

@@ -1,4 +1,3 @@
-import warnings
 from abc import abstractmethod
 from typing import Any, Dict, List, Tuple, Union
 
@@ -7,8 +6,13 @@ import pandas as pd
 from numpy.typing import NDArray
 
 from eyefeatures.features.extractor import BaseTransformer
-from eyefeatures.utils import (Types, _calc_dt, _select_regressions,
-                               _split_dataframe)
+from eyefeatures.utils import (
+    Types,
+    _calc_dt,
+    _get_angle,
+    _select_regressions,
+    _split_dataframe,
+)
 
 
 class StatsTransformer(BaseTransformer):
@@ -16,16 +20,17 @@ class StatsTransformer(BaseTransformer):
     compatible with `pandas`. Expected dataframe with fixations.
 
     Args:
-        features_stats: Dictionary of format {'feature_1': ['statistic_1', 'statistic_2'], ...}.
+        features_stats: Dictionary of format
+            {'feature_1': ['statistic_1', 'statistic_2'], ...}.
         x: X coordinate column name.
         y: Y coordinate column name.
         t: timestamp column name.
         duration: duration column name (milliseconds expected).
         dispersion: fixation dispersion column name.
-        aoi: Area Of Interest column name(-s). If provided, features can be calculated inside
-            the specified AOI.
-        calc_without_aoi: if True, then, in addition to AOI-wise features, calculate regular features
-            ignoring AOI.
+        aoi: Area Of Interest column name(-s). If provided, features
+            can be calculated inside the specified AOI.
+        calc_without_aoi: if True, then, in addition to AOI-wise features,
+            calculate regular features ignoring AOI.
         pk: primary key.
         return_df: whether to return output as DataFrame or numpy array.
         warn: whether to enable warnings.
@@ -95,7 +100,8 @@ class StatsTransformer(BaseTransformer):
     @abstractmethod
     def _check_params(self):
         """
-        Method checks that all requested features could be calculated with provided data.
+        Method checks that all requested features could be calculated
+        with provided data.
         """
         ...
 
@@ -103,10 +109,13 @@ class StatsTransformer(BaseTransformer):
         """
         Method checks `self.features_stats` for correct feature names (i.e. keys).
         """
-        err_msg = (
-            lambda f: f"Feature '{f}' is not supported. Must be one of: "
-            f"{', '.join(self.available_feats)}."
-        )
+
+        def err_msg(f):
+            return (
+                f"Feature '{f}' is not supported. Must be one of: "
+                f"{', '.join(self.available_feats)}."
+            )
+
         for feat in self.feature_names_in:
             assert feat in self.available_feats, err_msg(feat)
 
@@ -170,7 +179,8 @@ class StatsTransformer(BaseTransformer):
                 for v in aoi_view:
                     assert (
                         v in self.aoi_mapper[aoi_col]
-                    ), f"Unknown AOI value {v} was not seen during `fit` in '{aoi_col}'."
+                    ), f"Unknown AOI value {v} was not seen during `fit` in \
+                    '{aoi_col}'."
 
     @property
     @abstractmethod
@@ -185,12 +195,14 @@ class StatsTransformer(BaseTransformer):
         self, X: pd.DataFrame, features: List[str], transition_mask: NDArray
     ) -> List[Tuple[str, pd.Series]]:
         """
-        Method calculates features passed to constructor, i.e. keys of `self.features_stats`.
-        In case of `SaccadeFeatures`, it returns dictionary `{'length': np.array, 'velocity': np.array, ...}`.
-        `transition_mask` is boolean mask of the same shape as X, i-th value is False if X's i-th value is
-        first fixation in block. Block is defined as sequential fixations in same AOI, maximum by inclusion
-        (which means that block cannot contain another block). Thus, each AOI is split in blocks and
-        first fixation in each block is then removed.
+        Method calculates features passed to constructor, i.e. keys of
+        `self.features_stats`. In case of `SaccadeFeatures`, it returns
+        dictionary `{'length': np.array, 'velocity': np.array, ...}`.
+        `transition_mask` is boolean mask of the same shape as X, i-th value
+        is False if X's i-th value is first fixation in block. Block is
+        defined as sequential fixations in same AOI, maximum by inclusion
+        (which means that block cannot contain another block). Thus, each
+        AOI is split in blocks and first fixation in each block is then removed.
         """
         ...
 
@@ -269,14 +281,16 @@ class StatsTransformer(BaseTransformer):
                         feat_stats: List[str] = self.features_stats[feat_nm]
 
                         if not feat_arr.empty:  # group_X with AOI was not empty
-                            stats_group = [feat_arr.agg(func=stat) for stat in feat_stats]
+                            stats_group = [
+                                feat_arr.agg(func=stat) for stat in feat_stats
+                            ]
 
                         else:  # no AOI for given group
                             stats_group = [None for _ in feat_stats]
 
                         gathered_stats_group.extend(stats_group)
-                        # TODO remove, have self.features_names_in_ on fit. But order matters,
-                        #  so not removed for now
+                        # TODO remove, have self.features_names_in_ on fit.
+                        # Serves as sanity check for ordering of features names.
                         if add_cols_nms:
                             column_nms.extend(
                                 [
@@ -311,7 +325,7 @@ class SaccadeFeatures(StatsTransformer):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.available_feats = ("length", "acceleration", "speed")
+        self.available_feats = ("length", "acceleration", "speed", "angle")
 
     @property
     def _fp(self) -> str:
@@ -344,14 +358,21 @@ class SaccadeFeatures(StatsTransformer):
                 feat_arr = sac_len[transition_mask]
             elif feat_nm == "acceleration":
                 # Acceleration: dx = v0 * t + 1/2 * a * t^2.
-                # Above formula is law of uniformly accelerated motion TODO consider direction
+                # Above formula is law of uniformly accelerated motion
+                # TODO consider direction
                 sac_acc: pd.DataFrame = dr / (dt**2 + self.eps) * 1 / 2
                 feat_arr = sac_acc[transition_mask]
             elif feat_nm == "speed":
                 sac_spd = dr / (dt + self.eps)
                 feat_arr = sac_spd[transition_mask]
+            elif feat_nm == "angle":
+                angles = pd.Series(
+                    [_get_angle(dx_val, dy_val) for dx_val, dy_val in zip(dx, dy)],
+                    index=dx.index,
+                )
+                feat_arr = angles[transition_mask]
             else:
-                raise NotImplemented(feat_nm)
+                raise NotImplementedError(feat_nm)
             feats.append((feat_nm, feat_arr))
 
         return feats
@@ -367,9 +388,10 @@ class RegressionFeatures(StatsTransformer):
             regressions, 1st quadrant being upper-right square of plane and counting
             anti-clockwise or 2) tuple of angles in degrees (0 <= angle <= 360).
         deviation: if None, then `rule` is interpreted as quadrants. Otherwise,
-            `rule` is interpreted as angles. If integer, then is a +-deviation for all angles.
-            If tuple of integers, then must be of the same length as `rule`, each value being
-            a corresponding deviation for each angle. Angle = 0 is positive x-axis direction,
+            `rule` is interpreted as angles. If integer, then is a +-deviation
+            for all angles. If tuple of integers, then must be of the same
+            length as `rule`, each value being a corresponding deviation for
+            each angle. Angle = 0 is positive x-axis direction,
             rotating anti-clockwise.
     """
 
@@ -380,7 +402,7 @@ class RegressionFeatures(StatsTransformer):
         **kwargs,
     ):
         super().__init__(**kwargs)
-        self.available_feats = ("length", "acceleration", "speed", "mask")
+        self.available_feats = ("length", "acceleration", "speed", "angle", "mask")
         self.rule = rule
         self.deviation = deviation
 
@@ -442,10 +464,16 @@ class RegressionFeatures(StatsTransformer):
             elif feat_nm == "speed":
                 sac_spd = dr / (dt + self.eps)
                 feat_arr = sac_spd[sm][tm]
+            elif feat_nm == "angle":
+                angles = pd.Series(
+                    [_get_angle(dx_val, dy_val) for dx_val, dy_val in zip(dx, dy)],
+                    index=dx.index,
+                )
+                feat_arr = angles[sm][tm]
             elif feat_nm == "mask":
                 feat_arr = pd.Series(sm)
             else:
-                raise NotImplemented(feat_nm)
+                raise NotImplementedError(feat_nm)
             feats.append((feat_nm, feat_arr))
 
         return feats
@@ -512,7 +540,7 @@ class MicroSaccadeFeatures(StatsTransformer):
             elif feat_nm == "mask":
                 feat_arr = pd.Series(sm)
             else:
-                raise NotImplemented(feat_nm)
+                raise NotImplementedError(feat_nm)
             feats.append((feat_nm, feat_arr))
 
         return feats
@@ -549,7 +577,7 @@ class FixationFeatures(StatsTransformer):
             elif feat_nm == "vad":
                 feat_arr = X[self.dispersion][transition_mask]
             else:
-                raise NotImplemented(feat_nm)
+                raise NotImplementedError(feat_nm)
             feats.append((feat_nm, feat_arr))
 
         return feats

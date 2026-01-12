@@ -3,12 +3,10 @@ from typing import Any, Dict, List, Tuple, Union
 import numpy as np
 import pandas as pd
 import scipy
-from numba import jit
 from tqdm import tqdm
 
 from eyefeatures.features.extractor import BaseTransformer
-from eyefeatures.features.scanpath_complex import (_get_fill_path,
-                                                   get_expected_path)
+from eyefeatures.features.scanpath_complex import _get_fill_path, get_expected_path
 from eyefeatures.utils import Types, _split_dataframe
 
 
@@ -126,7 +124,6 @@ class SimpleDistances(DistanceTransformer):
         expected_paths_method: str = "mean",
         return_df: bool = True,
     ):
-
         super(SimpleDistances, self).__init__(
             x=x,
             y=y,
@@ -380,7 +377,7 @@ class ScanMatchDist(DistanceTransformer):
         return features_df if self.return_df else features_df.values
 
     def __repr__(self, **kwargs):
-        return f"ScanMatch()"
+        return "ScanMatch()"
 
 
 class MannanDist(DistanceTransformer):
@@ -957,11 +954,13 @@ def calc_mm_features(
     p_fix_x, p_fix_y = p.values[:, 0], p.values[:, 0]
     q_fix_x, q_fix_y = q.values[:, 0], q.values[:, 1]
     p_fix_dur, q_fix_dur = p.values[:, 2], q.values[:, 2]
-    p_sac_rho, p_sac_phi = np.sqrt(p_sac_x**2 + p_sac_y**2), np.arctan2(
-        p_sac_y, p_sac_x
+    p_sac_rho, p_sac_phi = (
+        np.sqrt(p_sac_x**2 + p_sac_y**2),
+        np.arctan2(p_sac_y, p_sac_x),
     )
-    q_sac_rho, q_sac_phi = np.sqrt(q_sac_x**2 + q_sac_y**2), np.arctan2(
-        q_sac_y, q_sac_x
+    q_sac_rho, q_sac_phi = (
+        np.sqrt(q_sac_x**2 + q_sac_y**2),
+        np.arctan2(q_sac_y, q_sac_x),
     )
 
     shape_diff, angle_diff = [], []

@@ -3,7 +3,6 @@ from typing import Callable, List, Literal, Tuple, Union
 import gudhi as gd
 import numpy as np
 import pandas as pd
-from numba import jit, prange
 from numpy.typing import NDArray
 from PyEMD.EMD2d import EMD2D
 from scipy.signal import convolve2d
@@ -26,14 +25,15 @@ def _check_shape(shape: Tuple[int, int]):
 def get_heatmap(
     x: NDArray, y: NDArray, shape: Tuple[int, int], check: bool = True
 ) -> np.ndarray:
-    """Get heatmap from scanpath (given coordinates are scaled and sorted in time) using
-    Gaussian KDE.
+    """Get heatmap from scanpath (given coordinates are scaled and
+    sorted in time) using Gaussian KDE.
 
     Args:
         x: X coordinate column name.
         y: Y coordinate column name.
-        shape: if tuple with single integer, then square matrix is returned, otherwise k must be (height, width)
-               tuple and rectangular matrix is returned.
+        shape: if tuple with single integer, then square matrix is returned,
+            otherwise k must be (height, width) tuple and rectangular matrix
+            is returned.
         check: whether to check 'shape' for correct typing.
 
     Returns:
@@ -59,15 +59,16 @@ def get_heatmap(
 def get_heatmaps(
     data: pd.DataFrame, x: str, y: str, shape: Tuple[int, int], pk: List[str] = None
 ) -> np.ndarray:
-    """Get heatmaps from scanpaths (given coordinates are scaled and sorted in time) using
-    Gaussian KDE.
+    """Get heatmaps from scanpaths (given coordinates are scaled and
+        sorted in time) using Gaussian KDE.
 
     Args:
         data: input Dataframe with fixations.
         x: X coordinate column name.
         y: Y coordinate column name.
-        shape: if tuple with single integer, then square matrix is returned, otherwise k must be (height, width)
-               tuple and rectangular matrix is returned.
+        shape: if tuple with single integer, then square matrix is returned,
+            otherwise k must be (height, width) tuple and rectangular matrix
+            is returned.
         pk: List of columns being primary key.
 
     Returns:
@@ -92,49 +93,62 @@ def get_heatmaps(
 
 
 # =========================== PCA ===========================
-def pca(matrix: NDArray, p: int, cum_sum: float = None) -> np.ndarray:
-    """PCA compression.
+def get_pca(matrix: NDArray, p: int = None, reserve_info: float = None) -> np.ndarray:
+    """Computes PCA compression.
 
     Args:
         matrix: matrix to get principal components from (n x m)
         p: number of first principal components to leave
-        cum_sum: instead of p, leave such number of principal components, that 0.0 <= a_cum_sum <= 1.0
+        reserve_info: use such value of p that 0.0 <= reserve_info <= 1.0
                     fraction of information is conserved.
 
+    Note:
+        either p or reserve_info must be specified.
+
     Returns:
-        matrix of eigenvectors (m x m), projection (n x p), rows means (n x 1)
+        matrix of eigenvectors (m x p), projection (n x p), rows means (n x 1)
     """
     assert len(matrix.shape) == 2, "'matrix' should be a matrix"
-    assert 0 <= p <= matrix.shape[0], "given 'matrix' is n x m, 0 <= p <= n must hold"
+    assert (p is None) or (
+        0 <= p <= matrix.shape[0]
+    ), "given 'matrix' is n x m, 0 <= p <= n must hold"
     assert (p is not None) or (
-        cum_sum is not None
-    ), "either 'p' or 'cum_sum' must be provided"
-    assert (cum_sum is None) or (
-        0.0 <= cum_sum <= 1.0
-    ), "'cum_sum' must be between 0.0 and 1.0"
+        reserve_info is not None
+    ), "either 'p' or 'reserve_info' must be provided"
+    assert (reserve_info is None) or (
+        0.0 <= reserve_info <= 1.0
+    ), "'reserve_info' must be between 0.0 and 1.0"
 
     matrix = matrix.astype(np.float64)
 
     row_means = np.mean(matrix, axis=1)
     matrix -= row_means[:, None]
-    c = np.cov(matrix)
+    c = np.cov(matrix, rowvar=False)
+
+    n, m = matrix.shape
     evals, evecs = np.linalg.eigh(c)
+    assert evals.shape == (m,)
+    assert evecs.shape == (m, m)
     sorted_evals_indexes = np.argsort(evals)[::-1]
-    evecs = evecs[:, sorted_evals_indexes]
+
+    evals = evals[sorted_evals_indexes]  # sorted eigenvalues, (m,)
+    evecs = evecs[:, sorted_evals_indexes]  # sorted eigenvectors, (m, m)
 
     if p is not None:
-        evecs = evecs[:, :p]
+        evecs = evecs[:, :p]  # (m, p)
     else:
         evals /= evals.sum()
         cumsum = 0.0
         p = 0
-        while cumsum < cum_sum and p < evals.size():
+        while cumsum < reserve_info and p < evals.size:
             cumsum += evals[p]
             p += 1
 
-        evecs = evecs[:, :p]
+        evecs = evecs[:, :p]  # (m, p)
 
-    projection = evecs.T @ matrix
+    print(matrix.shape)
+    print(evecs.shape)
+    projection = matrix @ evecs  # (n, p)
     return evecs, projection, row_means
 
 
@@ -142,7 +156,8 @@ def pca(matrix: NDArray, p: int, cum_sum: float = None) -> np.ndarray:
 def get_rqa(
     data: pd.DataFrame, x: str, y: str, metric: Callable, rho: float
 ) -> np.ndarray:
-    """Calculates recurrence quantification analysis matrix based on given fixations.
+    r"""Calculates recurrence quantification analysis matrix based
+        on given fixations.
 
     Args:
         data: input Dataframe with fixations.
@@ -184,13 +199,15 @@ def get_mtf(
         x: X coordinate column name.
         y: Y coordinate column name.
         n_bins: number of bins to discretize time series into.
-        output_size: fraction between 0 and 1. Specifies fraction of input series length to shrink output to.
-        shrink_strategy: strategy to use for convolution while shrinking. Ignored if 'output_size' is equal to
-                         size of 'data'.
+        output_size: fraction between 0 and 1. Specifies fraction of input
+            series length to shrink output to.
+        shrink_strategy: strategy to use for convolution while shrinking.
+            Ignored if 'output_size' is equal to size of 'data'.
         flatten: bool, whether to flatten the array.
 
     Returns:
-        tensor of shape (2, n_coords, n_coords), where n_coords is the length of input dataframe.
+        tensor of shape (2, n_coords, n_coords), where n_coords is the
+        length of input dataframe.
     """
     if isinstance(output_size, float):
         assert 0.0 < output_size <= 1.0, "Must be 0 < output_size <= 1."
@@ -276,7 +293,8 @@ def _shrink_matrix(
         strategy: strategy to use while shrinking.
          * 'mean' - 2d convolution with uniform kernel.
          * 'normal' - 2d convolution with Gauss kernel.
-         * 'max' - max pooling, resulting image is the closest possible to provided 'size'.
+         * 'max' - max pooling, resulting image is the closest
+            possible to provided 'size'.
 
     Returns:
         shrunk matrix.
@@ -350,15 +368,17 @@ def get_gaf(
         x: X coordinate column name.
         y: Y coordinate column name.
         t: timestamps column name.
-        field_type: which type of field to calculate. If "difference", then GADF is returned,
-                    otherwise ("sum") GASF is returned.
+        field_type: which type of field to calculate. If "difference",
+            then GADF is returned, otherwise ("sum") GASF is returned.
         to_polar: conversion from cartesian to polar coordinates.
                  * 'regular': standard conversion calculating arctan(y/x).
-                 * 'cosine': angle is calculated as cosine of series data, radius is taken as timestamps.
+                 * 'cosine': angle is calculated as cosine of series data,
+                    radius is taken as timestamps.
         flatten: bool, whether to flatten the array.
 
     Returns:
-        tensor of shape (2, n_coords, n_coords), where n_coords is the length of input dataframe.
+        tensor of shape (2, n_coords, n_coords), where n_coords is the
+        length of input dataframe.
     """
     assert field_type in (
         "difference",
@@ -386,8 +406,9 @@ def _get_gaf(
     Args:
         a: array of shape (n_samples, n_timestamps) being angular values.
         t: array of shape (n_timestamps,) being timestamps for all samples in 'a' or
-                             (n_samples, n_timestamps) being timestamps of corresponding angular values in 'a',
-                                                       i.e. a[i, :] are expected to be the angles at time t[i, :].
+            (n_samples, n_timestamps) being timestamps of corresponding
+            angular values in 'a', i.e. a[i, :] are expected to be
+            the angles at time t[i, :].
     """
 
     def _get_t(t_: np.array, i_: int):
@@ -461,9 +482,11 @@ def get_hilbert_curve_enc(
         data: input Dataframe with fixations.
         x: X coordinate column name.
         y: Y coordinate column name.
-        scale: whether to scale the scanpath to [0, 1] before mapping to Hilbert curve. If false, then
-        p: order of Hilbert curve, unit square is divided into (2^p)x(2^p) smaller squares.
-              Higher value of p indicates better locality preservation.
+        scale: whether to scale the scanpath to [0, 1] before mapping
+            to Hilbert curve. If false, then
+        p: order of Hilbert curve, unit square is divided into (2^p)x(2^p)
+            smaller squares. Higher value of p indicates better
+            locality preservation.
 
     Returns:
         scanpath encoding in 2^p-dimensional feature space using 1D Hilbert curve.
@@ -488,9 +511,10 @@ def get_hilbert_curve(
         data: input Dataframe with fixations.
         x: X coordinate column name.
         y: Y coordinate column name.
-        scale: whether to scale the scanpath to [0, 1] before mapping to Hilbert curve. If false, then
-        p: order of Hilbert curve, unit square is divided into (2^p)x(2^p) smaller squares.
-              Higher value of p indicates better locality preservation.
+        scale: whether to scale the scanpath to [0, 1] before
+            mapping to Hilbert curve. If false, then
+        p: order of Hilbert curve, unit square is divided into (2^p)x(2^p)
+            smaller squares. Higher value of p indicates better locality preservation.
 
     Returns:
         scanpath mapping to 1D Hilbert curve.
@@ -499,8 +523,9 @@ def get_hilbert_curve(
     n_fixations = len(x)
 
     if scale:
-        x, y = _minmax(x), _minmax(
-            y
+        x, y = (
+            _minmax(x),
+            _minmax(y),
         )  # map x, y to [0, 1]  TODO: better approach than minmax?
     else:
         assert (
@@ -510,8 +535,9 @@ def get_hilbert_curve(
             0 <= y <= 1
         ), "Either scale 'y' to be between 0 and 1 or add 'scale'=True."
     x, y = x * (2**p), y * (2**p)  # map x, y to [0, 2^p]
-    x, y = np.array(np.round(x), dtype=int), np.array(
-        np.round(y), dtype=int
+    x, y = (
+        np.array(np.round(x), dtype=int),
+        np.array(np.round(y), dtype=int),
     )  # map [0, 2^p] to {0, 1, .., 2^p}
 
     h = np.zeros((n_fixations,))
@@ -526,14 +552,15 @@ def xy2h(x: int, y: int, p: int) -> int:
     Args:
         x: x-coordinate of a point, 0 <= x < 2^p.
         y: y-coordinate of a point, 0 <= y < 2^p.
-        p: order of Hilbert curve, unit square is divided into (2^p)x(2^p) smaller squares.
-              Higher value of p indicates better locality preservation.
+        p: order of Hilbert curve, unit square is divided into (2^p)x(2^p)
+            smaller squares. Higher value of p indicates better locality preservation.
 
     Returns:
         corresponding point on 1D Hilbert curve.
 
     Notes:
-        Algorithm: https://people.math.sc.edu/Burkardt/py_src/hilbert_curve/hilbert_curve.py.
+        Algorithm:
+        https://people.math.sc.edu/Burkardt/py_src/hilbert_curve/hilbert_curve.py.
     """
     n = 2**p
 
@@ -596,11 +623,12 @@ def lower_star_filtration(time_series: np.ndarray, persistence_dim_max: bool = F
 
     Args:
         time_series: time series data.
-        persistence_dim_max: If true, the persistent homology for the maximal dimension in the
-            complex is computed. If False, it is ignored. Default is False.
+        persistence_dim_max: If true, the persistent homology for the
+            maximal dimension in the complex is computed.
+            If False, it is ignored. Default is False.
     """
 
-    simplex_tree = gd.SimplexTree(persistence_dim_max=persistence_dim_max)
+    simplex_tree = gd.SimplexTree()
 
     for i, val in enumerate(time_series):
         simplex_tree.insert([i], filtration=val)
@@ -644,10 +672,10 @@ def persistence_entropy_curve(persistence_diagram: List[Tuple | np.ndarray], t: 
     total_persistence = sum(intervals)
 
     if total_persistence == 0:
-        return 0
+        return 0.0
 
     probabilities = [interval / total_persistence for interval in intervals]
-    entropy = -sum(p * np.log(p) for p in probabilities)
+    entropy = -sum(p * np.log(p) if p > 1e-15 else 0.0 for p in probabilities)
 
     return entropy
 
@@ -660,24 +688,28 @@ def calculate_topological_features(
     max_dim: int = 2,
     time_steps: int = 100,
 ):
-    """Calculate topological features (persistence curve and persistence entropy) for a scanpath.
+    """Calculate topological features (persistence curve
+        and persistence entropy) for a scanpath.
 
     Args:
         scanpath: scanpath data array of shape (n, 2).
-        time_series: 1d array of time series data (e.g. x or y coordinates over time).
+        time_series: 1d array of time series data
+            (e.g. x or y coordinates over time).
         max_radius: maximum radius for Vietoris-Rips filtration.
         max_time: maximum threshold for the persistence curve.
         max_dim: maximum dimension for persistent homology.
-        time_steps: number of time steps for evaluating the persistence curve and entropy.
+        time_steps: number of time steps for evaluating the
+            persistence curve and entropy.
 
     Returns:
-        values of persistence curve at each time step, Values of persistence entropy at each time step.
+        values of persistence curve at each time step, values of persistence
+        entropy at each time step.
     """
 
     persistence_vr, _ = vietoris_rips_filtration(
         scanpath, max_dim=max_dim, max_radius=max_radius
     )
-    persistence_ls, _ = lower_star_filtration(time_series, max_dim=max_dim)
+    persistence_ls, _ = lower_star_filtration(time_series)
 
     time_grid = np.linspace(0, max_time, time_steps)
     persistence_curve_vals = []

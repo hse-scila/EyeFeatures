@@ -92,13 +92,15 @@ def tracker_animation(
         regression_color: color of regressions.
         meta_data: list of columns that will be used for meta data.
         rule: must be either 1) tuple of quadrants direction to classify
-         regressions, 1st quadrant being upper-right square of plane and counting
-         anti-clockwise or 2) tuple of angles in degrees (0 <= angle <= 360).
+            regressions, 1st quadrant being upper-right square of plane
+            and counting anti-clockwise or 2) tuple of angles in
+            degrees(0 <= angle <= 360).
         deviation: if None, then `rule` is interpreted as quadrants. Otherwise,
-         `rule` is interpreted as angles. If integer, then is a +-deviation for all angles.
-         If tuple of integers, then must be of the same length as `rule`, each value being
-         a corresponding deviation for each angle. Angle = 0 is positive x-axis direction,
-         rotating anti-clockwise.
+            `rule` is interpreted as angles. If integer, then is a
+            +-deviation for all angles.
+            If tuple of integers, then must be of the same length as `rule`,
+            each value being a corresponding deviation for each angle.
+            Angle = 0 is positive x-axis direction, rotating anti-clockwise.
         aoi: AOI of fixations.
         aoi_c: colormap for AOI.
         tracker_color: color of tracker.
@@ -143,7 +145,7 @@ def tracker_animation(
         "name": "saccades",
     }
 
-    if not (aoi is None) and aoi_c is None:
+    if aoi is not None and aoi_c is None:
         aoi_c = dict()
         areas = data[aoi].unique()
         for area in areas:
@@ -195,7 +197,7 @@ def tracker_animation(
     else:
         fig_dict["data"].append(edges)
 
-    if not (aoi is None):
+    if aoi is not None:
         areas = data[aoi].unique()
         nodes = []
         for area in areas:
@@ -203,7 +205,7 @@ def tracker_animation(
             data_area = data[data[aoi] == area]
             indexes_area = data_area.index
             for i in range(len(indexes_area)):
-                if not (meta_data is None):
+                if meta_data is not None:
                     row = data_area.loc[
                         indexes_area[i], data_area.columns.intersection(meta_data)
                     ].values
@@ -225,7 +227,7 @@ def tracker_animation(
     else:
         annotate = []
         for i in range(len(indexes)):
-            if not (meta_data is None):
+            if meta_data is not None:
                 row = data.loc[indexes[i], data.columns.intersection(meta_data)].values
                 comments = []
                 for j in range(len(meta_data)):
@@ -257,7 +259,7 @@ def tracker_animation(
             frame["data"].extend(edges)
         else:
             frame["data"].append(edges)
-        if not (aoi is None):
+        if aoi is not None:
             frame["data"].extend(nodes)
         else:
             frame["data"].append(nodes)
@@ -271,7 +273,7 @@ def tracker_animation(
             }
         )
         fig_dict["frames"].append(frame)
-        if not (save_gif is None):
+        if save_gif is not None:
             img = Image.open(io.BytesIO(go.Figure(frame).to_image(format="png")))
             for _ in range(frames_count):
                 gif_list.append(img)
@@ -292,12 +294,12 @@ def tracker_animation(
     fig_dict["layout"]["sliders"] = [sliders_dict]
     fig = go.Figure(fig_dict)
     fig.show()
-    if not (save_gif is None):
+    if save_gif is not None:
         gif_list[0].save(
             save_gif,
             save_all=True,
             append_images=gif_list[1:],
-            durarion=1000,
+            duration=1000,
             loop=0,
             fps=1,
         )
@@ -332,13 +334,15 @@ def scanpath_animation(
         add_regression: whether to add regressions.
         regression_color: color of regressions.
         rule: must be either 1) tuple of quadrants direction to classify
-         regressions, 1st quadrant being upper-right square of plane and counting
-         anti-clockwise or 2) tuple of angles in degrees (0 <= angle <= 360).
+            regressions, 1st quadrant being upper-right square of plane
+            and counting anti-clockwise or 2) tuple of angles in
+            degrees(0 <= angle <= 360).
         deviation: if None, then `rule` is interpreted as quadrants. Otherwise,
-         `rule` is interpreted as angles. If integer, then is a +-deviation for all angles.
-         If tuple of integers, then must be of the same length as `rule`, each value being
-         a corresponding deviation for each angle. Angle = 0 is positive x-axis direction,
-         rotating anti-clockwise.
+            `rule` is interpreted as angles. If integer, then is a
+            +-deviation for all angles.
+            If tuple of integers, then must be of the same length as `rule`,
+            each value being a corresponding deviation for each angle.
+            Angle = 0 is positive x-axis direction, rotating anti-clockwise.
         animation_duration: duration of animation.
         save_gif: path to save animation.
         frames_count: TODO.
@@ -430,7 +434,7 @@ def scanpath_animation(
             range=[y_min - 0.1, y_max + 0.1], automargin=False
         )
         fig_dict["frames"].append(frame)
-        if not (save_gif is None):
+        if save_gif is not None:
             img = Image.open(io.BytesIO(go.Figure(frame).to_image(format="png")))
             for _ in range(frames_count):
                 gif_list.append(img)
@@ -452,12 +456,12 @@ def scanpath_animation(
     fig_dict["layout"]["sliders"] = [sliders_dict]
     fig = go.Figure(fig_dict)
     fig.show()
-    if not (save_gif is None):
+    if save_gif is not None:
         gif_list[0].save(
             save_gif,
             save_all=True,
             append_images=gif_list[1:],
-            durarion=1000,
+            duration=1000,
             fps=1,
             loop=0,
         )

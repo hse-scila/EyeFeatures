@@ -1,10 +1,9 @@
 from abc import ABC, abstractmethod
 from functools import partial
-from typing import Callable, List, Literal, Union
+from typing import Callable, List, Literal, Tuple, Union
 
 import numpy as np
 import pandas as pd
-from numba import jit
 from scipy.fftpack import fft2, ifft
 from scipy.spatial.distance import euclidean, pdist, squareform
 from scipy.stats import entropy, kurtosis, skew
@@ -21,8 +20,8 @@ class MeasureTransformer(ABC, BaseTransformer):
         x: X coordinate column name.
         y: Y coordinate column name.
         aoi: Area of Interest column name.
-        aoi: Area Of Interest column name(-s). If provided, features can be calculated inside
-            the specified AOI.
+        aoi: Area Of Interest column name(-s). If provided, features can be
+            calculated inside the specified AOI.
         pk: primary key.
         return_df: whether to return output as DataFrame or numpy array.
         feature_name: Column name for resulting feature.
@@ -45,8 +44,8 @@ class MeasureTransformer(ABC, BaseTransformer):
         assert X_len != 0, "Error: there are no fixations"
 
     @abstractmethod
-    def calculate_feature(self, X: pd.DataFrame) -> float:
-        raise NotImplementedError("Abstract method called")
+    def calculate_features(self, X: pd.DataFrame) -> Tuple[List[str], List[float]]:
+        pass
 
     def fit(self, X: pd.DataFrame, y=None):
         return self
@@ -56,16 +55,21 @@ class MeasureTransformer(ABC, BaseTransformer):
 
         group_names = []
         gathered_features = []
-        columns_names = [self.feature_name]
+        columns_names = []
 
         if self.pk is None:
             group_names.append("all")
-            gathered_features.append([self.calculate_feature(X)])
+            names, values = self.calculate_features(X)
+            columns_names = names
+            gathered_features.append(values)
         else:
             X_split = _split_dataframe(X, self.pk)
             for group, current_X in X_split:
                 group_names.append(group)
-                gathered_features.append([self.calculate_feature(current_X)])
+                names, values = self.calculate_features(current_X)
+                if not columns_names:
+                    columns_names = names
+                gathered_features.append(values)
 
         features_df = pd.DataFrame(
             data=gathered_features, columns=columns_names, index=group_names
@@ -74,15 +78,18 @@ class MeasureTransformer(ABC, BaseTransformer):
 
 
 class HurstExponent(MeasureTransformer):
-    """Approximates Hurst Exponent using R/S analysis.
+    r"""Approximates Hurst Exponent using R/S analysis.
 
     Args:
         x: coordinate column name (1D Hurst exponent currently available).
-        n_iters: number of iterations to complete. Note: data must be of length more than :math:`2^{n\_iters}`.
-        fill_strategy: how to make vector be length of power of :math:`2`. If "reduce", then all values
-            after :math:`2^k`-th are removed, where :math:`n < 2^{(k + 1)}`. Other strategies specify the value
-            to fill the vector with up to the closest power of :math:`2`, "mean" being the mean of vector, "last"
-            being the last value of vector (makes time-series constant at the end).
+        n_iters: number of iterations to complete. Note: data must be
+            of length more than :math:`2^{n\_iters}`.
+        fill_strategy: how to make vector be length of power of :math:`2`.
+            If "reduce", then all values after :math:`2^k`-th are removed,
+            where :math:`n < 2^{(k + 1)}`. Other strategies specify the value
+            to fill the vector up to the closest power of :math:`2`, "mean"
+            being the mean of vector, "last" being the last value
+            (makes time-series constant at the end).
         pk: list of column names used to split pd.DataFrame.
         eps: division epsilon.
         return_df: Return pd.Dataframe object else np.ndarray.
@@ -90,7 +97,7 @@ class HurstExponent(MeasureTransformer):
 
     def __init__(
         self,
-        x='x',
+        x="x",
         n_iters=10,
         fill_strategy: Literal["mean", "reduce", "last"] = "last",
         pk: List[str] = None,
@@ -136,8 +143,8 @@ class HurstExponent(MeasureTransformer):
         else:
             raise NotImplementedError
 
-    def calculate_feature(self, X: pd.DataFrame) -> float:
-        x = X[self.x].values / 1000  # TODO make in 2D
+    def calculate_features(self, X: pd.DataFrame) -> Tuple[List[str], List[float]]:
+        x = X[self.x].values
         x = self._make_pow2(x)
         n = len(x)
 
@@ -162,13 +169,14 @@ class HurstExponent(MeasureTransformer):
         # OLS
         rs = rs[:cnt]
         bs = bs[:cnt]
-        bs = np.vstack([np.ones(cnt), bs]).T
-        grad = (np.linalg.inv(bs.T @ bs) @ bs.T) @ np.log(rs)
+        # Hurst is slope of log(RS) vs log(n)
+        X_ols = np.vstack([np.ones(cnt), np.log(bs)]).T
+        grad = (np.linalg.inv(X_ols.T @ X_ols) @ X_ols.T) @ np.log(rs)
 
-        return grad[1]
+        return [self.feature_name], [grad[1]]
 
 
-class ShannonEntropy(BaseTransformer):
+class ShannonEntropy(MeasureTransformer):
     """Shannon Entropy."""
 
     def __init__(
@@ -177,54 +185,24 @@ class ShannonEntropy(BaseTransformer):
         pk: List[str] = None,
         return_df: bool = True,
     ):
-        super().__init__(pk=pk, return_df=return_df)
-        self.aoi = aoi
-        self.feature_name = f"shannon_entropy_aoi_{aoi}"
+        super().__init__(aoi=aoi, pk=pk, return_df=return_df, feature_name="entropy")
 
     def _check_init(self, X_len: int):
         assert self.aoi is not None, "Error: Provide aoi column"
         assert X_len != 0, "Error: there are no fixations"
 
-    def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
-        self._check_init(X_len=X.shape[0])
+    def calculate_features(self, X: pd.DataFrame) -> Tuple[List[str], List[float]]:
+        all_fix = X.shape[0]
+        aoi_probability = []
+        X_aoi = _split_dataframe(X, [self.aoi])
+        for aoi_group, current_aoi_X in X_aoi:
+            aoi_probability.append(current_aoi_X.shape[0] / all_fix)
 
-        features_names = ["entropy"]
-        group_names = []
+        entropy_val = 0
+        for p in aoi_probability:
+            entropy_val -= p * np.log2(p)
 
-        if self.pk is None:
-            group_names.append("all")
-            X_splited = _split_dataframe(X, [self.aoi])
-            all_fix = X.shape[0]
-            aoi_probability = []
-            for group, current_X in X_splited:
-                aoi_probability.append(current_X.shape[0] / all_fix)
-
-            entropy = 0
-            for p in aoi_probability:
-                entropy -= p * np.log2(p)
-
-            gathered_features = [[entropy]]
-        else:
-            X_splited = _split_dataframe(X, self.pk)
-            gathered_features = []
-            for group, current_X in X_splited:
-                group_names.append(group)
-                all_fix = current_X.shape[0]
-                aoi_probability = []
-                X_aoi = _split_dataframe(current_X, [self.aoi])
-                for aoi_group, current_aoi_X in X_aoi:
-                    aoi_probability.append(current_aoi_X.shape[0] / all_fix)
-
-                entropy = 0
-                for p in aoi_probability:
-                    entropy -= p * np.log2(p)
-
-                gathered_features.append([entropy])
-
-        features_df = pd.DataFrame(
-            data=gathered_features, columns=features_names, index=group_names
-        )
-        return features_df if self.return_df else features_df.values
+        return [self.feature_name], [entropy_val]
 
 
 class SpectralEntropy(MeasureTransformer):
@@ -243,12 +221,12 @@ class SpectralEntropy(MeasureTransformer):
         )
         self.aoi = aoi
 
-    def calculate_feature(self, X: pd.DataFrame) -> float:
+    def calculate_features(self, X: pd.DataFrame) -> Tuple[List[str], List[float]]:
         coords = [self.x, self.y]
         transformed_seq = ifft(X[coords].values)
         power_spectrum_seq = np.linalg.norm(transformed_seq, axis=1) ** 2
         proba_distribution = power_spectrum_seq / np.sum(power_spectrum_seq)
-        return entropy(proba_distribution)
+        return [self.feature_name], [entropy(proba_distribution)]
 
 
 class FuzzyEntropy(MeasureTransformer):
@@ -277,7 +255,7 @@ class FuzzyEntropy(MeasureTransformer):
         self.aoi = aoi
         self.eps = 1e-7
 
-    def calculate_feature(self, X: pd.DataFrame) -> float:
+    def calculate_features(self, X: pd.DataFrame) -> Tuple[List[str], List[float]]:
         n = 2 * len(X)
         phi_m = np.zeros(2)
         coords = [self.x, self.y]
@@ -291,7 +269,7 @@ class FuzzyEntropy(MeasureTransformer):
                 n - self.m - i
             )
 
-        return np.log(phi_m[0] / (phi_m[1] + self.eps))
+        return [self.feature_name], [np.log(phi_m[0] / (phi_m[1] + self.eps))]
 
 
 class SampleEntropy(MeasureTransformer):
@@ -324,7 +302,7 @@ class SampleEntropy(MeasureTransformer):
         self.aoi = aoi
         self.eps = 1e-6
 
-    def calculate_feature(self, X: pd.DataFrame) -> float:
+    def calculate_features(self, X: pd.DataFrame) -> Tuple[List[str], List[float]]:
         n = 2 * len(X)
         coords = [self.x, self.y]
         X_coord = X[coords].values.flatten()
@@ -334,7 +312,7 @@ class SampleEntropy(MeasureTransformer):
         X_emb = np.array([X_coord[j : j + self.m + 1] for j in range(n - self.m)])
         dist_matrix = squareform(pdist(X_emb, metric="chebyshev"))
         A = np.sum(np.sum(dist_matrix < self.r, axis=0) - 1)
-        return -np.log(A / (B + self.eps) + 1e-100)
+        return [self.feature_name], [-np.log(A / (B + self.eps) + 1e-100)]
 
 
 class IncrementalEntropy(MeasureTransformer):
@@ -349,11 +327,11 @@ class IncrementalEntropy(MeasureTransformer):
         return_df: bool = True,
     ):
         super().__init__(
-            x=x, y=y, pk=pk, return_df=return_df, feature_name=f"incremental_entropy"
+            x=x, y=y, pk=pk, return_df=return_df, feature_name="incremental_entropy"
         )
         self.aoi = aoi
 
-    def calculate_feature(self, X: pd.DataFrame) -> float:
+    def calculate_features(self, X: pd.DataFrame) -> Tuple[List[str], List[float]]:
         n = len(X)
         coords = [self.x, self.y]
         X_coord = X[coords].values.flatten()
@@ -363,7 +341,7 @@ class IncrementalEntropy(MeasureTransformer):
             hist = hist[hist > 0]
             incremental_entropies[i] = -np.sum(hist * np.log(hist))
 
-        return incremental_entropies.mean()
+        return [self.feature_name], [incremental_entropies.mean()]
 
 
 class GriddedDistributionEntropy(MeasureTransformer):
@@ -395,13 +373,13 @@ class GriddedDistributionEntropy(MeasureTransformer):
     def _check_init(self, X_len: int):
         assert X_len != 0, "Error: there are no fixations"
 
-    def calculate_feature(self, X: pd.DataFrame) -> float:
+    def calculate_features(self, X: pd.DataFrame) -> Tuple[List[str], List[float]]:
         coords = [self.x, self.y]
         X_coord = X[coords].values
         H, edges = np.histogramdd(X_coord, bins=self.grid_size)
         P = H / np.sum(H)
         P = P[P > 0]
-        return -np.sum(P * np.log(P))
+        return [self.feature_name], [-np.sum(P * np.log(P))]
 
 
 class PhaseEntropy(MeasureTransformer):
@@ -409,7 +387,8 @@ class PhaseEntropy(MeasureTransformer):
 
     Args:
         m: embedding dimension
-        tau: time delay for phase space reconstruction, the lag between each point in the phase space vectors.
+        tau: time delay for phase space reconstruction (lag between each
+            point in the phase space vectors).
     """
 
     def __init__(
@@ -433,7 +412,7 @@ class PhaseEntropy(MeasureTransformer):
         self.tau = tau
         self.aoi = aoi
 
-    def calculate_feature(self, X: pd.DataFrame) -> float:
+    def calculate_features(self, X: pd.DataFrame) -> Tuple[List[str], List[float]]:
         n = 2 * len(X)
         coords = [self.x, self.y]
         X_coord = X[coords].values.flatten()
@@ -446,7 +425,8 @@ class PhaseEntropy(MeasureTransformer):
         dist_matrix = squareform(pdist(X_emb, metric="euclidean"))
         prob_dist = np.histogram(dist_matrix, bins="auto", density=True)[0]
         prob_dist = prob_dist[prob_dist > 0]
-        return -np.sum(prob_dist * np.log(prob_dist))
+        entropy = -np.sum(prob_dist * np.log(prob_dist))
+        return [self.feature_name], [entropy]
 
 
 class LyapunovExponent(MeasureTransformer):
@@ -489,7 +469,7 @@ class LyapunovExponent(MeasureTransformer):
             ]
         )
 
-    def calculate_feature(self, X: pd.DataFrame) -> float:
+    def calculate_features(self, X: pd.DataFrame) -> Tuple[List[str], List[float]]:
         coords = [self.x, self.y]
         X_coord = X[coords].values.flatten()
         X_emb = self.build_embedding(X_coord)
@@ -511,7 +491,8 @@ class LyapunovExponent(MeasureTransformer):
             if distances:
                 divergence.append(np.mean(distances))
 
-        return np.mean(divergence) / self.T if divergence else np.inf
+        val = np.mean(divergence) / self.T if divergence else np.inf
+        return [self.feature_name], [val]
 
 
 class FractalDimension(MeasureTransformer):
@@ -551,7 +532,7 @@ class FractalDimension(MeasureTransformer):
             ]
         )
 
-    def calculate_feature(self, X: pd.DataFrame) -> float:
+    def calculate_features(self, X: pd.DataFrame) -> Tuple[List[str], List[float]]:
         coords = [self.x, self.y]
         X_coord = X[coords].values.flatten()
         X_emb = self.build_embedding(X_coord)
@@ -566,7 +547,7 @@ class FractalDimension(MeasureTransformer):
             counts.append(len(unique_boxes))
 
         coeffs = np.polyfit(np.log(box_sizes), np.log(counts), 1)
-        return -coeffs[0]
+        return [self.feature_name], [-coeffs[0]]
 
 
 class CorrelationDimension(MeasureTransformer):
@@ -610,7 +591,7 @@ class CorrelationDimension(MeasureTransformer):
             ]
         )
 
-    def calculate_feature(self, X: pd.DataFrame) -> float:
+    def calculate_features(self, X: pd.DataFrame) -> Tuple[List[str], List[float]]:
         coords = [self.x, self.y]
         X_coord = X[coords].values.flatten()
         X_emb = self.build_embedding(X_coord)
@@ -619,18 +600,18 @@ class CorrelationDimension(MeasureTransformer):
         count = np.sum(dist_matrix < self.r) - len(dist_matrix)
 
         corr_dim = np.log(self.eps + count / len(dist_matrix)) / np.log(self.r)
-        return corr_dim
+        return [self.feature_name], [corr_dim]
 
 
-class RQAMeasures(BaseTransformer):
-    """Calculates Recurrence (REC), Determinism (DET), Laminarity (LAM) and Center of Recurrence Mass (CORM) measures.
+class RQAMeasures(MeasureTransformer):
+    """Calculates REC, DET, LAM and CORM measures.
     These are parts of the Recurrence Quantification Analysis.
 
     Args:
         metric: callable metric on R^2 points
         rho: threshold radius for RQA matrix
         min_length: min length of lines
-        measures: list of measure to calculate (corresponding str)
+        measures: list of measure to calculate.
     """
 
     def __init__(
@@ -645,7 +626,7 @@ class RQAMeasures(BaseTransformer):
         pk: List[str] = None,
         return_df: bool = True,
     ):
-        super().__init__(x=x, y=y, pk=pk, return_df=return_df)
+        super().__init__(x=x, y=y, pk=pk, return_df=return_df, feature_name="rqa")
         self.rho = rho
         self.metric = metric
         self.min_length = min_length
@@ -659,19 +640,18 @@ class RQAMeasures(BaseTransformer):
         assert self.rho is not None, "Error: rho must be a float"
         assert self.min_length is not None, "Error: min_length must be an integer"
 
-    def fit(self, X: pd.DataFrame, y=None):
-        return self
-
-    def calculate_measures(self, X: pd.DataFrame) -> List[float]:
+    def calculate_features(self, X: pd.DataFrame) -> Tuple[List[str], List[float]]:
         columns, features = [], []
         rqa_matrix = get_rqa(X, self.x, self.y, self.metric, self.rho)
         n = rqa_matrix.shape[0]
         r = np.sum(np.triu(rqa_matrix, k=1)) + self.eps
 
         if "rec" in self.measures:
-            columns.append(
-                f"rec_metric_{self.metric.__name__}_length_{self.min_length}_rho_{self.rho}"
+            f_name = (
+                f"rec_metric_{self.metric.__name__}_length_"
+                f"{self.min_length}_rho_{self.rho}"
             )
+            columns.append(f_name)
             features.append(100 * 2 * r / (n * (n - 1)))
 
         if "det" in self.measures:
@@ -713,32 +693,6 @@ class RQAMeasures(BaseTransformer):
             features.append(100 * corm_num / ((n - 1) * r))
 
         return columns, features
-
-    def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
-        self._check_init(X_len=X.shape[0])
-
-        columns_names = []
-        gathered_features = []
-        group_names = []
-
-        if self.pk is None:
-            group_names.append("all")
-            cur_names, cur_features = self.calculate_measures(X)
-            columns_names.extend(cur_names)
-            gathered_features.extend(cur_features)
-        else:
-            X_splited = _split_dataframe(X, self.pk)
-            for group, current_X in X_splited:
-                group_names.append(group)
-                cur_names, cur_features = self.calculate_measures(current_X)
-                if len(columns_names) == 0:
-                    columns_names.extend(cur_names)
-                gathered_features.extend([cur_features])
-
-        features_df = pd.DataFrame(
-            data=gathered_features, columns=columns_names, index=group_names
-        )
-        return features_df if self.return_df else features_df.values
 
 
 class SaccadeUnlikelihood(MeasureTransformer):
@@ -822,23 +776,24 @@ class SaccadeUnlikelihood(MeasureTransformer):
         )
         return progression_proba + regression_proba
 
-    def calculate_features(self, X: pd.DataFrame) -> List[float]:
+    def calculate_features(self, X: pd.DataFrame) -> Tuple[List[str], List[float]]:
         nll = 0
         coords = [self.x, self.y]
         X_sac_len = np.linalg.norm(X[coords].diff().values[1:], axis=1)
         for s_len in X_sac_len:
             p_s = self.calculate_saccade_proba(s_len)
-            nll -= np.log(p_s)
-        return nll
+            nll -= np.log(p_s) if p_s > 1e-15 else -30.0
+        return [self.feature_name], [nll]
 
 
-class HHTFeatures(BaseTransformer):
+class HHTFeatures(MeasureTransformer):
     """Hilbert-Huang Transform.
 
     Args:
         max_imfs: maximum number of intrinsic mode functions (IMFs) to extract
-        features: list of features to extract from the HHT (aggregation functions, special features)
-            List of special functions: ['entropy', 'energy', 'dom_freq', 'sample_entropy', 'complexity_index']
+        features: features to extract from the HHT.
+            Special functions: ['entropy', 'energy', 'dom_freq',
+            'sample_entropy', 'complexity_index'].
 
     Returns:
         features extracted from the HHT
@@ -854,7 +809,7 @@ class HHTFeatures(BaseTransformer):
         pk: List[str] = None,
         return_df: bool = True,
     ):
-        super().__init__(x=x, y=y, pk=pk, return_df=return_df)
+        super().__init__(x=x, y=y, pk=pk, return_df=return_df, feature_name="hht")
         self.max_imfs = max_imfs
         self.features = features
         self.aoi = aoi
@@ -883,11 +838,8 @@ class HHTFeatures(BaseTransformer):
         for feature in self.features:
             assert feature in self._feature_mapping, f"Error: unknown feature {feature}"
 
-    def fit(self, X: pd.DataFrame, y=None):
-        return self
-
     def dominant_freq(self, imf_data: np.ndarray) -> List[float]:
-        """Calculates dominant frequency of the intrinsic mode functions (IMFs) using FFT.
+        """Calculates dominant frequency of the IMFs using FFT.
 
         Args:
             imf_data: intrinsic mode functions (IMFs) data
@@ -903,7 +855,7 @@ class HHTFeatures(BaseTransformer):
         return dom_freq
 
     def coarse_grain(self, imf_data: np.ndarray, scale: int = 5) -> np.ndarray:
-        """Calculates coarse-grained standard deviation of the intrinsic mode functions (IMFs).
+        """Calculates coarse-grained std of the IMFs.
 
         Args:
             imf_data: intrinsic mode functions (IMFs) data
@@ -974,7 +926,7 @@ class HHTFeatures(BaseTransformer):
             cis.append(ci)
         return cis
 
-    def calculate_features(self, data: pd.DataFrame) -> List[float]:
+    def calculate_features(self, data: pd.DataFrame) -> Tuple[List[str], List[float]]:
         """Feature extraction from the HHT.
 
         Args:
@@ -1000,27 +952,3 @@ class HHTFeatures(BaseTransformer):
             )
 
         return columns_names, gathered_features
-
-    def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, np.ndarray]:
-        self._check_init(X_len=X.shape[0])
-
-        columns_names = []
-        gathered_features = []
-        group_names = []
-
-        if self.pk is None:
-            group_names.append("all")
-            columns_names, gathered_features = self.calculate_features(X)
-        else:
-            X_splited = _split_dataframe(X, self.pk)
-            for group, current_X in X_splited:
-                group_names.append(group)
-                cur_names, cur_features = self.calculate_features(current_X)
-                if len(columns_names) == 0:
-                    columns_names.extend(cur_names)
-                gathered_features.extend([cur_features])
-
-        features_df = pd.DataFrame(
-            data=gathered_features, columns=columns_names, index=group_names
-        )
-        return features_df if self.return_df else features_df.values

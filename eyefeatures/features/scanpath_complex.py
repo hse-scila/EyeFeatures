@@ -2,7 +2,6 @@ from typing import Callable, Dict, List, Union
 
 import numpy as np
 import pandas as pd
-from numba import jit
 from numpy.typing import NDArray
 from scipy.cluster.hierarchy import leaves_list, linkage, optimal_leaf_ordering
 from scipy.linalg import sqrtm
@@ -35,14 +34,16 @@ def get_expected_path(
         data: input Dataframe with fixations.
         x: X coordinate column name.
         y: Y coordinate column name.
-        path_pk: List of column names of groups to calculate expected path (must be a subset of pk).
+        path_pk: List of column names of groups to calculate
+            expected path (must be a subset of pk).
         pk: List of column names used to split pd.Dataframe.
         method: method to calculate expected path ("mean" or "fwp").
         duration: Column name of fixations duration if needed.
         return_df: Return pd.Dataframe object else np.ndarray.
 
     Returns:
-        Dict of groups and Union[pd.Dataframe, np.ndarray] of form (x_est, y_est) or (x_est, y_est, duration_est).
+        Dict of groups and Union[pd.Dataframe, np.ndarray] of
+        form (x_est, y_est) or (x_est, y_est, duration_est).
     """
 
     if not set(path_pk).issubset(set(pk)):
@@ -114,7 +115,7 @@ def _get_fill_path(
     """Calculates fill path as expected path of given expected paths
 
     Args:
-        data: input Dataframe with fixations.
+        data: list of Dataframes with fixations.
         x: X coordinate column name.
         y: Y coordinate column name.
         method: method to calculate expected path ("mean" or "fwp").
@@ -122,19 +123,20 @@ def _get_fill_path(
     """
 
     paths = pd.concat(
-        [path.assign(dummy=k) for k, path in enumerate(data)], ignore_index=True
+        [path.assign(__dummy_id__=k) for k, path in enumerate(data)], ignore_index=True
     )
+    paths = paths.assign(__dummy_all__="__dummy_key__")
 
     fill_path = get_expected_path(
         data=paths,
         x=x,
         y=y,
-        path_pk=["dummy"],
-        pk=["dummy"],
+        path_pk=["__dummy_all__"],
+        pk=["__dummy_id__", "__dummy_all__"],
         method=method,
         duration=duration,
     )
-    return list(fill_path.values())[0]
+    return fill_path["__dummy_key__"]
 
 
 # ======================== SIMILARITY MATRIX ========================

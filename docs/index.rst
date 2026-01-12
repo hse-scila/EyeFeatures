@@ -12,3 +12,4 @@ Eyetracking Features Library
    quickstart
    api/index
    contribution
+   changelog

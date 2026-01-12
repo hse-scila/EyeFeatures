@@ -2,9 +2,11 @@ from typing import Callable, Dict, Optional, Tuple, Union
 
 import pytorch_lightning as pl
 import torch
+import torchmetrics
 from torch import nn
 from torch.nn import functional as F
-from torch_geometric.nn import GCNConv, GINConv, global_mean_pool
+from torch_geometric.nn import GCNConv, GINConv
+from torch_geometric.utils import global_mean_pool
 from tqdm import tqdm
 
 
@@ -20,7 +22,8 @@ class VGGBlock(nn.Module):
         stride: (int, optional) Stride for the convolution layer. Default is 1.
 
     Returns:
-        Output tensor after applying the convolution, batch normalization, and ReLU activation.
+        Output tensor after applying the convolution, batch normalization, and
+            ReLU activation.
     """
 
     def __init__(
@@ -44,7 +47,8 @@ class VGGBlock(nn.Module):
 
 
 class ResnetBlock(nn.Module):
-    """A ResNet-style residual block consisting of two convolution layers with skip connections.
+    """A ResNet-style residual block consisting of two convolution layers
+        with skip connections.
 
     Args:
         in_channels (int): Number of input channels.
@@ -100,11 +104,14 @@ class InceptionBlock(nn.Module):
     Args:
         in_channels: (int) Number of input channels.
         ch1x1: (int) Number of output channels for the 1x1 convolution branch.
-        ch3x3_reduce: (int) Number of output channels for the 1x1 convolution before the 3x3 convolution.
+        ch3x3_reduce: (int) Number of output channels for the 1x1 convolution
+            before the 3x3 convolution.
         ch3x3: (int) Number of output channels for the 3x3 convolution branch.
-        ch5x5_reduce: (int) Number of output channels for the 1x1 convolution before the 5x5 convolution.
+        ch5x5_reduce: (int) Number of output channels for the 1x1 convolution
+            before the 5x5 convolution.
         ch5x5: (int) Number of output channels for the 5x5 convolution branch.
-        pool_proj: (int) Number of output channels for the 1x1 convolution after the max pooling branch.
+        pool_proj: (int) Number of output channels for the 1x1 convolution after
+            the max pooling branch.
 
     Returns:
         Concatenated output tensor from all branches.
@@ -157,7 +164,8 @@ class DSCBlock(nn.Module):
         padding: (int, optional) Padding for the convolution layers. Default is 1.
 
     Returns:
-        Output tensor after applying depthwise and pointwise convolutions, batch normalization, and ReLU activation.
+        Output tensor after applying depthwise and pointwise convolutions,
+        batch normalization, and ReLU activation.
     """
 
     def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, padding=1):
@@ -199,9 +207,11 @@ def create_simple_CNN(
     """Creates a simple CNN based on the provided configuration.
 
     Args:
-        config: (Dict) Configuration dictionary where each key represents a layer/block and its corresponding parameters.
+        config: (Dict) Configuration dictionary where each key represents
+            a layer/block and its corresponding parameters.
         in_channels: (int) Number of input channels for the first layer.
-        shape: (Tuple[int, int], optional) Input shape for the CNN. If provided, checks that the final output shape is valid.
+        shape: (Tuple[int, int], optional) Input shape for the CNN. If provided,
+            checks that the final output shape is valid.
 
     Returns: (nn.Sequential, Tuple[int, int]) or nn.Sequential
         cnn: (nn.Sequential)
@@ -229,8 +239,9 @@ def create_simple_CNN(
                 )
                 if shape[0] < 1 or shape[1] < 1:
                     raise ValueError(
-                        """Your CNN backbone is too large for the input shape! 
-                    Increase resolution or consider reducing the number of layers/removing stride/adding padding."""
+                        """Your CNN backbone is too large for the input shape!
+                        Increase resolution or consider reducing the number of
+                        layers/removing stride/adding padding."""
                     )
         else:
             module = _blocks[block_type](in_channels=in_channels, **params)
@@ -248,6 +259,23 @@ def create_simple_CNN(
 
 
 class SimpleRNN(nn.Module):
+    """A simple recurrent neural network (RNN) module
+    that supports RNN, LSTM, and GRU architectures.
+
+    Args:
+        rnn_type: (str) Type of RNN ('RNN', 'LSTM', or 'GRU').
+        input_size: (int) Number of input features.
+        hidden_size: (int) Number of hidden units.
+        num_layers: (int, optional) Number of RNN layers. Default is 1.
+        bidirectional: (bool, optional) Whether the RNN is bidirectional.
+            Default is False.
+        pre_rnn_linear_size: (int, optional) Size of the optional linear layer
+            before the RNN.
+
+    Returns:
+        Output tensor after the RNN and fully connected layer.
+    """
+
     def __init__(
         self,
         rnn_type,
@@ -257,20 +285,6 @@ class SimpleRNN(nn.Module):
         bidirectional=False,
         pre_rnn_linear_size=None,
     ):
-        """A simple recurrent neural network (RNN) module
-        that supports RNN, LSTM, and GRU architectures.
-
-        Args:
-            rnn_type: (str) Type of RNN ('RNN', 'LSTM', or 'GRU').
-            input_size: (int) Number of input features.
-            hidden_size: (int) Number of hidden units.
-            num_layers: (int, optional) Number of RNN layers. Default is 1.
-            bidirectional: (bool, optional) Whether the RNN is bidirectional. Default is False.
-            pre_rnn_linear_size: (int, optional) Size of the optional linear layer before the RNN.
-
-        Returns:
-            Output tensor after the RNN and fully connected layer.
-        """
         super(SimpleRNN, self).__init__()
         self.hidden_size = hidden_size
         self.num_layers = num_layers
@@ -279,7 +293,7 @@ class SimpleRNN(nn.Module):
         # Optional linear layer before the RNN
         if pre_rnn_linear_size is not None:
             self.pre_rnn_linear = nn.Linear(input_size, pre_rnn_linear_size)
-            self.input_size = pre_rnn_linear_size  # Update input_size for the RNN layer
+            self.input_size = pre_rnn_linear_size  # for the RNN layer
         else:
             self.pre_rnn_linear = None
             self.input_size = input_size  # Original input size
@@ -314,7 +328,7 @@ class SimpleRNN(nn.Module):
                 f"Unsupported rnn_type: {rnn_type}. Choose from 'RNN', 'LSTM', 'GRU'."
             )
 
-    def forward(self, sequences, lengths):
+    def forward(self, sequences, lengths, return_all=False):
         # Apply the optional linear layer before the RNN
         x = sequences
         if self.pre_rnn_linear is not None:
@@ -329,9 +343,13 @@ class SimpleRNN(nn.Module):
         packed_out, hidden = self.rnn(packed_x)
 
         # Unpack the sequence
-        # out, _ = nn.utils.rnn.pad_packed_sequence(packed_out, batch_first=True)
+        out, _ = nn.utils.rnn.pad_packed_sequence(packed_out, batch_first=True)
 
-        # If the RNN is bidirectional, concatenate the hidden states from both directions
+        if return_all:
+            return out, hidden
+
+        # If the RNN is bidirectional, concatenate the hidden states
+        # from both directions
         if self.bidirectional:
             if isinstance(
                 hidden, tuple
@@ -356,9 +374,12 @@ class VitNet(nn.Module):
     Args:
         CNN: (nn.Module) CNN backbone for processing image data.
         RNN: (nn.Module) RNN backbone for processing sequence data.
-        fusion_mode: (str, optional) Fusion mode ('concat' or 'add'). Default is 'concat'.
-        activation: (nn.Module, optional) Activation function applied after fusion. Default is None.
-        embed_dim: (int, optional) Embedding dimension for the projected features. Default is 128.
+        fusion_mode: (str, optional) Fusion mode ('concat' or 'add'). Default
+            is 'concat'.
+        activation: (nn.Module, optional) Activation function applied after
+            fusion. Default is None.
+        embed_dim: (int, optional) Embedding dimension for the projected
+            features. Default is 128.
     """
 
     def __init__(self, CNN, RNN, fusion_mode="concat", activation=None, embed_dim=32):
@@ -368,20 +389,17 @@ class VitNet(nn.Module):
         self.fusion_mode = fusion_mode
         self.activation = activation
         self.image_proj = nn.LazyLinear(embed_dim)
+        self.seq_proj = nn.LazyLinear(embed_dim)
         self.rnn_proj = nn.LazyLinear(embed_dim)
         self.flat = nn.Flatten()
 
     def forward(self, images, sequences, lengths):
         x_1 = self.image_proj(self.flat(self.CNN(images)))
 
-        projected_sequences = self.rnn_projection(sequences)
-        packed_input = nn.utils.rnn.pack_padded_sequence(
-            projected_sequences, lengths, batch_first=True, enforce_sorted=False
-        )
-        packed_output, x_2 = self.RNN(packed_input)
-        _, _ = nn.utils.rnn.pad_packed_sequence(
-            packed_output, batch_first=True, padding_value=0
-        )
+        projected_sequences = self.seq_proj(sequences)
+        # SimpleRNN.forward takes (sequences, lengths)
+        x_2_raw = self.RNN(projected_sequences, lengths)
+        x_2 = self.rnn_proj(x_2_raw)
 
         if self.fusion_mode == "add":
             x = x_1 + x_2
@@ -407,18 +425,20 @@ class VitNetWithCrossAttention(VitNet):
         RNN: (nn.Module) RNN backbone for processing sequence data.
         input_dim: (int) Input dimension for the RNN.
         projected_dim: (int) Dimension of the projected sequence representation.
-        cross_attention_fusion_mode: (str, optional) Fusion mode after cross-attention ('concat' or 'add'). Default is 'concat'.
-        activation: (nn.Module, optional) Activation function applied after fusion. Default is None.
-        embed_dim: (int, optional) Embedding dimension for the projected features. Default is 128.
-        return_attention_weights: (bool, optional) Whether to return attention weights. Default is False.
+        cross_attention_fusion_mode: (str, optional) Fusion mode after
+            cross-attention ('concat' or 'add'). Default is 'concat'.
+        activation: (nn.Module, optional) Activation function applied after
+            fusion. Default is None.
+        embed_dim: (int, optional) Embedding dimension for the projected features.
+            Default is 128.
+        return_attention_weights: (bool, optional) Whether to return attention
+            weights. Default is False.
     """
 
     def __init__(
         self,
         CNN,
         RNN,
-        input_dim: int,
-        projected_dim: int,
         cross_attention_fusion_mode="concat",
         activation=None,
         embed_dim=128,
@@ -427,8 +447,6 @@ class VitNetWithCrossAttention(VitNet):
         super(VitNetWithCrossAttention, self).__init__(
             CNN,
             RNN,
-            input_dim,
-            projected_dim,
             fusion_mode="concat",
             activation=activation,
             embed_dim=embed_dim,
@@ -439,30 +457,28 @@ class VitNetWithCrossAttention(VitNet):
         self.padding_idx = RNN.padding_idx
 
     def forward(self, images, sequences, lengths):
-        # First, run the parent class's forward method to get the basic fusion output
-        x = super().forward(images, sequences, lengths)
+        # Get base fusion output
+        x_base = super().forward(images, sequences, lengths)
 
-        # Cross-attention mechanism
-        x_1 = self.image_proj(self.CNN(images))
-        projected_sequences = self.sequence_projection(sequences)
-        packed_input = nn.utils.rnn.pack_padded_sequence(
-            projected_sequences, lengths, batch_first=True, enforce_sorted=False
-        )
-        packed_output, _ = self.RNN(packed_input)
-        all_hidden, _ = nn.utils.rnn.pad_packed_sequence(
-            packed_output, batch_first=True, padding_value=0
-        )
+        # x_img is projected image features from parent
+        x_img = self.image_proj(self.flat(self.CNN(images)))
 
-        query = self.image_proj(x_1).unsqueeze(0)  # (1, batch_size, embed_dim)
+        projected_sequences = self.seq_proj(sequences)
+        # We need all hidden states for cross attention
+        all_hidden, _ = self.RNN(projected_sequences, lengths, return_all=True)
+
+        query = x_img.unsqueeze(0)  # (1, batch_size, embed_dim)
+        # Project all hidden states to embed_dim for attention
         key = self.rnn_proj(all_hidden).transpose(0, 1)
+        value = key
         key_padding_mask = sequences[:, :, 0] == self.padding_idx
         context_vector, attention_weights = self.cross_attention_layer(
-            query, key, key, key_padding_mask=key_padding_mask
+            query, key, value, key_padding_mask=key_padding_mask
         )
 
         output = context_vector.squeeze(0)
         if self.cross_attention_fusion_mode == "concat":
-            x = torch.cat([x, output], dim=1)
+            x = torch.cat([x_base, output], dim=1)
         else:
             x = output
 
@@ -485,7 +501,8 @@ class GCN(torch.nn.Module):
         embedding_dim: (int) Dimensionality of the learnable node embeddings.
         layer_sizes: (List[int]) List of hidden layer sizes for each GCN layer.
         out_channels: (int) Number of output channels.
-        use_embeddings: (bool, optional) Whether to use learnable embeddings. Default is True.
+        use_embeddings: (bool, optional) Whether to use learnable embeddings.
+            Default is True.
 
     Returns:
         Output tensor after graph convolutions and global mean pooling.
@@ -562,12 +579,12 @@ class GIN(torch.nn.Module):
 
         self.convs = torch.nn.ModuleList()  # List of GIN layers
         for hidden_channels in layer_sizes:
-            nn = nn.Sequential(
-                nn.Linear(in_channels, hidden_channels),
-                nn.ReLU(),
-                nn.Linear(hidden_channels, hidden_channels),
+            mlp = torch.nn.Sequential(
+                torch.nn.Linear(in_channels, hidden_channels),
+                torch.nn.ReLU(),
+                torch.nn.Linear(hidden_channels, hidden_channels),
             )
-            self.convs.append(GINConv(nn))
+            self.convs.append(GINConv(mlp))
             in_channels = hidden_channels  # Update in_channels for next layer
 
     def forward(self, graphs):
@@ -593,15 +610,23 @@ class BaseModel(pl.LightningModule):
     with optional custom optimizer and scheduler.
 
     Args:
-        backbone: (Union[nn.ModuleList, nn.Module]) The feature extraction backbone model.
+        backbone: (Union[nn.ModuleList, nn.Module]) The feature extraction
+            backbone model.
         output_size: (int) Size of the final output layer.
-        hidden_layers: (Tuple, optional) Tuple of hidden layer sizes. Default is empty.
-        activation: (nn.Module, optional) Activation function to apply between layers. Default is ReLU.
-        learning_rate: (float, optional) Learning rate for the optimizer. Default is 1e-3.
-        optimizer_class: (Callable, optional) Optimizer class to use. Default is AdamW.
-        optimizer_params: (dict, optional) Additional parameters for the optimizer. Default is None.
-        scheduler_class: (Callable, optional) Scheduler class to use. Default is None.
-        scheduler_params: (dict, optional) Additional parameters for the scheduler. Default is None.
+        hidden_layers: (Tuple, optional) Tuple of hidden layer sizes. Default
+            is empty.
+        activation: (nn.Module, optional) Activation function to apply between
+            layers. Default is ReLU.
+        learning_rate: (float, optional) Learning rate for the optimizer.
+            Default is 1e-3.
+        optimizer_class: (Callable, optional) Optimizer class to use. Default
+            is AdamW.
+        optimizer_params: (dict, optional) Additional parameters for the
+            optimizer. Default is None.
+        scheduler_class: (Callable, optional) Scheduler class to use.
+            Default is None.
+        scheduler_params: (dict, optional) Additional parameters for the
+            scheduler. Default is None.
         loss_fn: (Callable, optional) Loss function to use. Default is None.
 
     Returns:
@@ -630,7 +655,6 @@ class BaseModel(pl.LightningModule):
         for hidden_units in hidden_layers:
             modules.append(nn.LazyLinear(hidden_units))
             modules.append(activation)
-            in_features = hidden_units
         modules.append(nn.LazyLinear(output_size))
         self.head = nn.ModuleList(modules)
 
@@ -646,10 +670,17 @@ class BaseModel(pl.LightningModule):
         self.flat = nn.Flatten()
 
     def forward(self, x):
-        if isinstance(self.backbone, nn.Sequential):
-            x = self.backbone(*x.values())
+        if isinstance(x, dict):
+            if isinstance(self.backbone, nn.Sequential):
+                if len(x) == 1:
+                    x = self.backbone(next(iter(x.values())))
+                else:
+                    x = self.backbone(*x.values())
+            else:
+                x = self.backbone(**x)
         else:
-            x = self.backbone(**x)
+            x = self.backbone(x)
+
         if len(x.size()) == 4:
             x = self.flat(x)
         for layer in self.head:
@@ -671,21 +702,16 @@ class BaseModel(pl.LightningModule):
         y = batch.pop("y")
         out = self(batch)
         loss = self.loss_fn(out, y)
-        self.log("train_loss", loss, on_step=False, on_epoch=True, prog_bar=True)
+        if getattr(self, "_trainer", None) is not None:
+            self.log("train_loss", loss, on_step=False, on_epoch=True, prog_bar=True)
         return loss
 
     def validation_step(self, batch, batch_idx):
         y = batch.pop("y")
         out = self(batch)
         loss = self.loss_fn(out, y)
-        self.log("valid_loss", loss, on_step=False, on_epoch=True, prog_bar=True)
-
-
-from typing import Callable, Optional, Tuple, Union
-
-import torch
-import torch.nn as nn
-import torchmetrics
+        if getattr(self, "_trainer", None) is not None:
+            self.log("valid_loss", loss, on_step=False, on_epoch=True, prog_bar=True)
 
 
 class Classifier(BaseModel):
@@ -693,15 +719,23 @@ class Classifier(BaseModel):
     with additional accuracy, precision, recall, and F1-score tracking.
 
     Args:
-        backbone: (Union[nn.ModuleList, nn.Module]) The feature extraction backbone model.
+        backbone: (Union[nn.ModuleList, nn.Module]) The feature extraction
+            backbone model.
         n_classes: (int) Number of output classes.
-        classifier_hidden_layers: (Tuple, optional) Tuple of hidden layer sizes for the classifier. Default is empty.
-        classifier_activation: (nn.Module, optional) Activation function to use in the classifier. Default is ReLU.
-        learning_rate: (float, optional) Learning rate for the optimizer. Default is 1e-3.
-        optimizer_class: (Callable, optional) Optimizer class to use. Default is AdamW.
-        optimizer_params: (dict, optional) Additional parameters for the optimizer. Default is None.
-        scheduler_class: (Callable, optional) Scheduler class to use. Default is None.
-        scheduler_params: (dict, optional) Additional parameters for the scheduler. Default is None.
+        classifier_hidden_layers: (Tuple, optional) Tuple of hidden layer
+            sizes for the classifier. Default is empty.
+        classifier_activation: (nn.Module, optional) Activation function
+            to use in the classifier. Default is ReLU.
+        learning_rate: (float, optional) Learning rate for the optimizer.
+            Default is 1e-3.
+        optimizer_class: (Callable, optional) Optimizer class to use.
+            Default is AdamW.
+        optimizer_params: (dict, optional) Additional parameters for the
+            optimizer. Default is None.
+        scheduler_class: (Callable, optional) Scheduler class to use. Default
+            is None.
+        scheduler_params: (dict, optional) Additional parameters for the
+            scheduler. Default is None.
 
     Returns:
         Output logits after the forward pass through the classifier.
@@ -793,45 +827,54 @@ class Classifier(BaseModel):
         macro_f1 = self.macro_f1(logits, y)
 
         # Log loss and accuracy
-        self.log("valid_loss", loss, on_step=False, on_epoch=True, prog_bar=True)
-        self.log("val_acc_step", accu, on_step=False, on_epoch=True, prog_bar=False)
+        if getattr(self, "_trainer", None) is not None:
+            self.log("valid_loss", loss, on_step=False, on_epoch=True, prog_bar=True)
+            self.log("val_acc_step", accu, on_step=False, on_epoch=True, prog_bar=False)
 
         # Log precision, recall, and F1-score for each class
-        for i in range(len(precision)):
-            self.log(
-                f"val_precision_class_{i}",
-                precision[i],
-                on_step=False,
-                on_epoch=True,
-                prog_bar=False,
-            )
-            self.log(
-                f"val_recall_class_{i}",
-                recall[i],
-                on_step=False,
-                on_epoch=True,
-                prog_bar=False,
-            )
-            self.log(
-                f"val_f1_class_{i}", f1[i], on_step=False, on_epoch=True, prog_bar=False
-            )
+        if getattr(self, "_trainer", None) is not None:
+            for i in range(len(precision)):
+                self.log(
+                    f"val_precision_class_{i}",
+                    precision[i],
+                    on_step=False,
+                    on_epoch=True,
+                    prog_bar=False,
+                )
+                self.log(
+                    f"val_recall_class_{i}",
+                    recall[i],
+                    on_step=False,
+                    on_epoch=True,
+                    prog_bar=False,
+                )
+                self.log(
+                    f"val_f1_class_{i}",
+                    f1[i],
+                    on_step=False,
+                    on_epoch=True,
+                    prog_bar=False,
+                )
 
         # Log macro averages
-        self.log(
-            "val_macro_precision",
-            macro_precision,
-            on_step=False,
-            on_epoch=True,
-            prog_bar=False,
-        )
-        self.log(
-            "val_macro_recall",
-            macro_recall,
-            on_step=False,
-            on_epoch=True,
-            prog_bar=False,
-        )
-        self.log("val_macro_f1", macro_f1, on_step=False, on_epoch=True, prog_bar=False)
+        if getattr(self, "_trainer", None) is not None:
+            self.log(
+                "val_macro_precision",
+                macro_precision,
+                on_step=False,
+                on_epoch=True,
+                prog_bar=False,
+            )
+            self.log(
+                "val_macro_recall",
+                macro_recall,
+                on_step=False,
+                on_epoch=True,
+                prog_bar=False,
+            )
+            self.log(
+                "val_macro_f1", macro_f1, on_step=False, on_epoch=True, prog_bar=False
+            )
 
 
 class Regressor(BaseModel):
@@ -839,15 +882,23 @@ class Regressor(BaseModel):
     using mean squared error loss.
 
     Args:
-        backbone: (Union[nn.ModuleList, nn.Module]) The feature extraction backbone model.
+        backbone: (Union[nn.ModuleList, nn.Module]) The feature extraction
+            backbone model.
         output_dim: (int) Dimensionality of the regression output.
-        regressor_hidden_layers: (Tuple, optional) Tuple of hidden layer sizes for the regressor. Default is empty.
-        regressor_activation: (nn.Module, optional) Activation function to use in the regressor. Default is ReLU.
-        learning_rate: (float, optional) Learning rate for the optimizer. Default is 1e-3.
-        optimizer_class: (Callable, optional) Optimizer class to use. Default is AdamW.
-        optimizer_params: (dict, optional) Additional parameters for the optimizer. Default is None.
-        scheduler_class: (Callable, optional) Scheduler class to use. Default is None.
-        scheduler_params: (dict, optional) Additional parameters for the scheduler. Default is None.
+        regressor_hidden_layers: (Tuple, optional) Tuple of hidden layer
+            sizes for the regressor. Default is empty.
+        regressor_activation: (nn.Module, optional) Activation function
+            to use in the regressor. Default is ReLU.
+        learning_rate: (float, optional) Learning rate for the optimizer.
+            Default is 1e-3.
+        optimizer_class: (Callable, optional) Optimizer class to use.
+            Default is AdamW.
+        optimizer_params: (dict, optional) Additional parameters for the
+            optimizer. Default is None.
+        scheduler_class: (Callable, optional) Scheduler class to use.
+            Default is None.
+        scheduler_params: (dict, optional) Additional parameters for
+            the scheduler. Default is None.
 
     Returns:
         Regression output after the forward pass.

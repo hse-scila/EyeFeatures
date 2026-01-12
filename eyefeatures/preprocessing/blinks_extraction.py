@@ -513,7 +513,7 @@ def detect_blinks_eo(
         # Width of peak
         width = properties["widths"][i]
 
-        ### Compute opening/closing velocity
+        # Compute opening/closing velocity
         # First eye opening velocity (when eyelid opens after a blink)
         peak_right_idx = np.nanargmax(
             eye_openness_signal_vel[peak_idx : int(peak_idx + width)]
