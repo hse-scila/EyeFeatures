@@ -5,8 +5,7 @@ import torch
 import torchmetrics
 from torch import nn
 from torch.nn import functional as F
-from torch_geometric.nn import GCNConv, GINConv
-from torch_geometric.utils import global_mean_pool
+from torch_geometric.nn import GCNConv, GINConv, global_mean_pool
 from tqdm import tqdm
 
 
