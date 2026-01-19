@@ -42,9 +42,3 @@ jobs:
         run: poetry install --with test,deep
       - name: Run tests with coverage
         run: poetry run pytest --cov=eyefeatures --cov-report=xml --cov-report=term-missing --cov-fail-under=80
-      - name: Upload coverage to Codecov
-        if: matrix.python-version == '3.12'
-        uses: codecov/codecov-action@v4
-        with:
-          file: ./coverage.xml
-          fail_ci_if_error: false
