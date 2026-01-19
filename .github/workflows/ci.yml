@@ -15,7 +15,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install linters
-        run: pip install black==24.3.0 isort==5.12.0 flake8==6.1 ruff==0.3.4
+        run: pip install black==24.10.0 isort==5.12.0 flake8==6.1 ruff==0.3.4
       - name: Run Black
         run: black --check eyefeatures
       - name: Run isort
@@ -27,11 +27,15 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ matrix.python-version }}
       - name: Install Poetry
         run: pip install poetry
       - name: Install dependencies
@@ -39,6 +43,7 @@ jobs:
       - name: Run tests with coverage
         run: poetry run pytest --cov=eyefeatures --cov-report=xml --cov-report=term-missing --cov-fail-under=80
       - name: Upload coverage to Codecov
+        if: matrix.python-version == '3.12'
         uses: codecov/codecov-action@v4
         with:
           file: ./coverage.xml

@@ -387,17 +387,30 @@ class RegressionFeatures(StatsTransformer):
         rule: must be either 1) tuple of quadrants direction to classify
             regressions, 1st quadrant being upper-right square of plane and counting
             anti-clockwise or 2) tuple of angles in degrees (0 <= angle <= 360).
+            Default: (2, 3) selects left-ward regressions (common in reading).
         deviation: if None, then `rule` is interpreted as quadrants. Otherwise,
             `rule` is interpreted as angles. If integer, then is a +-deviation
             for all angles. If tuple of integers, then must be of the same
             length as `rule`, each value being a corresponding deviation for
             each angle. Angle = 0 is positive x-axis direction,
             rotating anti-clockwise.
+
+    Example:
+        Quick start with default parameters::
+
+            from eyefeatures.features.stats import RegressionFeatures
+
+            # Detect left-ward regressions (quadrants 2 and 3)
+            transformer = RegressionFeatures(
+                features_stats={"length": ["mean", "std"]},
+                x="x", y="y", t="time"
+            )
+            features = transformer.fit_transform(fixations_df)
     """
 
     def __init__(
         self,
-        rule: Tuple[int, ...],
+        rule: Tuple[int, ...] = (2, 3),
         deviation: int | Tuple[int, ...] = None,
         **kwargs,
     ):

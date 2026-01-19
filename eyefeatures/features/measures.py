@@ -19,7 +19,6 @@ class MeasureTransformer(ABC, BaseTransformer):
     Args:
         x: X coordinate column name.
         y: Y coordinate column name.
-        aoi: Area of Interest column name.
         aoi: Area Of Interest column name(-s). If provided, features can be
             calculated inside the specified AOI.
         pk: primary key.
@@ -93,6 +92,14 @@ class HurstExponent(MeasureTransformer):
         pk: list of column names used to split pd.DataFrame.
         eps: division epsilon.
         return_df: Return pd.Dataframe object else np.ndarray.
+
+    Example:
+        Quick start with default parameters::
+
+            from eyefeatures.features.measures import HurstExponent
+
+            transformer = HurstExponent(x="x")
+            features = transformer.fit_transform(fixations_df)
     """
 
     def __init__(
@@ -386,9 +393,15 @@ class PhaseEntropy(MeasureTransformer):
     """Phase Entropy.
 
     Args:
-        m: embedding dimension
-        tau: time delay for phase space reconstruction (lag between each
-            point in the phase space vectors).
+        m: embedding dimension (default: 2).
+        tau: time delay for phase space reconstruction (default: 1).
+
+    Example::
+
+        from eyefeatures.features.measures import PhaseEntropy
+
+        transformer = PhaseEntropy(x="x", y="y")
+        features = transformer.fit_transform(fixations_df)
     """
 
     def __init__(
@@ -433,9 +446,16 @@ class LyapunovExponent(MeasureTransformer):
     """Lyapunov Exponent.
 
     Args:
-        m: embedding dimension
-        tau: time delay for phase space reconstruction
-        T: time steps to average the divergence over
+        m: embedding dimension (default: 2).
+        tau: time delay for phase space reconstruction (default: 1).
+        T: time steps to average the divergence over (default: 1).
+
+    Example::
+
+        from eyefeatures.features.measures import LyapunovExponent
+
+        transformer = LyapunovExponent(x="x", y="y")
+        features = transformer.fit_transform(fixations_df)
     """
 
     def __init__(
