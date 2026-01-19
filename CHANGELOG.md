@@ -5,9 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.1.0] - 2026-01-10
+## [1.1.0] - 2026-01-19
 
 ### Added
+- **Python 3.10-3.12 Support**: Extended compatibility from Python 3.12-only to 3.10, 3.11, and 3.12.
+- **Multi-Version CI Testing**: GitHub Actions now tests against all supported Python versions.
+- **Improved Documentation**: Enhanced contribution guide with full development workflow.
 - **Comprehensive Library Testing**:
   - Implemented unit tests for all dataset classes (`Dataset2D`, `DatasetTimeSeries`, `DatasetLightningBase`, etc.) in `eyefeatures.deep.datasets`.
   - Implemented unit tests for model architectures (`VitNet`, `VitNetWithCrossAttention`, `SimpleRNN`, `GIN`, `Classifier`, `Regressor`) in `eyefeatures.deep.models`.

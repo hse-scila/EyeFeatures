@@ -113,7 +113,7 @@ Continuous Integration
 Every PR triggers automated checks:
 
 1. **Linting** (black, isort, flake8, ruff)
-2. **Tests** with coverage on Python 3.10, 3.11, 3.12, 3.13
+2. **Tests** with coverage on Python 3.10, 3.11, 3.12
 3. **Coverage upload** to Codecov
 
 PRs must pass all checks before merging.
@@ -125,3 +125,24 @@ Reporting Issues
 - Use GitHub Issues for bug reports and feature requests
 - Include minimal reproducible examples when reporting bugs
 - Check existing issues before creating new ones
+
+
+Building Documentation
+----------------------
+
+To build the documentation locally:
+
+.. code-block:: bash
+
+    # Install docs dependencies
+    poetry install --with docs
+
+    # Build HTML docs
+    cd docs
+    make html
+
+    # View in browser
+    open _build/html/index.html  # macOS
+    xdg-open _build/html/index.html  # Linux
+
+Documentation is built with Sphinx and uses the ReadTheDocs theme.
