@@ -139,7 +139,7 @@ To build the documentation locally:
 
     # Build HTML docs
     cd docs
-    make html
+    poetry run make html
 
     # View in browser
     open _build/html/index.html  # macOS
