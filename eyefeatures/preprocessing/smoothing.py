@@ -1,4 +1,4 @@
-from typing import List, Literal, Tuple, Union
+from typing import Literal
 
 import numpy as np
 import pandas as pd
@@ -23,10 +23,10 @@ class SavGolFilter(
         x: str,
         y: str,
         t: str = None,
-        pk: List[str] = None,
+        pk: list[str] = None,
         window_length: int = 11,
         polyorder: int = 2,
-        **savgol_kw
+        **savgol_kw,
     ):
         super().__init__(x=x, y=y, t=t, pk=pk)
         self.wl = window_length
@@ -48,13 +48,13 @@ class SavGolFilter(
                 x=X[self.x].values,
                 window_length=self.wl,
                 polyorder=self.po,
-                **self.savgol_kw
+                **self.savgol_kw,
             )
             X_filt[self.y] = savgol_filter(
                 x=X[self.y].values,
                 window_length=self.wl,
                 polyorder=self.po,
-                **self.savgol_kw
+                **self.savgol_kw,
             )
         return X_filt
 
@@ -75,15 +75,15 @@ class FIRFilter(BaseSmoothingPreprocessor):  # TODO 2D version?
         x: str,
         y: str,
         t: str = None,
-        pk: List[str] = None,
+        pk: list[str] = None,
         numtaps: int = 81,
         fs: int = 250,
-        cutoff: Union[float, Tuple[float, ...]] = 100,
+        cutoff: float | tuple[float, ...] = 100,
         pass_zero: Literal[
             False, True, "bandpass", "lowpass", "highpass", "bandstop"
         ] = False,
         mode: Literal["valid", "full", "same"] = "valid",
-        **fir_kw
+        **fir_kw,
     ):
         super().__init__(x=x, y=y, t=t, pk=pk)
         self.mode = mode
@@ -109,7 +109,7 @@ class FIRFilter(BaseSmoothingPreprocessor):  # TODO 2D version?
                 cutoff=self.cutoff,
                 pass_zero=self.pass_zero,
                 fs=self.fs,
-                **self.fir_kw
+                **self.fir_kw,
             )
             x_filt = np.convolve(X[self.x].values.ravel(), kernel, mode=self.mode)
             y_filt = np.convolve(X[self.y].values.ravel(), kernel, mode=self.mode)
@@ -146,10 +146,10 @@ class IIRFilter(BaseSmoothingPreprocessor):  # TODO 2D version?
         x: str,
         y: str,
         t: str = None,
-        pk: List[str] = None,
+        pk: list[str] = None,
         N: int = 7,
-        Wn: Union[int, Tuple[int, int]] = 0.5,
-        **iir_kw
+        Wn: int | tuple[int, int] = 0.5,
+        **iir_kw,
     ):
         super().__init__(x=x, y=y, t=t, pk=pk)
         self.N = N
@@ -201,8 +201,8 @@ class WienerFilter(BaseSmoothingPreprocessor):
         x: str,
         y: str,
         t: str = None,
-        pk: List[str] = None,
-        K: Union[float, Literal["auto"]] = 4.3e-5,
+        pk: list[str] = None,
+        K: float | Literal["auto"] = 4.3e-5,
         sigma: float = 0.2,
         size: int = 11,
     ):
@@ -243,11 +243,11 @@ class WienerFilter(BaseSmoothingPreprocessor):
     @staticmethod
     def _kernel_fft(kernel: np.array, length: int):
         diff = length - len(kernel.ravel())
-        l = diff // 2
-        r = diff - l
+        l_pad = diff // 2
+        r_pad = diff - l_pad
 
         # pad the kernel
-        kernel_padded = np.pad(kernel, pad_width=(l, r))
+        kernel_padded = np.pad(kernel, pad_width=(l_pad, r_pad))
         # IFFT for center-based kernel
         kernel_adjusted = np.fft.ifftshift(kernel_padded)
         # FFT to adjust kernel to the correct position

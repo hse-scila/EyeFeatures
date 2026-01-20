@@ -1,5 +1,4 @@
 import io
-from typing import Dict, List, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -10,7 +9,7 @@ from eyefeatures.utils import _select_regressions
 
 
 def _built_figure(
-    fig_dict: Dict, animation_duration: int = 500
+    fig_dict: dict, animation_duration: int = 500
 ):  # animation_duration in ms
     """Function for building a layout for plot."""
     fig_dict["layout"]["width"] = 600
@@ -68,11 +67,11 @@ def tracker_animation(
     points_width: float = 6,
     add_regression: bool = False,
     regression_color: str = "red",
-    meta_data: List[str] = None,
-    rule: Tuple[int, ...] = None,
-    deviation: Union[int, Tuple[int, ...]] = None,
+    meta_data: list[str] = None,
+    rule: tuple[int, ...] = None,
+    deviation: int | tuple[int, ...] = None,
     aoi: str = None,
-    aoi_c: Dict[str, str] = None,
+    aoi_c: dict[str, str] = None,
     tracker_color: str = "red",
     animation_duration: int = 500,
     save_gif: str = None,
@@ -92,13 +91,15 @@ def tracker_animation(
         regression_color: color of regressions.
         meta_data: list of columns that will be used for meta data.
         rule: must be either 1) tuple of quadrants direction to classify
-         regressions, 1st quadrant being upper-right square of plane and counting
-         anti-clockwise or 2) tuple of angles in degrees (0 <= angle <= 360).
+            regressions, 1st quadrant being upper-right square of plane
+            and counting anti-clockwise or 2) tuple of angles in
+            degrees(0 <= angle <= 360).
         deviation: if None, then `rule` is interpreted as quadrants. Otherwise,
-         `rule` is interpreted as angles. If integer, then is a +-deviation for all angles.
-         If tuple of integers, then must be of the same length as `rule`, each value being
-         a corresponding deviation for each angle. Angle = 0 is positive x-axis direction,
-         rotating anti-clockwise.
+            `rule` is interpreted as angles. If integer, then is a
+            +-deviation for all angles.
+            If tuple of integers, then must be of the same length as `rule`,
+            each value being a corresponding deviation for each angle.
+            Angle = 0 is positive x-axis direction, rotating anti-clockwise.
         aoi: AOI of fixations.
         aoi_c: colormap for AOI.
         tracker_color: color of tracker.
@@ -139,12 +140,12 @@ def tracker_animation(
         "x": X,
         "y": Y,
         "mode": "lines",
-        "line": dict(color=path_color, width=path_width),
+        "line": {"color": path_color, "width": path_width},
         "name": "saccades",
     }
 
-    if not (aoi is None) and aoi_c is None:
-        aoi_c = dict()
+    if aoi is not None and aoi_c is None:
+        aoi_c = {}
         areas = data[aoi].unique()
         for area in areas:
             color = (
@@ -173,7 +174,7 @@ def tracker_animation(
                         "x": [data.loc[i - 1, x], data.loc[i, x]],
                         "y": [data.loc[i - 1, y], data.loc[i, y]],
                         "mode": "lines",
-                        "line": dict(color=regression_color, width=path_width),
+                        "line": {"color": regression_color, "width": path_width},
                         "name": "regressions",
                         "showlegend": first_reg,
                     }
@@ -185,7 +186,7 @@ def tracker_animation(
                         "x": [data.loc[i - 1, x], data.loc[i, x]],
                         "y": [data.loc[i - 1, y], data.loc[i, y]],
                         "mode": "lines",
-                        "line": dict(color=path_color, width=path_width),
+                        "line": {"color": path_color, "width": path_width},
                         "name": "saccades",
                         "showlegend": first_sac,
                     }
@@ -195,7 +196,7 @@ def tracker_animation(
     else:
         fig_dict["data"].append(edges)
 
-    if not (aoi is None):
+    if aoi is not None:
         areas = data[aoi].unique()
         nodes = []
         for area in areas:
@@ -203,7 +204,7 @@ def tracker_animation(
             data_area = data[data[aoi] == area]
             indexes_area = data_area.index
             for i in range(len(indexes_area)):
-                if not (meta_data is None):
+                if meta_data is not None:
                     row = data_area.loc[
                         indexes_area[i], data_area.columns.intersection(meta_data)
                     ].values
@@ -216,7 +217,7 @@ def tracker_animation(
                     "x": data_area[x].values,
                     "y": data_area[y].values,
                     "mode": "markers",
-                    "marker": dict(color=aoi_c[area], size=points_width),
+                    "marker": {"color": aoi_c[area], "size": points_width},
                     "name": area,
                     "text": annotate,
                 }
@@ -225,7 +226,7 @@ def tracker_animation(
     else:
         annotate = []
         for i in range(len(indexes)):
-            if not (meta_data is None):
+            if meta_data is not None:
                 row = data.loc[indexes[i], data.columns.intersection(meta_data)].values
                 comments = []
                 for j in range(len(meta_data)):
@@ -235,7 +236,7 @@ def tracker_animation(
             "x": X,
             "y": Y,
             "mode": "markers",
-            "marker": dict(color=points_color, size=points_width),
+            "marker": {"color": points_color, "size": points_width},
             "name": "fixations",
             "text": annotate,
         }
@@ -246,7 +247,7 @@ def tracker_animation(
             "x": [X[0]],
             "y": [Y[0]],
             "mode": "markers",
-            "marker": dict(color=tracker_color),
+            "marker": {"color": tracker_color},
             "name": "tracker",
         }
     )
@@ -257,7 +258,7 @@ def tracker_animation(
             frame["data"].extend(edges)
         else:
             frame["data"].append(edges)
-        if not (aoi is None):
+        if aoi is not None:
             frame["data"].extend(nodes)
         else:
             frame["data"].append(nodes)
@@ -266,12 +267,12 @@ def tracker_animation(
                 "x": [X[i]],
                 "y": [Y[i]],
                 "mode": "markers",
-                "marker": dict(color=tracker_color),
+                "marker": {"color": tracker_color},
                 "name": "tracker",
             }
         )
         fig_dict["frames"].append(frame)
-        if not (save_gif is None):
+        if save_gif is not None:
             img = Image.open(io.BytesIO(go.Figure(frame).to_image(format="png")))
             for _ in range(frames_count):
                 gif_list.append(img)
@@ -292,12 +293,12 @@ def tracker_animation(
     fig_dict["layout"]["sliders"] = [sliders_dict]
     fig = go.Figure(fig_dict)
     fig.show()
-    if not (save_gif is None):
+    if save_gif is not None:
         gif_list[0].save(
             save_gif,
             save_all=True,
             append_images=gif_list[1:],
-            durarion=1000,
+            duration=1000,
             loop=0,
             fps=1,
         )
@@ -313,8 +314,8 @@ def scanpath_animation(
     points_width: float = 6,
     add_regression: bool = False,
     regression_color: str = "red",
-    rule: Tuple[int, ...] = None,
-    deviation: Union[int, Tuple[int, ...]] = None,
+    rule: tuple[int, ...] = None,
+    deviation: int | tuple[int, ...] = None,
     animation_duration: int = 500,
     save_gif: str = None,
     frames_count: int = 1,
@@ -332,13 +333,15 @@ def scanpath_animation(
         add_regression: whether to add regressions.
         regression_color: color of regressions.
         rule: must be either 1) tuple of quadrants direction to classify
-         regressions, 1st quadrant being upper-right square of plane and counting
-         anti-clockwise or 2) tuple of angles in degrees (0 <= angle <= 360).
+            regressions, 1st quadrant being upper-right square of plane
+            and counting anti-clockwise or 2) tuple of angles in
+            degrees(0 <= angle <= 360).
         deviation: if None, then `rule` is interpreted as quadrants. Otherwise,
-         `rule` is interpreted as angles. If integer, then is a +-deviation for all angles.
-         If tuple of integers, then must be of the same length as `rule`, each value being
-         a corresponding deviation for each angle. Angle = 0 is positive x-axis direction,
-         rotating anti-clockwise.
+            `rule` is interpreted as angles. If integer, then is a
+            +-deviation for all angles.
+            If tuple of integers, then must be of the same length as `rule`,
+            each value being a corresponding deviation for each angle.
+            Angle = 0 is positive x-axis direction, rotating anti-clockwise.
         animation_duration: duration of animation.
         save_gif: path to save animation.
         frames_count: TODO.
@@ -371,12 +374,14 @@ def scanpath_animation(
         "steps": [],
     }
 
-    fig_dict["layout"]["xaxis"] = dict(
-        range=[x_min - 0.1, x_max + 0.1], automargin=False
-    )
-    fig_dict["layout"]["yaxis"] = dict(
-        range=[y_min - 0.1, y_max + 0.1], automargin=False
-    )
+    fig_dict["layout"]["xaxis"] = {
+        "range": [x_min - 0.1, x_max + 0.1],
+        "automargin": False,
+    }
+    fig_dict["layout"]["yaxis"] = {
+        "range": [y_min - 0.1, y_max + 0.1],
+        "automargin": False,
+    }
 
     fig_dict["data"].extend(
         [
@@ -384,7 +389,7 @@ def scanpath_animation(
                 "x": [],
                 "y": [],
                 "mode": "lines",
-                "line": dict(color=path_color, width=path_width),
+                "line": {"color": path_color, "width": path_width},
             }
             for _ in range(len(indexes))
         ]
@@ -416,21 +421,23 @@ def scanpath_animation(
             "x": [data.loc[i - 1, x], data.loc[i, x]],
             "y": [data.loc[i - 1, y], data.loc[i, y]],
             "mode": "lines+markers",
-            "line": dict(color=color, width=path_width),
-            "marker": dict(color=points_color, size=points_width),
+            "line": {"color": color, "width": path_width},
+            "marker": {"color": points_color, "size": points_width},
             "name": name,
             "showlegend": False,
         }
         frame["data"].extend(graph)
         frame["data"].append(new_edge)
-        frame["layout"]["xaxis"] = dict(
-            range=[x_min - 0.1, x_max + 0.1], automargin=False
-        )
-        frame["layout"]["yaxis"] = dict(
-            range=[y_min - 0.1, y_max + 0.1], automargin=False
-        )
+        frame["layout"]["xaxis"] = {
+            "range": [x_min - 0.1, x_max + 0.1],
+            "automargin": False,
+        }
+        frame["layout"]["yaxis"] = {
+            "range": [y_min - 0.1, y_max + 0.1],
+            "automargin": False,
+        }
         fig_dict["frames"].append(frame)
-        if not (save_gif is None):
+        if save_gif is not None:
             img = Image.open(io.BytesIO(go.Figure(frame).to_image(format="png")))
             for _ in range(frames_count):
                 gif_list.append(img)
@@ -452,12 +459,12 @@ def scanpath_animation(
     fig_dict["layout"]["sliders"] = [sliders_dict]
     fig = go.Figure(fig_dict)
     fig.show()
-    if not (save_gif is None):
+    if save_gif is not None:
         gif_list[0].save(
             save_gif,
             save_all=True,
             append_images=gif_list[1:],
-            durarion=1000,
+            duration=1000,
             fps=1,
             loop=0,
         )

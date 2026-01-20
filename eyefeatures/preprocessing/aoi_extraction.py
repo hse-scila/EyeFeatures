@@ -1,5 +1,3 @@
-from typing import Dict, List, Tuple
-
 import numpy as np
 import pandas as pd
 from scipy.ndimage import maximum_filter, sobel
@@ -19,32 +17,33 @@ class ShapeBased(BaseAOIPreprocessor):
         y: y coordinate of fixation.
         aoi_name: name of AOI column.
         pk: list of column names used to split pd.DataFrame.
-        shapes: list of shapes. It should be a list of tuple lists. Parameters for shape:\n
-                    \n
-                    0: 'r', 'c', 'e': rectangle, circle, ellipse\n
-                    For the rectangle:\n
-                    1: coordinates of the lower left corner of the rectangle.\n
-                    2: coordinates of the upper right corner of the rectangle.\n
-                    For the circle:\n
-                    1: coordinates of the center of the circle.\n
-                    2: radius of the circle.\n
-                    For the ellipse:\n
-                    :math:`\\frac{((x - x')\\cos(\\alpha) + (y - y')\\sin(\\alpha))^2}{a^2} + \\frac{(-(x - x')\\sin(\\alpha) + (y - y')\\cos(\\alpha))^2}{b^2} = c`
+        shapes: list of shapes (list of tuple lists). Parameters for shape:\n
+            \n
+            0: 'r', 'c', 'e': rectangle, circle, ellipse\n
+            For the rectangle:\n
+            1: coordinates of the lower left corner of the rectangle.\n
+            2: coordinates of the upper right corner of the rectangle.\n
+            For the circle:\n
+            1: coordinates of the center of the circle.\n
+            2: radius of the circle.\n
+            For the ellipse:\n
+            :math:`\\frac{((x - x')\\cos(\\alpha) + (y - y')\\sin(\\alpha))^2}{a^2}`
+            :math:`+ \\frac{(-(x - x')\\sin(\\alpha) + (y - y')\\cos(\\alpha))^2}{b^2} = c`
 
-                    1: coordinates of the center of the ellipse :math:`(x', y')`.\n
-                    2: "a" in the ellipse equation\n
-                    3: "b" in the ellipse equation\n
-                    4: "c" in the ellipse equation\n
-                    5: angle of inclination of th ellipse in radians (:math:`\\alpha`)\n
+            1: coordinates of the center of the ellipse :math:`(x', y')`.\n
+            2: "a" in the ellipse equation\n
+            3: "b" in the ellipse equation\n
+            4: "c" in the ellipse equation\n
+            5: angle of inclination of th ellipse in radians (:math:`\\alpha`)\n
     """
 
     def __init__(
         self,
         x: str = None,
         y: str = None,
-        shapes: List = None,
+        shapes: list = None,
         aoi_name: str = "AOI",
-        pk: List[str] = None,
+        pk: list[str] = None,
     ):
         super().__init__(x=x, y=y, t=None, aoi=aoi_name, pk=None)
         self.shapes = shapes
@@ -109,7 +108,7 @@ class ShapeBased(BaseAOIPreprocessor):
             X[self.aoi] = self._is_inside_of_fig(X, shape_id)
             fixations = X
         else:
-            instances: List[str, pd.DataFrame] = _split_dataframe(
+            instances: list[str, pd.DataFrame] = _split_dataframe(
                 X, self.instance, encode=False
             )
             assert (not flag) or len(instances) == len(self.shapes), "Not enough shapes"
@@ -144,7 +143,7 @@ class ThresholdBased(BaseAOIPreprocessor):
         y: str = None,
         window_size: int = None,
         threshold: float = None,
-        pk: List[str] = None,
+        pk: list[str] = None,
         aoi_name: str = None,
         algorithm_type: str = "kmeans",
         threshold_dist: float = None,
@@ -193,14 +192,14 @@ class ThresholdBased(BaseAOIPreprocessor):
             loc_max_coord.shape[0] != 0
         ), "Error: Can't find the maximum with such parameters"
 
-        aoi_counts: Dict[str, int] = dict()  # Dict[aoi name] = count of points in aoi
-        aoi_points: Dict[str, List[Tuple[float, float]]] = (
-            dict()
+        aoi_counts: dict[str, int] = {}  # Dict[aoi name] = count of points in aoi
+        aoi_points: dict[str, list[tuple[float, float]]] = (
+            {}
         )  # Dict[aoi name] = list of points
 
         axis_x = X_grid.T[0]
         axis_y = Y_grid[0]
-        centers: Dict[str, Tuple[float, float]] = dict()  # Dict with the centers of aoi
+        centers: dict[str, tuple[float, float]] = {}  # Dict with the centers of aoi
         for i in range(loc_max_coord.shape[0]):  # Initial centers for each AOI
             centers[f"aoi_{i}"] = (
                 X_grid[loc_max_coord[i][0]][0],
@@ -224,9 +223,8 @@ class ThresholdBased(BaseAOIPreprocessor):
                         min_dist_aoi = key
                 if self.algorithm_type == "basic":
                     length = np.inf
-                    for point in aoi_points[
-                        key
-                    ]:  # Find minimal distance between fixation and each fixation in particular aoi
+                    for point in aoi_points[key]:
+                        # Find minimal distance between fixation and points in aoi
                         dist = np.linalg.norm(
                             np.array([row[self.x], row[self.y]]) - np.array(point)
                         )
@@ -311,7 +309,7 @@ class GradientBased(BaseAOIPreprocessor):
         y: str = None,
         window_size: int = None,
         threshold: float = None,
-        pk: List[str] = None,
+        pk: list[str] = None,
         aoi_name: str = None,
     ):
         super().__init__(x=x, y=y, t=None, aoi=aoi_name, pk=pk)
@@ -349,7 +347,7 @@ class GradientBased(BaseAOIPreprocessor):
 
         axis_x = X_grid.T[0]
         axis_y = Y_grid[0]
-        centers: Dict[str, Tuple[float, float]] = dict()  # Dict with the centers of aoi
+        centers: dict[str, tuple[float, float]] = {}  # Dict with the centers of aoi
         aoi_matrix = np.zeros((density.shape[0], density.shape[1]), dtype=int)
         # Compute the gradient magnitude
         horizontal_sobel = sobel(density, axis=0)
@@ -359,7 +357,7 @@ class GradientBased(BaseAOIPreprocessor):
             magnitude_sobel, 2, mode="constant", constant_values=-1
         )
 
-        queue_of_centers: List[List[Tuple[int, int]]] = (
+        queue_of_centers: list[list[tuple[int, int]]] = (
             []
         )  # List of points to add for each aoi
         for i in range(loc_max_coord.shape[0]):  # Initial centers for each AOI
@@ -382,9 +380,9 @@ class GradientBased(BaseAOIPreprocessor):
                         )
             aoi_matrix[loc_max_coord[i][0]][loc_max_coord[i][1]] = i + 1
         ind = 0
-        while any([len(x) > 0 for x in queue_of_centers]) > 0:
-            # If the list of points to add for particular aoi is not empty, then try to add them to aoi, else this aoi
-            # is built
+        while any(len(x) > 0 for x in queue_of_centers):
+            # If the list of points to add for particular aoi is not empty,
+            # then try to add them to aoi, else this aoi is built
             if len(queue_of_centers[ind]) > 0:
                 x_coord, y_coord = queue_of_centers[ind].pop(
                     0
@@ -397,7 +395,7 @@ class GradientBased(BaseAOIPreprocessor):
                 ]
                 max_magnitude = -1
                 aoi_to_add = None
-                # Find the point in window with the biggest gradient magnitude and take its aoi
+                # Find point in window with max gradient magnitude and its aoi
                 for j in range(-1, 2):
                     for k in range(-1, 2):
                         if (
@@ -405,7 +403,7 @@ class GradientBased(BaseAOIPreprocessor):
                             and 0 <= y_coord + k < density.shape[0]
                             and not (j == 0 and k == 0)
                         ):
-                            # If the point in the window (except for the center) has greater magnitude and aoi,
+                            # If non-center point has greater magnitude and aoi,
                             # then we take its aoi
                             if (
                                 aoi_matrix[x_coord + j][y_coord + k] != 0
@@ -413,7 +411,7 @@ class GradientBased(BaseAOIPreprocessor):
                             ):
                                 aoi_to_add = aoi_matrix[x_coord + j][y_coord + k]
                                 max_magnitude = window_magnitude[1 + j][1 + k]
-                            # If the point in the window (except for the center) doesn't have aoi, then add it to queue
+                            # If non-center point has no aoi, add it to queue
                             elif (
                                 aoi_matrix[x_coord + j][y_coord + k] == 0
                                 and (x_coord + j, y_coord + k)
@@ -421,6 +419,7 @@ class GradientBased(BaseAOIPreprocessor):
                             ):  # and magnitude[1+j][1+k] >= gradient_eps:
                                 queue_of_centers[ind].append((x_coord + j, y_coord + k))
                 aoi_matrix[x_coord][y_coord] = aoi_to_add
+            # Match points from queue with best AOI in window on density
             ind = (ind + 1) % len(queue_of_centers)
 
         # Match fixations and aoi in aoi matrix
@@ -455,7 +454,7 @@ class OverlapClustering(BaseAOIPreprocessor):
         y: str = None,
         diameters: str = None,
         centers: str = None,
-        pk: List[str] = None,
+        pk: list[str] = None,
         aoi_name: str = None,
         eps: float = 0.0,
     ):
@@ -558,20 +557,20 @@ class AOIExtractor(BaseEstimator, TransformerMixin):
         window_size: size of search window.
         threshold: threshold density.
         pk: list of column names used to split pd.DataFrame for scaling.
-        instance_columns: list of column names used to split pd.DataFrame into the similar instances for aoi extraction.
+        instance_columns: names of columns used to split DataFrame for aoi.
         aoi_name: name of AOI column.
         show_best: if true, then return the best method for each instance
     """
 
     def __init__(
         self,
-        methods: List[BaseAOIPreprocessor],
+        methods: list[BaseAOIPreprocessor],
         x: str,
         y: str,
         window_size: int = None,
         threshold: float = None,
-        pk: List[str] = None,
-        instance_columns: List[str] = None,
+        pk: list[str] = None,
+        instance_columns: list[str] = None,
         aoi_name: str = None,
         show_best: bool = False,
     ):
@@ -614,7 +613,7 @@ class AOIExtractor(BaseEstimator, TransformerMixin):
             self.instance_columns = self.pk
 
         fixations = None
-        instances: List[str, pd.DataFrame] = _split_dataframe(
+        instances: list[str, pd.DataFrame] = _split_dataframe(
             X, self.instance_columns, encode=False
         )
         shapes_id = 0  # For ShapeBased
@@ -629,10 +628,10 @@ class AOIExtractor(BaseEstimator, TransformerMixin):
                 copy_x = None
                 copy_y = None
                 to_transform = None
-                groups: List[str, pd.DataFrame] = _split_dataframe(
+                groups: list[str, pd.DataFrame] = _split_dataframe(
                     instance_X, self.pk, encode=False
                 )
-                # Scale each group of fixation
+                # Map points into (100, 100) matrix and build kde for groups
                 for group_ids, group_X in groups:
                     if copy_x is None:
                         copy_x = group_X[self.x]
@@ -675,10 +674,10 @@ class AOIExtractor(BaseEstimator, TransformerMixin):
                     cur_fixations = method.transform(to_transform)
 
                 all_areas = np.unique(
-                    [el for el in cur_fixations[self.aoi].values if not el is None]
+                    [el for el in cur_fixations[self.aoi].values if el is not None]
                 )
                 areas_names = [f"aoi_{i}" for i in range(len(all_areas))]
-                map_areas = dict(zip(all_areas, areas_names))
+                map_areas = dict(zip(all_areas, areas_names, strict=False))
                 cur_fixations[self.aoi] = cur_fixations[self.aoi].map(map_areas)
                 entropy = entropy_transformer.transform(cur_fixations)[
                     "entropy"
@@ -719,8 +718,8 @@ class AOIMatcher(BaseEstimator, TransformerMixin):
         self,
         x: str,
         y: str,
-        pk: List[str] = None,
-        instance_columns: List[str] = None,
+        pk: list[str] = None,
+        instance_columns: list[str] = None,
         aoi: str = None,
         n_aoi: int = 0,
     ):
@@ -738,14 +737,14 @@ class AOIMatcher(BaseEstimator, TransformerMixin):
         data_df: pd.DataFrame = X.copy()
 
         fixations = None
-        instances: List[str, pd.DataFrame] = _split_dataframe(
+        instances: list[str, pd.DataFrame] = _split_dataframe(
             data_df, self.instance_columns, encode=False
         )
-        prev_pattern = dict()
+        prev_pattern = {}
         for instance_ids, instance_X in instances:
             copy_x = None
             copy_y = None
-            groups: List[str, pd.DataFrame] = _split_dataframe(
+            groups: list[str, pd.DataFrame] = _split_dataframe(
                 instance_X, self.pk, encode=False
             )
             cur_fixations = None
@@ -771,7 +770,7 @@ class AOIMatcher(BaseEstimator, TransformerMixin):
 
             # === Correction of the AOI labels ===
             # Make the new aoi labels
-            all_areas = np.unique(cur_fixations[self.aoi].values)
+            all_areas = np.unique(cur_fixations[self.aoi].astype(str).values)
             if (self.n_aoi > 0) and (len(all_areas) > self.n_aoi):
                 centers = []
                 for i in range(len(all_areas)):
@@ -820,20 +819,20 @@ class AOIMatcher(BaseEstimator, TransformerMixin):
                             centers[i][-1] = False
                     count_of_aoi -= 1
 
-            all_areas = np.unique(cur_fixations[self.aoi].values)
+            all_areas = np.unique(cur_fixations[self.aoi].astype(str).values)
             areas_names = [f"aoi_{i}" for i in range(len(all_areas))]
-            map_areas = dict(zip(all_areas, areas_names))
+            map_areas = dict(zip(all_areas, areas_names, strict=False))
             cur_fixations[self.aoi] = cur_fixations[self.aoi].map(map_areas)
             used = []
             to_zip = []
-            new_pattern = dict()
-            # Find the sample with the same or less count of areas of interest to match the aoi labels
+            new_pattern = {}
+            # Match labels with previous patterns
             for i in range(len(all_areas), 0, -1):
                 if prev_pattern.get(i, 0) != 0:
                     pattern = prev_pattern[i]
                     # Compare areas
-                    # Beginning with python 3.6, the order of dict.items() corresponds to the order which
-                    # the elements are inserted
+                    # From Python 3.6, dict.items() order corresponds to
+                    # insertion order
                     for key, value in pattern.items():
                         # if key not in used:
                         x_max, y_max, x_min, y_min = (
@@ -890,7 +889,7 @@ class AOIMatcher(BaseEstimator, TransformerMixin):
                                     used[j] = areas_names[k]
                                     break
                     cur_fixations[self.aoi] = cur_fixations[self.aoi].map(
-                        dict(zip(used, to_zip))
+                        dict(zip(used, to_zip, strict=False))
                     )
                     break
             # Add new sample
@@ -903,7 +902,9 @@ class AOIMatcher(BaseEstimator, TransformerMixin):
                 )
                 new_pattern[area] = [cur_x_max, cur_y_max, cur_x_min, cur_y_min]
             # === End of the correction ===
-            prev_pattern[len(np.unique(cur_fixations[self.aoi].values))] = new_pattern
+            prev_pattern[len(np.unique(cur_fixations[self.aoi].astype(str).values))] = (
+                new_pattern
+            )
             cur_fixations[self.x] = copy_x
             cur_fixations[self.y] = copy_y
             if fixations is None:

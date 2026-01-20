@@ -1,8 +1,7 @@
-from typing import Callable, Dict, List, Union
+from collections.abc import Callable
 
 import numpy as np
 import pandas as pd
-from numba import jit
 from numpy.typing import NDArray
 from scipy.cluster.hierarchy import leaves_list, linkage, optimal_leaf_ordering
 from scipy.linalg import sqrtm
@@ -23,26 +22,28 @@ def get_expected_path(
     data: pd.DataFrame,
     x: str,
     y: str,
-    path_pk: List[str],
-    pk: List[str],
+    path_pk: list[str],
+    pk: list[str],
     method: str = "mean",
     duration: str = None,
     return_df: bool = True,
-) -> Dict[str, Union[pd.DataFrame, np.ndarray]]:
+) -> dict[str, pd.DataFrame | np.ndarray]:
     """Estimates expected path by a given method.
 
     Args:
         data: input Dataframe with fixations.
         x: X coordinate column name.
         y: Y coordinate column name.
-        path_pk: List of column names of groups to calculate expected path (must be a subset of pk).
+        path_pk: List of column names of groups to calculate
+            expected path (must be a subset of pk).
         pk: List of column names used to split pd.Dataframe.
         method: method to calculate expected path ("mean" or "fwp").
         duration: Column name of fixations duration if needed.
         return_df: Return pd.Dataframe object else np.ndarray.
 
     Returns:
-        Dict of groups and Union[pd.Dataframe, np.ndarray] of form (x_est, y_est) or (x_est, y_est, duration_est).
+        Dict of groups and Union[pd.Dataframe, np.ndarray] of
+        form (x_est, y_est) or (x_est, y_est, duration_est).
     """
 
     if not set(path_pk).issubset(set(pk)):
@@ -105,7 +106,7 @@ def get_expected_path(
 
 
 def _get_fill_path(
-    data: List[pd.DataFrame],
+    data: list[pd.DataFrame],
     x: str,
     y: str,
     method: str = "mean",
@@ -114,7 +115,7 @@ def _get_fill_path(
     """Calculates fill path as expected path of given expected paths
 
     Args:
-        data: input Dataframe with fixations.
+        data: list of Dataframes with fixations.
         x: X coordinate column name.
         y: Y coordinate column name.
         method: method to calculate expected path ("mean" or "fwp").
@@ -122,19 +123,20 @@ def _get_fill_path(
     """
 
     paths = pd.concat(
-        [path.assign(dummy=k) for k, path in enumerate(data)], ignore_index=True
+        [path.assign(__dummy_id__=k) for k, path in enumerate(data)], ignore_index=True
     )
+    paths = paths.assign(__dummy_all__="__dummy_key__")
 
     fill_path = get_expected_path(
         data=paths,
         x=x,
         y=y,
-        path_pk=["dummy"],
-        pk=["dummy"],
+        path_pk=["__dummy_all__"],
+        pk=["__dummy_id__", "__dummy_all__"],
         method=method,
         duration=duration,
     )
-    return list(fill_path.values())[0]
+    return fill_path["__dummy_key__"]
 
 
 # ======================== SIMILARITY MATRIX ========================
@@ -163,7 +165,7 @@ def restore_matrix(matrix: NDArray, tol=1e-9):
     return US.dot(evecs.T).T, A_rank
 
 
-def get_sim_matrix(scanpaths: List[NDArray], sim_metric: Callable) -> np.ndarray:
+def get_sim_matrix(scanpaths: list[NDArray], sim_metric: Callable) -> np.ndarray:
     """Computes similarity matrix given non-trivial metric.
 
     Args:
@@ -187,7 +189,7 @@ def get_sim_matrix(scanpaths: List[NDArray], sim_metric: Callable) -> np.ndarray
 
 
 def get_dist_matrix(
-    scanpaths: List[pd.DataFrame], dist_metric: Callable
+    scanpaths: list[pd.DataFrame], dist_metric: Callable
 ) -> pd.DataFrame:
     """Computes pairwise distance matrix given distance metric.
 
@@ -342,7 +344,7 @@ def compute_rv_coefficient(S1: np.ndarray, S2: np.ndarray) -> float:
     return numerator / denominator
 
 
-def get_compromise_matrix(distance_matrices: List[np.ndarray]) -> np.ndarray:
+def get_compromise_matrix(distance_matrices: list[np.ndarray]) -> np.ndarray:
     """Compute the compromise matrix from a list of distance matrices.
 
     Args:
@@ -370,6 +372,6 @@ def get_compromise_matrix(distance_matrices: List[np.ndarray]) -> np.ndarray:
     _, eigvecs = np.linalg.eigh(similarity_matrix)
     weights = eigvecs[:, -1]  # eigenvector corresponding to the largest eigenvalue
     # Get the compromise matrix as a weighted sum
-    comp_mat = sum(w * G for w, G in zip(weights, cross_product_matrices))
+    comp_mat = sum(w * G for w, G in zip(weights, cross_product_matrices, strict=False))
 
     return comp_mat

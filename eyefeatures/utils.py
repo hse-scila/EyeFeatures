@@ -1,5 +1,6 @@
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Any, Iterable, List, Tuple, Union, Callable
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -14,14 +15,14 @@ class Types:
     Data: either Dataframe or Partition
     """
 
-    Partition = List[Tuple[Tuple, pd.DataFrame]]
-    EncodedPartition = List[Tuple[str, pd.DataFrame]]
+    Partition = list[tuple[tuple, pd.DataFrame]]
+    EncodedPartition = list[tuple[str, pd.DataFrame]]
     Data = pd.DataFrame | Partition
-    Quadrants = Tuple[int, ...]
+    Quadrants = tuple[int, ...]
 
 
 def _split_dataframe(
-    df: pd.DataFrame, pk: List[str], encode=True
+    df: pd.DataFrame, pk: list[str], encode=True
 ) -> Types.Partition | Types.EncodedPartition:
     """
     :param df: DataFrame to split
@@ -61,9 +62,8 @@ def _calc_dt(X: pd.DataFrame, duration: str, t: str) -> pd.Series:
 
 def _get_angle(dx: float, dy: float, degrees: bool = True) -> float:
     """
-    Method calculates an angle of movement from (0, 0) to (dx, dy). Formally, method returns
-    a non-negative angle in anticlockwise direction in cartesian system between
-    x-axis and vector (dx, dy).
+    Calculates angle of movement from (0, 0) to (dx, dy). Returns an
+    anticlockwise angle in cartesian system between x-axis and vector.
     """
     if dx == 0:
         angle = np.pi / 2 * np.sign(dy)  # if dy == 0, then angle is zero
@@ -86,8 +86,8 @@ def _get_angle2(
     smallest: bool = False,
 ):
     """
-    Method calculates a non-negative angle in anticlockwise direction based on 2 points (i.e. between two vectors)
-    (x1, y1) and (x2, y2) in cartesian system.
+    Calculates non-negative anticlockwise angle between two vectors
+    (x1, y1) and (x2, y2).
     """
     angle1 = _get_angle(
         x1, y1, degrees=False
@@ -114,7 +114,8 @@ def _get_angle3(
     smallest: bool = False,
 ):
     """
-    Get angle at (x0, y0) based on 2 other points defining vectors (x1 - x0, y1 - y0) and (x2 - x0, y2 - y0).
+    Get angle at (x0, y0) based on points defining vectors
+    (x1 - x0, y1 - y0) and (x2 - x0, y2 - y0).
     """
     # shift coordinate system such that (x0, y0) becomes (0, 0) point.
     return _get_angle2(
@@ -148,8 +149,8 @@ def _normalize_angle(angle):
 def _select_regressions(
     dx: pd.Series,
     dy: pd.Series,
-    rule: Tuple[int, ...],
-    deviation: None | int | Tuple[int, ...] = None,
+    rule: tuple[int, ...],
+    deviation: None | int | tuple[int, ...] = None,
 ) -> NDArray:
     mask = np.zeros(len(dx))
 
@@ -171,7 +172,7 @@ def _select_regressions(
 
         for i in range(len(mask)):
             angle = _get_angle(dx[i], dy[i], degrees=True)
-            for allowed_angle, dev in zip(rule, d):
+            for allowed_angle, dev in zip(rule, d, strict=False):
                 if _check_angle_boundaries(angle, allowed_angle, dev):
                     mask[i] = 1
                     break
@@ -196,7 +197,7 @@ def _rec2square(mat: np.array) -> np.array:
 
 def _square2rec(mat: np.array, h: int, w: int) -> np.array:
     """
-    Given square matrix of size NxN, cut from it rectangle of shape (h,w) evenly from all sides.
+    Given square NxN matrix, cut rectangle of shape (h,w) evenly.
     """
     mat = _cut_matrix(mat, n=h, axis=0)  # cut height
     mat = _cut_matrix(mat, n=w, axis=1)  # cut width

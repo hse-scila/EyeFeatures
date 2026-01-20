@@ -1,11 +1,9 @@
 import io
-from typing import Dict, List, Tuple, Union
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from numpy.typing import NDArray
 from PIL import Image, ImageOps
 from scipy.spatial import ConvexHull
 from sklearn.base import BaseEstimator, TransformerMixin
@@ -15,7 +13,7 @@ from eyefeatures.utils import _select_regressions, _split_dataframe
 
 
 def _cmap_generation(n: int):
-    return plt.cm.get_cmap("tab20")(n)
+    return mpl.colormaps["tab20"](n)
 
 
 def scanpath_visualization(
@@ -34,7 +32,7 @@ def scanpath_visualization(
     add_regressions: bool = False,
     regression_color: str = "red",
     is_vectors: bool = False,
-    aoi_c: Dict[str, str] = None,
+    aoi_c: dict[str, str] = None,
     only_points: bool = False,
     seq_colormap: bool = False,
     show_hull: bool = False,
@@ -42,8 +40,8 @@ def scanpath_visualization(
     path_to_img: str = None,
     with_axes: bool = False,
     axes_limits: tuple = None,
-    rule: Tuple[int, ...] = None,
-    deviation: Union[int, Tuple[int, ...]] = None,
+    rule: tuple[int, ...] = None,
+    deviation: int | tuple[int, ...] = None,
     return_ndarray: bool = False,
     show_plot: bool = True,
     is_gray: bool = False,
@@ -55,9 +53,11 @@ def scanpath_visualization(
         data_: DataFrame with fixations.
         x: x coordinate of fixation.
         y: y coordinate of fixation.
-        size_column: label of the column, which is responsible for the size of the fixations(points on plot).\n
+        size_column: label of the column, which is responsible for the size
+                     of the fixations(points on plot).\n
                      It can be duration, dispersion, etc.
-        shape_column: label of the column, which is responsible for the shape of the fixations(points on plot).
+        shape_column: label of the column, which is responsible for the shape
+                      of the fixations(points on plot).
         aoi: AOI of fixations.
         img_path: path to the background image.
         fig_size: size of plot.
@@ -81,11 +81,13 @@ def scanpath_visualization(
              regressions, 1st quadrant being upper-right square of plane and counting
              anti-clockwise or 2) tuple of angles in degrees (0 <= angle <= 360).
         deviation: if None, then `rule` is interpreted as quadrants. Otherwise,
-                 `rule` is interpreted as angles. If integer, then is a +-deviation for all angles.
-                 If tuple of integers, then must be of the same length as `rule`, each value being
-                 a corresponding deviation for each angle. Angle = 0 is positive x-axis direction,
-                 rotating anti-clockwise.
-        return_ndarray: whether to return numpy array of the plot image(returns RGBA array).
+                  `rule` is interpreted as angles. If integer, then is a
+                  +-deviation for all angles. If tuple of integers, then
+                  must be of the same length as `rule`, each value being
+                  a corresponding deviation for each angle. Angle = 0 is positive
+                  x-axis direction, rotating anti-clockwise.
+        return_ndarray: whether to return numpy array of the plot image
+                  (returns RGBA array).
         show_plot: whether to show the plot.
         is_gray: whether to use the gray scale.
         dpi: dpi for output image.
@@ -93,7 +95,7 @@ def scanpath_visualization(
     plt.figure(figsize=fig_size)
 
     marks = ("o", "^", "s", "*", "p")
-    legend = dict()
+    legend = {}
     data = data_.copy()
     data["color"] = points_color
     if aoi is not None:
@@ -121,10 +123,11 @@ def scanpath_visualization(
 
     if aoi is not None:
         if aoi_c is None:
-            get_aoi_cm = plt.cm.get_cmap(lut=len(data[aoi].drop_duplicates().values))
-            aoi_c = dict()
-            for i in range(len(data[aoi].unique())):
-                aoi_c[data[aoi].unique()[i]] = get_aoi_cm(i)
+            n_aois = len(data[aoi].unique())
+            get_aoi_cm = mpl.colormaps["tab20"].resampled(n_aois)
+            aoi_c = {}
+            for i, val in enumerate(data[aoi].unique()):
+                aoi_c[val] = get_aoi_cm(i)
         data["color"] = data[aoi].map(aoi_c)
 
     plt.axis(axes_limits)
@@ -296,7 +299,7 @@ class Visualization(BaseEstimator, TransformerMixin):
         add_regressions: bool = False,
         regression_color: str = "red",
         is_vectors: bool = False,
-        aoi_c: Dict[str, str] = None,
+        aoi_c: dict[str, str] = None,
         only_points: bool = False,
         seq_colormap: bool = False,
         show_hull: bool = False,
@@ -304,8 +307,8 @@ class Visualization(BaseEstimator, TransformerMixin):
         path_to_img: str = None,
         with_axes: bool = False,
         axes_limits: tuple = None,
-        rule: Tuple[int, ...] = None,
-        deviation: Union[int, Tuple[int, ...]] = None,
+        rule: tuple[int, ...] = None,
+        deviation: int | tuple[int, ...] = None,
         is_gray: bool = False,
     ):
         self.x = x
@@ -350,7 +353,7 @@ def get_visualizations(
     shape: tuple[int, int],
     pattern: str,
     dpi: float = 100.0,
-    pk: List[str] = None,
+    pk: list[str] = None,
 ):
     """Get visualizations.
 
@@ -382,20 +385,21 @@ def get_visualizations(
             raise ValueError(f"Unsupported pattern: {pattern}")
         arr.append(res)
     else:
-        groups: List[str, pd.DataFrame] = _split_dataframe(data, pk, encode=False)
-        for group_ids, group_X in tqdm(groups):
-            cur_data = data[pd.DataFrame(data[pk] == group_ids).all(axis=1)]
+        groups: list[tuple[str, pd.DataFrame]] = _split_dataframe(
+            data, pk, encode=False
+        )
+        for group_id, group_X in tqdm(groups):
             if pattern == "baseline":
                 res = baseline_visualization(
-                    cur_data, x, y, shape, show_plot=False, dpi=dpi
+                    group_X, x, y, shape, show_plot=False, dpi=dpi
                 )
             elif pattern == "aoi":
                 res = aoi_visualization(
-                    cur_data, x, y, shape, aoi="AOI", show_plot=False, dpi=dpi
+                    group_X, x, y, shape, aoi="AOI", show_plot=False, dpi=dpi
                 )
             elif pattern == "saccades":
                 res = saccade_visualization(
-                    cur_data, x, y, shape, show_plot=False, dpi=dpi
+                    group_X, x, y, shape, show_plot=False, dpi=dpi
                 )
             else:
                 raise ValueError(f"Unsupported pattern: {pattern}")
@@ -444,7 +448,7 @@ def aoi_visualization(
     points_width: float = 75,
     path_width: float = 1,
     points_color: str = None,
-    aoi_c: Dict[str, str] = None,
+    aoi_c: dict[str, str] = None,
     seq_colormap: bool = False,
     show_legend: bool = False,
     path_to_img: str = None,
@@ -497,8 +501,8 @@ def saccade_visualization(
     path_to_img: str = None,
     with_axes: bool = False,
     axes_limits: tuple = None,
-    rule: Tuple[int, ...] = (2,),
-    deviation: Union[int, Tuple[int, ...]] = None,
+    rule: tuple[int, ...] = (2,),
+    deviation: int | tuple[int, ...] = None,
     return_ndarray: bool = True,
     show_plot: bool = True,
     dpi: float = 100.0,

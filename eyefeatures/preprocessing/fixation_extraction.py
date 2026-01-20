@@ -1,4 +1,4 @@
-from typing import Callable, Dict, List, Union
+from collections.abc import Callable
 
 import numpy as np
 import pandas as pd
@@ -23,7 +23,7 @@ class IVT(BaseFixationPreprocessor):
         threshold: float,
         min_duration: float,
         distance: str = "euc",
-        pk: List[str] = None,
+        pk: list[str] = None,
         eps: float = 1e-10,
     ):
         super().__init__(x=x, y=y, t=t, pk=pk)
@@ -128,7 +128,7 @@ class IDT(BaseFixationPreprocessor):
         max_duration: float,
         max_dispersion: float,
         distance: str = "euc",  # norm in R^2 for distance calculation
-        pk: List[str] = None,
+        pk: list[str] = None,
         eps: float = 1e-20,
     ):
         super().__init__(x=x, y=y, t=t, pk=pk)
@@ -146,13 +146,13 @@ class IDT(BaseFixationPreprocessor):
         assert self.y is not None, self._err_no_field(m, "y")
         assert self.t is not None, self._err_no_field(m, "t")
         assert self.min_duration is not None, self._err_no_field(m, "min_duration")
-        assert self.min_duration > 0, f"'min_duration' must be non-negative."
+        assert self.min_duration > 0, "'min_duration' must be non-negative."
         assert self.max_duration is not None, self._err_no_field(m, "max_duration")
         assert (
             self.max_duration > self.min_duration
-        ), f"'max_duration' must be greater than min_duration."
+        ), "'max_duration' must be greater than min_duration."
         assert self.max_dispersion is not None, self._err_no_field(m, "min_duration")
-        assert self.max_dispersion > 0, f"'max_dispersion' must be non-negative."
+        assert self.max_dispersion > 0, "'max_dispersion' must be non-negative."
 
         assert self.distance in self.available_distances, (
             f"'distance' must be one of ({', '.join(self.available_distances)}),"
@@ -177,22 +177,22 @@ class IDT(BaseFixationPreprocessor):
         return mint, maxt
 
     @staticmethod
-    def _rmq(table: np.ndarray, l: int, r: int, f: Callable):
-        """RMQ on range [l, r)."""
+    def _rmq(table: np.ndarray, left_idx: int, right_idx: int, f: Callable):
+        """RMQ on range [left_idx, right_idx)."""
 
-        t = int(np.log2(r - l))
-        return f(table[t, l], table[t, r - (1 << t)])
+        t = int(np.log2(right_idx - left_idx))
+        return f(table[t, left_idx], table[t, right_idx - (1 << t)])
 
     def _get_disp_window(
-        self, l: int, r: int, mintx, maxtx, minty, maxty
+        self, left_idx: int, r_idx: int, mintx, maxtx, minty, maxty
     ) -> [int, float]:
-        """Binary search to find the widest dispersion window in [l, r]."""
+        """Binary search to find the widest dispersion window in [left_idx, r_idx]."""
 
-        right_border = l
-        left_border = l
+        right_border = left_idx
+        left_border = left_idx
         window_disp = -np.inf
-        while r >= l:
-            m = l + int((r - l) / 2)
+        while r_idx >= left_idx:
+            m = left_idx + int((r_idx - left_idx) / 2)
 
             minx = self._rmq(mintx, left_border, m + 1, min)
             miny = self._rmq(minty, left_border, m + 1, min)
@@ -204,20 +204,20 @@ class IDT(BaseFixationPreprocessor):
             if disp <= self.max_dispersion:
                 right_border = m
                 window_disp = disp
-                l = m + 1
+                left_idx = m + 1
             else:
-                r = m - 1
+                r_idx = m - 1
         return right_border, window_disp
 
-    def _get_dur_window(self, l: int, r: int, t: np.ndarray) -> [int, int]:
-        """Sliding window to find the widest duration window in [l, r]."""
+    def _get_dur_window(self, left_idx: int, r: int, t: np.ndarray) -> [int, int]:
+        """Sliding window to find the widest duration window in [left_idx, r]."""
 
-        right_border = l
-        end_time = t[l] + self.max_duration
+        right_border = left_idx
+        end_time = t[left_idx] + self.max_duration
         while right_border + 1 <= r and t[right_border + 1] < end_time:
             right_border += 1
 
-        start_time = t[l] + self.min_duration
+        start_time = t[left_idx] + self.min_duration
         return right_border if t[right_border + 1] >= start_time else -1
 
     # @jit(forceobj=True, looplift=True)
@@ -238,37 +238,37 @@ class IDT(BaseFixationPreprocessor):
         disp = np.full(n, -np.inf)
 
         # === IDT Algorithm ===
-        l = 0
-        r = n - 1  # [l, r]
+        left_idx = 0
+        r = n - 1  # [left_idx, r]
         mintx, maxtx = self._build_sparse_tables(x)
         minty, maxty = self._build_sparse_tables(y)
 
         # restrictions on duration and dispersion are considered consequently
-        while l < n:
+        while left_idx < n:
             # 1. Maintain the widest duration window using sliding window.
             # 2. Inside, find the widest dispersion window using binary search.
             # 3. Classify gazes from window in step 2 as fixation and continue.
 
-            dur_right_border = self._get_dur_window(l, r, t)
+            dur_right_border = self._get_dur_window(left_idx, r, t)
             if dur_right_border == -1:
                 break
 
             disp_right_border, window_disp = self._get_disp_window(
-                l, dur_right_border, mintx, maxtx, minty, maxty
+                left_idx, dur_right_border, mintx, maxtx, minty, maxty
             )
 
             # max_duration and max_dispersion satisfied
-            if t[disp_right_border] - t[l] < self.min_duration:
-                l += 1
+            if t[disp_right_border] - t[left_idx] < self.min_duration:
+                left_idx += 1
                 continue
 
-            fixations[l:disp_right_border] = (
-                fixation_id  # [l, dur_right_border] is single fixation
+            fixations[left_idx:disp_right_border] = (
+                fixation_id  # [left_idx, dur_right_border] is single fixation
             )
-            disp[l:disp_right_border] = window_disp
+            disp[left_idx:disp_right_border] = window_disp
 
             fixation_id += 1
-            l = disp_right_border + 1
+            left_idx = disp_right_border + 1
 
         # === IDT Algorithm ===
 
@@ -343,7 +343,8 @@ class IHMM(BaseFixationPreprocessor):
         sac2fix: probability of transition from saccade to fixation.
         fix_distrib: distribution of fixations.
         sac_distrib: distribution of saccades.
-        distrib_params: 'auto' for default params and dict {"fixation": params1, "saccade": params2}, where
+        distrib_params: 'auto' for default params or dict with
+           {"fixation": params1, "saccade": params2}, where
            "params" are arguments for  appropriate `scipy.stats` function.
     """
 
@@ -356,9 +357,9 @@ class IHMM(BaseFixationPreprocessor):
         sac2fix: float = 0.05,
         fix_distrib: str = "norm",  # fixation distribution
         sac_distrib: str = "norm",
-        distrib_params: Union[str, Dict[str, float]] = "auto",
+        distrib_params: str | dict[str, float] = "auto",
         distance: str = "euc",
-        pk: List[str] = None,
+        pk: list[str] = None,
         eps: float = 1e-20,
     ):
         super().__init__(x=x, y=y, t=t, pk=pk)
@@ -395,10 +396,10 @@ class IHMM(BaseFixationPreprocessor):
         )
         assert isinstance(self.fix2sac, float) and (
             0.0 < self.fix2sac < 1.0
-        ), f"'fix2sac' must be float between 0.0 and 1.0."
+        ), "'fix2sac' must be float between 0.0 and 1.0."
         assert isinstance(self.sac2fix, float) and (
             0.0 < self.sac2fix < 1.0
-        ), f"'sac2fix' must be float between 0.0 and 1.0."
+        ), "'sac2fix' must be float between 0.0 and 1.0."
 
     def _get_distribution(self, ed, ep):
         if ed == "norm":
@@ -429,8 +430,8 @@ class IHMM(BaseFixationPreprocessor):
         if self.distrib_params == "auto":
             # TODO commented approach does not work
             # quantiles = np.quantile(vel, q=[0.15, 0.35, 0.55, 0.85])
-            # fixation_mean = quantiles[0]                                   # 20th quantile as fixation mean estimate
-            # fixation_std = vel[vel <= quantiles[1]].std()                  # [0, 40]'s std as fixation std estimate
+            # fixation_mean = quantiles[0]
+            # fixation_std = vel[vel <= quantiles[1]].std()
             #
             # dp = {
             #     "fixation": {
