@@ -9,7 +9,7 @@ Eyetracking Features Library
 
    overview
    installation
-   quickstart
+   quickstart/quickstart
    api/index
    contribution
    changelog

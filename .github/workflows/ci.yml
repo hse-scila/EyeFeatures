@@ -3,8 +3,18 @@ name: CI
 on:
   push:
     branches: [main, dev]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.gitignore'
+      - 'LICENSE'
   pull_request:
     branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.gitignore'
+      - 'LICENSE'
 
 jobs:
   lint:
@@ -25,7 +35,8 @@ jobs:
       - name: Run ruff
         run: ruff check eyefeatures
 
-  test:
+  tests:  # Tests that use synthetic data only.
+    name: Library Tests
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -40,5 +51,5 @@ jobs:
         run: pip install poetry
       - name: Install dependencies
         run: poetry install --with test,deep
-      - name: Run tests with coverage
+      - name: Run tests
         run: poetry run pytest --cov=eyefeatures --cov-report=xml --cov-report=term-missing --cov-fail-under=80

@@ -1,4 +1,4 @@
-from typing import Callable, Dict, List, Union
+from collections.abc import Callable
 
 import numpy as np
 import pandas as pd
@@ -23,7 +23,7 @@ class IVT(BaseFixationPreprocessor):
         threshold: float,
         min_duration: float,
         distance: str = "euc",
-        pk: List[str] = None,
+        pk: list[str] = None,
         eps: float = 1e-10,
     ):
         super().__init__(x=x, y=y, t=t, pk=pk)
@@ -128,7 +128,7 @@ class IDT(BaseFixationPreprocessor):
         max_duration: float,
         max_dispersion: float,
         distance: str = "euc",  # norm in R^2 for distance calculation
-        pk: List[str] = None,
+        pk: list[str] = None,
         eps: float = 1e-20,
     ):
         super().__init__(x=x, y=y, t=t, pk=pk)
@@ -357,9 +357,9 @@ class IHMM(BaseFixationPreprocessor):
         sac2fix: float = 0.05,
         fix_distrib: str = "norm",  # fixation distribution
         sac_distrib: str = "norm",
-        distrib_params: Union[str, Dict[str, float]] = "auto",
+        distrib_params: str | dict[str, float] = "auto",
         distance: str = "euc",
-        pk: List[str] = None,
+        pk: list[str] = None,
         eps: float = 1e-20,
     ):
         super().__init__(x=x, y=y, t=t, pk=pk)

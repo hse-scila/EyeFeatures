@@ -86,6 +86,9 @@ filterwarnings = [
     "ignore:.*maximum_filter:DeprecationWarning:PyEMD.EMD2d",
     "ignore:.*binary_erosion:DeprecationWarning:PyEMD.EMD2d",
     "ignore:.*generate_binary_structure:DeprecationWarning:PyEMD.EMD2d",
+    "ignore:.*parseString.*:DeprecationWarning",
+    "ignore:.*resetCache.*:DeprecationWarning",
+    "ignore:.*enablePackrat.*:DeprecationWarning",
 ]
 
 [tool.coverage.run]
@@ -118,3 +121,30 @@ ensure_newline_before_comments = true
 [tool.flake8]
 max-line-length = 88
 extend-ignore = ["E501"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+]
+ignore = [
+    "E501",  # line too long (handled by black)
+    "B008",  # do not perform function calls in argument defaults
+    "C901",  # complexity
+    "UP038", # Use `X | Y` in `isinstance` (prevents some compatibility issues/personal preference)
+    "B007",  # Loop control variable not used
+    "B023",  # Function definition does not bind loop variable
+    "B028",  # No explicit `stacklevel`
+    "C408",  # Unnecessary `dict` call
+]
+
+[tool.ruff.isort]
+known-first-party = ["eyefeatures"]
+combine-as-imports = true

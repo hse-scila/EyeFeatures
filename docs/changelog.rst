@@ -8,7 +8,7 @@ All notable changes to this project will be documented in this file.
 The format is based on `Keep a Changelog <https://keepachangelog.com/en/1.0.0/>`_,
 and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0.html>`_.
 
-[1.1.0] - 2026-01-19
+[1.1.0] - 2026-01-20
 --------------------
 
 Added
@@ -22,7 +22,8 @@ Added
   - Implemented unit tests for model architectures (``VitNet``, ``VitNetWithCrossAttention``, ``SimpleRNN``, ``GIN``, ``Classifier``, ``Regressor``) in ``eyefeatures.deep.models``.
   - New tests for ``Extractor``, ``BaseTransformer``, ``SaccadeFeatures``, ``FixationFeatures``, and ``IndividualNormalization`` in the ``features`` module.
   - Advanced tests for ``ShannonEntropy``, ``RQAMeasures``, and ``HHTFeatures`` confirming multi-group and multi-feature support.
-  - Scanpath-based tests for ``EucDist``, ``HauDist``, and expected path calculations.
+  - Scanpath-based tests for ``EucDist``, ``HauDist``, and ``Extractor`` consistency checks.
+  - New automated consistency tests ensuring ``feature_names_in_`` accurately predicts output columns.
 
 - **Warning-Free Test Output**:
 
@@ -41,6 +42,8 @@ Changed
 - **Architectural Refinements**:
 
   - **Unified MeasureTransformer Architecture**: Refactored base class to natively support multiple feature outputs and centralized grouping logic (``pk``).
+  - **Automated Feature Discovery**: Implemented ``get_feature_names_out`` across 30+ transformers, enabling ``Extractor`` to automatically populate ``feature_names_in_``.
+  - **Simplified Normalization**: Enhanced ``IndividualNormalization`` with automatic column inference and support for simple list-based feature specifications.
   - **Deep Model Standardization**: Refactored ``VitNet`` and ``VitNetWithCrossAttention`` for consistent projections; updated ``SimpleRNN`` for hidden state access.
   - Standardized dataset constructors to require explicit coordinate labels (``x``, ``y``).
 

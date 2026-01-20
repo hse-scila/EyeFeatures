@@ -1,4 +1,4 @@
-from typing import List, Literal, Tuple, Union
+from typing import Literal
 
 import numpy as np
 import pandas as pd
@@ -23,7 +23,7 @@ class SavGolFilter(
         x: str,
         y: str,
         t: str = None,
-        pk: List[str] = None,
+        pk: list[str] = None,
         window_length: int = 11,
         polyorder: int = 2,
         **savgol_kw,
@@ -75,10 +75,10 @@ class FIRFilter(BaseSmoothingPreprocessor):  # TODO 2D version?
         x: str,
         y: str,
         t: str = None,
-        pk: List[str] = None,
+        pk: list[str] = None,
         numtaps: int = 81,
         fs: int = 250,
-        cutoff: Union[float, Tuple[float, ...]] = 100,
+        cutoff: float | tuple[float, ...] = 100,
         pass_zero: Literal[
             False, True, "bandpass", "lowpass", "highpass", "bandstop"
         ] = False,
@@ -146,9 +146,9 @@ class IIRFilter(BaseSmoothingPreprocessor):  # TODO 2D version?
         x: str,
         y: str,
         t: str = None,
-        pk: List[str] = None,
+        pk: list[str] = None,
         N: int = 7,
-        Wn: Union[int, Tuple[int, int]] = 0.5,
+        Wn: int | tuple[int, int] = 0.5,
         **iir_kw,
     ):
         super().__init__(x=x, y=y, t=t, pk=pk)
@@ -201,8 +201,8 @@ class WienerFilter(BaseSmoothingPreprocessor):
         x: str,
         y: str,
         t: str = None,
-        pk: List[str] = None,
-        K: Union[float, Literal["auto"]] = 4.3e-5,
+        pk: list[str] = None,
+        K: float | Literal["auto"] = 4.3e-5,
         sigma: float = 0.2,
         size: int = 11,
     ):

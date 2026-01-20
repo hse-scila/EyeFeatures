@@ -101,6 +101,7 @@ class TestExtractor:
 
         # Extractor should call set_data on transformers
         transformer = BaseTransformer()
+        transformer.get_feature_names_out = lambda: []  # define abstract method
         extractor_with_trans = Extractor(
             features=[transformer],
             x="x",

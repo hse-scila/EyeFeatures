@@ -1,12 +1,10 @@
-from typing import List, Union
-
 import numpy as np
 from numpy.typing import NDArray
 
 
 def _get_distance(
-    v: Union[float, NDArray], u: Union[float, NDArray], distance: str
-) -> Union[float, NDArray]:
+    v: float | NDArray, u: float | NDArray, distance: str
+) -> float | NDArray:
     """
     Method computes vectors norm given distance.
 
@@ -38,9 +36,7 @@ def _get_distance(
 # modify the docstring of _get_distance accordingly.
 
 
-def _euc_distance(
-    v: Union[float, NDArray], u: Union[float, NDArray], is_matrix
-) -> Union[float, NDArray]:
+def _euc_distance(v: float | NDArray, u: float | NDArray, is_matrix) -> float | NDArray:
     if not is_matrix:
         return np.sqrt(np.sum(np.square(v - u)))
     else:
@@ -48,8 +44,8 @@ def _euc_distance(
 
 
 def _manhattan_distance(
-    v: Union[float, NDArray], u: Union[float, NDArray], is_matrix
-) -> Union[float, NDArray]:
+    v: float | NDArray, u: float | NDArray, is_matrix
+) -> float | NDArray:
     if not is_matrix:
         return np.sum(np.abs(v - u))
     else:
@@ -57,8 +53,8 @@ def _manhattan_distance(
 
 
 def _chebyshev_distance(
-    v: Union[float, NDArray], u: Union[float, NDArray], is_matrix
-) -> Union[float, NDArray]:
+    v: float | NDArray, u: float | NDArray, is_matrix
+) -> float | NDArray:
     if not is_matrix:
         return np.max(np.abs(v - u))
     else:
@@ -107,7 +103,7 @@ def _build_min_circle(points: NDArray):
     return np.array([x, y, r])
 
 
-def _welzl_algorithm(points: NDArray, border: List[int], N: int):
+def _welzl_algorithm(points: NDArray, border: list[int], N: int):
     if N == 0 or len(border) == 3:
         return _build_min_circle(np.array(border))
 

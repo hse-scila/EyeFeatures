@@ -1,5 +1,3 @@
-from typing import Dict, List, Tuple
-
 import numpy as np
 import pandas as pd
 from scipy.ndimage import maximum_filter, sobel
@@ -43,9 +41,9 @@ class ShapeBased(BaseAOIPreprocessor):
         self,
         x: str = None,
         y: str = None,
-        shapes: List = None,
+        shapes: list = None,
         aoi_name: str = "AOI",
-        pk: List[str] = None,
+        pk: list[str] = None,
     ):
         super().__init__(x=x, y=y, t=None, aoi=aoi_name, pk=None)
         self.shapes = shapes
@@ -110,7 +108,7 @@ class ShapeBased(BaseAOIPreprocessor):
             X[self.aoi] = self._is_inside_of_fig(X, shape_id)
             fixations = X
         else:
-            instances: List[str, pd.DataFrame] = _split_dataframe(
+            instances: list[str, pd.DataFrame] = _split_dataframe(
                 X, self.instance, encode=False
             )
             assert (not flag) or len(instances) == len(self.shapes), "Not enough shapes"
@@ -145,7 +143,7 @@ class ThresholdBased(BaseAOIPreprocessor):
         y: str = None,
         window_size: int = None,
         threshold: float = None,
-        pk: List[str] = None,
+        pk: list[str] = None,
         aoi_name: str = None,
         algorithm_type: str = "kmeans",
         threshold_dist: float = None,
@@ -194,14 +192,14 @@ class ThresholdBased(BaseAOIPreprocessor):
             loc_max_coord.shape[0] != 0
         ), "Error: Can't find the maximum with such parameters"
 
-        aoi_counts: Dict[str, int] = dict()  # Dict[aoi name] = count of points in aoi
-        aoi_points: Dict[str, List[Tuple[float, float]]] = (
-            dict()
+        aoi_counts: dict[str, int] = {}  # Dict[aoi name] = count of points in aoi
+        aoi_points: dict[str, list[tuple[float, float]]] = (
+            {}
         )  # Dict[aoi name] = list of points
 
         axis_x = X_grid.T[0]
         axis_y = Y_grid[0]
-        centers: Dict[str, Tuple[float, float]] = dict()  # Dict with the centers of aoi
+        centers: dict[str, tuple[float, float]] = {}  # Dict with the centers of aoi
         for i in range(loc_max_coord.shape[0]):  # Initial centers for each AOI
             centers[f"aoi_{i}"] = (
                 X_grid[loc_max_coord[i][0]][0],
@@ -312,7 +310,7 @@ class GradientBased(BaseAOIPreprocessor):
         y: str = None,
         window_size: int = None,
         threshold: float = None,
-        pk: List[str] = None,
+        pk: list[str] = None,
         aoi_name: str = None,
     ):
         super().__init__(x=x, y=y, t=None, aoi=aoi_name, pk=pk)
@@ -350,7 +348,7 @@ class GradientBased(BaseAOIPreprocessor):
 
         axis_x = X_grid.T[0]
         axis_y = Y_grid[0]
-        centers: Dict[str, Tuple[float, float]] = dict()  # Dict with the centers of aoi
+        centers: dict[str, tuple[float, float]] = {}  # Dict with the centers of aoi
         aoi_matrix = np.zeros((density.shape[0], density.shape[1]), dtype=int)
         # Compute the gradient magnitude
         horizontal_sobel = sobel(density, axis=0)
@@ -360,7 +358,7 @@ class GradientBased(BaseAOIPreprocessor):
             magnitude_sobel, 2, mode="constant", constant_values=-1
         )
 
-        queue_of_centers: List[List[Tuple[int, int]]] = (
+        queue_of_centers: list[list[tuple[int, int]]] = (
             []
         )  # List of points to add for each aoi
         for i in range(loc_max_coord.shape[0]):  # Initial centers for each AOI
@@ -457,7 +455,7 @@ class OverlapClustering(BaseAOIPreprocessor):
         y: str = None,
         diameters: str = None,
         centers: str = None,
-        pk: List[str] = None,
+        pk: list[str] = None,
         aoi_name: str = None,
         eps: float = 0.0,
     ):
@@ -567,13 +565,13 @@ class AOIExtractor(BaseEstimator, TransformerMixin):
 
     def __init__(
         self,
-        methods: List[BaseAOIPreprocessor],
+        methods: list[BaseAOIPreprocessor],
         x: str,
         y: str,
         window_size: int = None,
         threshold: float = None,
-        pk: List[str] = None,
-        instance_columns: List[str] = None,
+        pk: list[str] = None,
+        instance_columns: list[str] = None,
         aoi_name: str = None,
         show_best: bool = False,
     ):
@@ -616,7 +614,7 @@ class AOIExtractor(BaseEstimator, TransformerMixin):
             self.instance_columns = self.pk
 
         fixations = None
-        instances: List[str, pd.DataFrame] = _split_dataframe(
+        instances: list[str, pd.DataFrame] = _split_dataframe(
             X, self.instance_columns, encode=False
         )
         shapes_id = 0  # For ShapeBased
@@ -631,7 +629,7 @@ class AOIExtractor(BaseEstimator, TransformerMixin):
                 copy_x = None
                 copy_y = None
                 to_transform = None
-                groups: List[str, pd.DataFrame] = _split_dataframe(
+                groups: list[str, pd.DataFrame] = _split_dataframe(
                     instance_X, self.pk, encode=False
                 )
                 # Map points into (100, 100) matrix and build kde for groups
@@ -680,7 +678,7 @@ class AOIExtractor(BaseEstimator, TransformerMixin):
                     [el for el in cur_fixations[self.aoi].values if el is not None]
                 )
                 areas_names = [f"aoi_{i}" for i in range(len(all_areas))]
-                map_areas = dict(zip(all_areas, areas_names))
+                map_areas = dict(zip(all_areas, areas_names, strict=False))
                 cur_fixations[self.aoi] = cur_fixations[self.aoi].map(map_areas)
                 entropy = entropy_transformer.transform(cur_fixations)[
                     "entropy"
@@ -721,8 +719,8 @@ class AOIMatcher(BaseEstimator, TransformerMixin):
         self,
         x: str,
         y: str,
-        pk: List[str] = None,
-        instance_columns: List[str] = None,
+        pk: list[str] = None,
+        instance_columns: list[str] = None,
         aoi: str = None,
         n_aoi: int = 0,
     ):
@@ -740,14 +738,14 @@ class AOIMatcher(BaseEstimator, TransformerMixin):
         data_df: pd.DataFrame = X.copy()
 
         fixations = None
-        instances: List[str, pd.DataFrame] = _split_dataframe(
+        instances: list[str, pd.DataFrame] = _split_dataframe(
             data_df, self.instance_columns, encode=False
         )
-        prev_pattern = dict()
+        prev_pattern = {}
         for instance_ids, instance_X in instances:
             copy_x = None
             copy_y = None
-            groups: List[str, pd.DataFrame] = _split_dataframe(
+            groups: list[str, pd.DataFrame] = _split_dataframe(
                 instance_X, self.pk, encode=False
             )
             cur_fixations = None
@@ -824,11 +822,11 @@ class AOIMatcher(BaseEstimator, TransformerMixin):
 
             all_areas = np.unique(cur_fixations[self.aoi].values)
             areas_names = [f"aoi_{i}" for i in range(len(all_areas))]
-            map_areas = dict(zip(all_areas, areas_names))
+            map_areas = dict(zip(all_areas, areas_names, strict=False))
             cur_fixations[self.aoi] = cur_fixations[self.aoi].map(map_areas)
             used = []
             to_zip = []
-            new_pattern = dict()
+            new_pattern = {}
             # Match labels with previous patterns
             for i in range(len(all_areas), 0, -1):
                 if prev_pattern.get(i, 0) != 0:
@@ -892,7 +890,7 @@ class AOIMatcher(BaseEstimator, TransformerMixin):
                                     used[j] = areas_names[k]
                                     break
                     cur_fixations[self.aoi] = cur_fixations[self.aoi].map(
-                        dict(zip(used, to_zip))
+                        dict(zip(used, to_zip, strict=False))
                     )
                     break
             # Add new sample

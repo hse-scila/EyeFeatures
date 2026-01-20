@@ -1,4 +1,5 @@
-from typing import Callable, List, Literal, Tuple, Union
+from collections.abc import Callable
+from typing import Literal
 
 import gudhi as gd
 import numpy as np
@@ -12,7 +13,7 @@ from eyefeatures.utils import _rec2square, _split_dataframe
 
 
 # =========================== HEATMAPS ===========================
-def _check_shape(shape: Tuple[int, int]):
+def _check_shape(shape: tuple[int, int]):
     assert isinstance(shape, tuple), f"'shape' must be tuple, hot {type(shape)}."
     assert len(shape) == 2, f"'shape' must be of length 2, got {len(shape)}."
     for k in shape:
@@ -23,7 +24,7 @@ def _check_shape(shape: Tuple[int, int]):
 
 
 def get_heatmap(
-    x: NDArray, y: NDArray, shape: Tuple[int, int], check: bool = True
+    x: NDArray, y: NDArray, shape: tuple[int, int], check: bool = True
 ) -> np.ndarray:
     """Get heatmap from scanpath (given coordinates are scaled and
     sorted in time) using Gaussian KDE.
@@ -57,7 +58,7 @@ def get_heatmap(
 
 
 def get_heatmaps(
-    data: pd.DataFrame, x: str, y: str, shape: Tuple[int, int], pk: List[str] = None
+    data: pd.DataFrame, x: str, y: str, shape: tuple[int, int], pk: list[str] = None
 ) -> np.ndarray:
     """Get heatmaps from scanpaths (given coordinates are scaled and
         sorted in time) using Gaussian KDE.
@@ -81,7 +82,7 @@ def get_heatmaps(
         heatmap = get_heatmap(x_path, y_path, shape)
         heatmaps = heatmap[np.newaxis, :, :]
     else:
-        groups: List[str, pd.DataFrame] = _split_dataframe(data, pk)
+        groups: list[str, pd.DataFrame] = _split_dataframe(data, pk)
         hshape = (len(groups), shape[0], shape[1])
 
         heatmaps = np.zeros(hshape)
@@ -188,7 +189,7 @@ def get_mtf(
     x: str,
     y: str,
     n_bins: int = 10,
-    output_size: Union[int, float] = 1.0,
+    output_size: int | float = 1.0,
     shrink_strategy: Literal["max", "mean", "normal"] = "normal",
     flatten: bool = False,
 ) -> np.ndarray:
@@ -460,13 +461,13 @@ def _minmax(a: np.array) -> np.ndarray:
     return (a - min_) / (max_ - min_)
 
 
-def _car2pol(x: np.array, f_x: np.array) -> Tuple[np.ndarray, np.ndarray]:
+def _car2pol(x: np.array, f_x: np.array) -> tuple[np.ndarray, np.ndarray]:
     rho = np.sqrt(x**2 + f_x**2)
     phi = np.arctan2(f_x, x)
     return rho, phi
 
 
-def _encode_car(x: np.array, t: np.array) -> Tuple[np.ndarray, np.ndarray]:
+def _encode_car(x: np.array, t: np.array) -> tuple[np.ndarray, np.ndarray]:
     rho = t
     phi = np.arccos(_rescale(x))
     return rho, phi
@@ -639,7 +640,7 @@ def lower_star_filtration(time_series: np.ndarray, persistence_dim_max: bool = F
     return persistence, simplex_tree
 
 
-def persistence_curve(persistence_diagram: List[Tuple | np.ndarray], t: float):
+def persistence_curve(persistence_diagram: list[tuple | np.ndarray], t: float):
     """Compute the persistence curve for a persistence diagram at time t.
 
     Args:
@@ -655,7 +656,7 @@ def persistence_curve(persistence_diagram: List[Tuple | np.ndarray], t: float):
     return total_persistence
 
 
-def persistence_entropy_curve(persistence_diagram: List[Tuple | np.ndarray], t: float):
+def persistence_entropy_curve(persistence_diagram: list[tuple | np.ndarray], t: float):
     """Compute the persistence entropy curve for a persistence diagram at time t.
 
     Args:

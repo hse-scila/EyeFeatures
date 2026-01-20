@@ -1,5 +1,4 @@
 import io
-from typing import Dict, List, Tuple, Union
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -33,7 +32,7 @@ def scanpath_visualization(
     add_regressions: bool = False,
     regression_color: str = "red",
     is_vectors: bool = False,
-    aoi_c: Dict[str, str] = None,
+    aoi_c: dict[str, str] = None,
     only_points: bool = False,
     seq_colormap: bool = False,
     show_hull: bool = False,
@@ -41,8 +40,8 @@ def scanpath_visualization(
     path_to_img: str = None,
     with_axes: bool = False,
     axes_limits: tuple = None,
-    rule: Tuple[int, ...] = None,
-    deviation: Union[int, Tuple[int, ...]] = None,
+    rule: tuple[int, ...] = None,
+    deviation: int | tuple[int, ...] = None,
     return_ndarray: bool = False,
     show_plot: bool = True,
     is_gray: bool = False,
@@ -96,7 +95,7 @@ def scanpath_visualization(
     plt.figure(figsize=fig_size)
 
     marks = ("o", "^", "s", "*", "p")
-    legend = dict()
+    legend = {}
     data = data_.copy()
     data["color"] = points_color
     if aoi is not None:
@@ -126,7 +125,7 @@ def scanpath_visualization(
         if aoi_c is None:
             n_aois = len(data[aoi].unique())
             get_aoi_cm = mpl.colormaps["tab20"].resampled(n_aois)
-            aoi_c = dict()
+            aoi_c = {}
             for i, val in enumerate(data[aoi].unique()):
                 aoi_c[val] = get_aoi_cm(i)
         data["color"] = data[aoi].map(aoi_c)
@@ -300,7 +299,7 @@ class Visualization(BaseEstimator, TransformerMixin):
         add_regressions: bool = False,
         regression_color: str = "red",
         is_vectors: bool = False,
-        aoi_c: Dict[str, str] = None,
+        aoi_c: dict[str, str] = None,
         only_points: bool = False,
         seq_colormap: bool = False,
         show_hull: bool = False,
@@ -308,8 +307,8 @@ class Visualization(BaseEstimator, TransformerMixin):
         path_to_img: str = None,
         with_axes: bool = False,
         axes_limits: tuple = None,
-        rule: Tuple[int, ...] = None,
-        deviation: Union[int, Tuple[int, ...]] = None,
+        rule: tuple[int, ...] = None,
+        deviation: int | tuple[int, ...] = None,
         is_gray: bool = False,
     ):
         self.x = x
@@ -354,7 +353,7 @@ def get_visualizations(
     shape: tuple[int, int],
     pattern: str,
     dpi: float = 100.0,
-    pk: List[str] = None,
+    pk: list[str] = None,
 ):
     """Get visualizations.
 
@@ -386,7 +385,7 @@ def get_visualizations(
             raise ValueError(f"Unsupported pattern: {pattern}")
         arr.append(res)
     else:
-        groups: List[Tuple[str, pd.DataFrame]] = _split_dataframe(
+        groups: list[tuple[str, pd.DataFrame]] = _split_dataframe(
             data, pk, encode=False
         )
         for group_id, group_X in tqdm(groups):
@@ -449,7 +448,7 @@ def aoi_visualization(
     points_width: float = 75,
     path_width: float = 1,
     points_color: str = None,
-    aoi_c: Dict[str, str] = None,
+    aoi_c: dict[str, str] = None,
     seq_colormap: bool = False,
     show_legend: bool = False,
     path_to_img: str = None,
@@ -502,8 +501,8 @@ def saccade_visualization(
     path_to_img: str = None,
     with_axes: bool = False,
     axes_limits: tuple = None,
-    rule: Tuple[int, ...] = (2,),
-    deviation: Union[int, Tuple[int, ...]] = None,
+    rule: tuple[int, ...] = (2,),
+    deviation: int | tuple[int, ...] = None,
     return_ndarray: bool = True,
     show_plot: bool = True,
     dpi: float = 100.0,

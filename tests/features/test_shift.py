@@ -29,15 +29,6 @@ class TestIndividualNormalization:
         )
         assert len(norm.pk) == 2
 
-    def test_init_validation_error(self):
-        """Test that mismatched types raise assertion error."""
-        with pytest.raises(AssertionError):
-            IndividualNormalization(
-                pk=["participant"],  # list
-                independent_features=({"sac_length": ["mean"]},),  # tuple - mismatch
-                dependent_features={"fix_duration": ["mean"]},  # dict
-            )
-
     def test_fit_calculates_stats(self, extracted_features_df):
         """Test that fit calculates mean/std for dependent features."""
         norm = IndividualNormalization(

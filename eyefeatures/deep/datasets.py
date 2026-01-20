@@ -1,7 +1,7 @@
 import warnings
+from collections.abc import Callable
 from copy import copy
 from functools import partial
-from typing import Callable, List, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -21,7 +21,7 @@ from eyefeatures.visualization.static_visualization import get_visualizations
 
 
 def iterative_split(
-    df: pd.DataFrame, y: ArrayLike, test_size: float, stratify_columns: List[str]
+    df: pd.DataFrame, y: ArrayLike, test_size: float, stratify_columns: list[str]
 ):
     """Custom iterative train test split which
     'maintains balanced representation with respect
@@ -59,7 +59,7 @@ def iterative_split(
     return X_train, X_test, y_train, y_test
 
 
-def _coord_to_grid(coords: np.array, xlim: Tuple, ylim: Tuple, shape: Tuple):
+def _coord_to_grid(coords: np.array, xlim: tuple, ylim: tuple, shape: tuple):
     """Maps 2D coordinates to grid indices based on the grid resolution.
 
     Args:
@@ -78,7 +78,7 @@ def _coord_to_grid(coords: np.array, xlim: Tuple, ylim: Tuple, shape: Tuple):
     return i, j
 
 
-def _cell_index(i: int, j: int, shape: Tuple[int, int]):
+def _cell_index(i: int, j: int, shape: tuple[int, int]):
     """Maps grid indices (i, j) to a 1D cell index based on the grid shape.
 
     Args:
@@ -93,7 +93,7 @@ def _cell_index(i: int, j: int, shape: Tuple[int, int]):
     return i * shape[1] + j
 
 
-def _calculate_cell_center(i: int, j: int, xlim: Tuple, ylim: Tuple, shape: Tuple):
+def _calculate_cell_center(i: int, j: int, xlim: tuple, ylim: tuple, shape: tuple):
     """Calculates the center coordinates of a grid cell.
 
     Args:
@@ -347,9 +347,9 @@ class Dataset2D(Dataset):
         Y: ArrayLike,
         x: str,
         y: str,
-        pk: List[str],
-        shape: Union[Tuple[int], int],
-        representations: List[str],
+        pk: list[str],
+        shape: tuple[int] | int,
+        representations: list[str],
         upload_to_cuda: bool = False,
         transforms=None,
     ):
@@ -431,8 +431,8 @@ class DatasetTimeSeries(Dataset):
         Y: ArrayLike,
         x: str,
         y: str,
-        pk: List[str],
-        features: List[str],
+        pk: list[str],
+        features: list[str],
         transforms: Callable = None,
         max_length: int = 10,
     ):
@@ -583,14 +583,14 @@ class GridGraphDataset(Dataset):
         x: str,
         y: str,
         add_duration: str,
-        pk: List[str],
-        xlim: Tuple[float, float] = (0, 1),
-        ylim: Tuple[float, float] = (0, 1),
-        shape: Tuple[int, int] = (10, 10),
+        pk: list[str],
+        xlim: tuple[float, float] = (0, 1),
+        ylim: tuple[float, float] = (0, 1),
+        shape: tuple[int, int] = (10, 10),
         directed: bool = True,
         transforms: Callable = None,
     ):
-        super(GridGraphDataset, self).__init__()
+        super().__init__()
         self.transform = transforms
         self.pk = pk
         self.directed = directed
@@ -649,7 +649,7 @@ class DatasetLightningBase(pl.LightningDataModule):
         Y: ArrayLike,
         x: str,
         y: str,
-        pk: List[str],
+        pk: list[str],
         test_size: int,
         batch_size: int,
         split_type: str = "simple",
@@ -752,9 +752,9 @@ class DatasetLightning2D(DatasetLightningBase):
         Y: ArrayLike,
         x: str,
         y: str,
-        pk: List[str],
-        shape: Union[Tuple[int], int],
-        representations: List[str],
+        pk: list[str],
+        shape: tuple[int] | int,
+        representations: list[str],
         test_size: int,
         batch_size: int,
         split_type: str = "simple",
@@ -795,8 +795,8 @@ class DatasetLightningTimeSeries(DatasetLightningBase):
         Y: ArrayLike,
         x: str,
         y: str,
-        pk: List[str],
-        features: List[str],
+        pk: list[str],
+        features: list[str],
         test_size: int,
         batch_size: int,
         split_type: str = "simple",
@@ -836,10 +836,10 @@ class DatasetLightningTimeSeries2D(DatasetLightningBase):
         Y: ArrayLike,
         x: str,
         y: str,
-        pk: List[str],
-        shape: Union[Tuple[int], int],
-        representations: List[str],
-        features: List[str],
+        pk: list[str],
+        shape: tuple[int] | int,
+        representations: list[str],
+        features: list[str],
         test_size: int,
         batch_size: int,
         split_type: str = "simple",

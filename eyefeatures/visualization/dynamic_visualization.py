@@ -1,5 +1,4 @@
 import io
-from typing import Dict, List, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -10,7 +9,7 @@ from eyefeatures.utils import _select_regressions
 
 
 def _built_figure(
-    fig_dict: Dict, animation_duration: int = 500
+    fig_dict: dict, animation_duration: int = 500
 ):  # animation_duration in ms
     """Function for building a layout for plot."""
     fig_dict["layout"]["width"] = 600
@@ -68,11 +67,11 @@ def tracker_animation(
     points_width: float = 6,
     add_regression: bool = False,
     regression_color: str = "red",
-    meta_data: List[str] = None,
-    rule: Tuple[int, ...] = None,
-    deviation: Union[int, Tuple[int, ...]] = None,
+    meta_data: list[str] = None,
+    rule: tuple[int, ...] = None,
+    deviation: int | tuple[int, ...] = None,
     aoi: str = None,
-    aoi_c: Dict[str, str] = None,
+    aoi_c: dict[str, str] = None,
     tracker_color: str = "red",
     animation_duration: int = 500,
     save_gif: str = None,
@@ -141,12 +140,12 @@ def tracker_animation(
         "x": X,
         "y": Y,
         "mode": "lines",
-        "line": dict(color=path_color, width=path_width),
+        "line": {"color": path_color, "width": path_width},
         "name": "saccades",
     }
 
     if aoi is not None and aoi_c is None:
-        aoi_c = dict()
+        aoi_c = {}
         areas = data[aoi].unique()
         for area in areas:
             color = (
@@ -175,7 +174,7 @@ def tracker_animation(
                         "x": [data.loc[i - 1, x], data.loc[i, x]],
                         "y": [data.loc[i - 1, y], data.loc[i, y]],
                         "mode": "lines",
-                        "line": dict(color=regression_color, width=path_width),
+                        "line": {"color": regression_color, "width": path_width},
                         "name": "regressions",
                         "showlegend": first_reg,
                     }
@@ -187,7 +186,7 @@ def tracker_animation(
                         "x": [data.loc[i - 1, x], data.loc[i, x]],
                         "y": [data.loc[i - 1, y], data.loc[i, y]],
                         "mode": "lines",
-                        "line": dict(color=path_color, width=path_width),
+                        "line": {"color": path_color, "width": path_width},
                         "name": "saccades",
                         "showlegend": first_sac,
                     }
@@ -218,7 +217,7 @@ def tracker_animation(
                     "x": data_area[x].values,
                     "y": data_area[y].values,
                     "mode": "markers",
-                    "marker": dict(color=aoi_c[area], size=points_width),
+                    "marker": {"color": aoi_c[area], "size": points_width},
                     "name": area,
                     "text": annotate,
                 }
@@ -237,7 +236,7 @@ def tracker_animation(
             "x": X,
             "y": Y,
             "mode": "markers",
-            "marker": dict(color=points_color, size=points_width),
+            "marker": {"color": points_color, "size": points_width},
             "name": "fixations",
             "text": annotate,
         }
@@ -248,7 +247,7 @@ def tracker_animation(
             "x": [X[0]],
             "y": [Y[0]],
             "mode": "markers",
-            "marker": dict(color=tracker_color),
+            "marker": {"color": tracker_color},
             "name": "tracker",
         }
     )
@@ -268,7 +267,7 @@ def tracker_animation(
                 "x": [X[i]],
                 "y": [Y[i]],
                 "mode": "markers",
-                "marker": dict(color=tracker_color),
+                "marker": {"color": tracker_color},
                 "name": "tracker",
             }
         )
@@ -315,8 +314,8 @@ def scanpath_animation(
     points_width: float = 6,
     add_regression: bool = False,
     regression_color: str = "red",
-    rule: Tuple[int, ...] = None,
-    deviation: Union[int, Tuple[int, ...]] = None,
+    rule: tuple[int, ...] = None,
+    deviation: int | tuple[int, ...] = None,
     animation_duration: int = 500,
     save_gif: str = None,
     frames_count: int = 1,
@@ -375,12 +374,14 @@ def scanpath_animation(
         "steps": [],
     }
 
-    fig_dict["layout"]["xaxis"] = dict(
-        range=[x_min - 0.1, x_max + 0.1], automargin=False
-    )
-    fig_dict["layout"]["yaxis"] = dict(
-        range=[y_min - 0.1, y_max + 0.1], automargin=False
-    )
+    fig_dict["layout"]["xaxis"] = {
+        "range": [x_min - 0.1, x_max + 0.1],
+        "automargin": False,
+    }
+    fig_dict["layout"]["yaxis"] = {
+        "range": [y_min - 0.1, y_max + 0.1],
+        "automargin": False,
+    }
 
     fig_dict["data"].extend(
         [
@@ -388,7 +389,7 @@ def scanpath_animation(
                 "x": [],
                 "y": [],
                 "mode": "lines",
-                "line": dict(color=path_color, width=path_width),
+                "line": {"color": path_color, "width": path_width},
             }
             for _ in range(len(indexes))
         ]
@@ -420,19 +421,21 @@ def scanpath_animation(
             "x": [data.loc[i - 1, x], data.loc[i, x]],
             "y": [data.loc[i - 1, y], data.loc[i, y]],
             "mode": "lines+markers",
-            "line": dict(color=color, width=path_width),
-            "marker": dict(color=points_color, size=points_width),
+            "line": {"color": color, "width": path_width},
+            "marker": {"color": points_color, "size": points_width},
             "name": name,
             "showlegend": False,
         }
         frame["data"].extend(graph)
         frame["data"].append(new_edge)
-        frame["layout"]["xaxis"] = dict(
-            range=[x_min - 0.1, x_max + 0.1], automargin=False
-        )
-        frame["layout"]["yaxis"] = dict(
-            range=[y_min - 0.1, y_max + 0.1], automargin=False
-        )
+        frame["layout"]["xaxis"] = {
+            "range": [x_min - 0.1, x_max + 0.1],
+            "automargin": False,
+        }
+        frame["layout"]["yaxis"] = {
+            "range": [y_min - 0.1, y_max + 0.1],
+            "automargin": False,
+        }
         fig_dict["frames"].append(frame)
         if save_gif is not None:
             img = Image.open(io.BytesIO(go.Figure(frame).to_image(format="png")))

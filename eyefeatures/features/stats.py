@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -10,6 +10,7 @@ from eyefeatures.utils import (
     Types,
     _calc_dt,
     _get_angle,
+    _get_angle2,
     _select_regressions,
     _split_dataframe,
 )
@@ -38,15 +39,15 @@ class StatsTransformer(BaseTransformer):
 
     def __init__(
         self,
-        features_stats: Dict[str, List[str]],
+        features_stats: dict[str, list[str]],
         x: str = None,
         y: str = None,
         t: str = None,
         duration: str = None,  # TODO consider units, i.e. ps, ns, ms.
         dispersion: str = None,
-        aoi: str | List[str] = None,
+        aoi: str | list[str] = None,
         calc_without_aoi: bool = False,
-        pk: List[str] = None,
+        pk: list[str] = None,
         return_df: bool = True,
         warn: bool = True,
     ):
@@ -60,6 +61,9 @@ class StatsTransformer(BaseTransformer):
             pk=pk,
             return_df=return_df,
         )
+        if features_stats is None:
+            features_stats = {}
+
         self.features_stats = features_stats
         # feature -- i.e. saccade length/speed
         self.feature_names_in = list(features_stats.keys())
@@ -147,7 +151,7 @@ class StatsTransformer(BaseTransformer):
 
     def _preprocess_aoi(self, X: pd.DataFrame):
         if self.aoi is not None:
-            self.aoi_mapper = dict()
+            self.aoi_mapper = {}
 
             if self.calc_without_aoi:
                 self.aoi_mapper[""] = [""]
@@ -192,8 +196,8 @@ class StatsTransformer(BaseTransformer):
 
     @abstractmethod
     def _calc_feats(
-        self, X: pd.DataFrame, features: List[str], transition_mask: NDArray
-    ) -> List[Tuple[str, pd.Series]]:
+        self, X: pd.DataFrame, features: list[str], transition_mask: NDArray
+    ) -> list[tuple[str, pd.Series]]:
         """
         Method calculates features passed to constructor, i.e. keys of
         `self.features_stats`. In case of `SaccadeFeatures`, it returns
@@ -207,15 +211,15 @@ class StatsTransformer(BaseTransformer):
         ...
 
     def _calc_with_aoi(
-        self, feat_nms: List[str], X: pd.DataFrame, aoi_col: str, aoi_val: Any
-    ) -> List[Tuple[str, pd.Series]]:
+        self, feat_nms: list[str], X: pd.DataFrame, aoi_col: str, aoi_val: Any
+    ) -> list[tuple[str, pd.Series]]:
         """
         Helper function to calculate features based on `aoi_col` (name for aoi column)
         and `aoi_val` (aoi value in this column).
         """
         if aoi_col == "":  # internal lib placeholder
             transition_mask = np.ones(len(X)).astype(bool)
-            feats: List[Tuple[str, pd.Series]] = self._calc_feats(
+            feats: list[tuple[str, pd.Series]] = self._calc_feats(
                 X, feat_nms, transition_mask
             )
 
@@ -225,11 +229,26 @@ class StatsTransformer(BaseTransformer):
             all_transition_mask: pd.Series = all_aoi == all_aoi.shift(1)
             transition_mask = all_transition_mask[all_aoi == aoi_val].values
 
-            feats: List[Tuple[str, pd.Series]] = self._calc_feats(
+            feats: list[tuple[str, pd.Series]] = self._calc_feats(
                 X_aoi, feat_nms, transition_mask
             )
 
         return feats
+
+    def get_feature_names_out(self, input_features=None) -> list[str]:
+        if self.feature_names_in_ is not None:
+            return self.feature_names_in_
+
+        # Fallback for unfitted transformer if no AOI is used (otherwise it's data-dependent)
+        if self.aoi is None:
+            names = []
+            for feat_nm in self.features_stats:
+                for stat in self.features_stats[feat_nm]:
+                    names.append(f"{self._fp}_{feat_nm}_{stat}")
+            return names
+
+        # If AOI is used, we need fit() to know the AOI values
+        return []
 
     def fit(self, X: pd.DataFrame, y=None):
         self._check_features_stats()
@@ -248,7 +267,7 @@ class StatsTransformer(BaseTransformer):
                         )
         return self
 
-    def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, NDArray]:
+    def transform(self, X: pd.DataFrame) -> pd.DataFrame | NDArray:
         if self.features_stats is None:
             return X if self.return_df else X.values
 
@@ -272,13 +291,13 @@ class StatsTransformer(BaseTransformer):
 
             for aoi_col in self.aoi_mapper:
                 for aoi_val in self.aoi_mapper[aoi_col]:
-                    group_feats: List[Tuple[str, pd.Series]] = self._calc_with_aoi(
+                    group_feats: list[tuple[str, pd.Series]] = self._calc_with_aoi(
                         feat_nms, group_X, aoi_col, aoi_val
                     )
 
                     add_cols_nms = len(group_ids) == 1
                     for feat_nm, feat_arr in group_feats:
-                        feat_stats: List[str] = self.features_stats[feat_nm]
+                        feat_stats: list[str] = self.features_stats[feat_nm]
 
                         if not feat_arr.empty:  # group_X with AOI was not empty
                             stats_group = [
@@ -323,9 +342,20 @@ class SaccadeFeatures(StatsTransformer):
     their features.
     """
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.available_feats = ("length", "acceleration", "speed", "angle")
+    def __init__(self, features_stats=None, **kwargs):
+        available_feats = (
+            "length",
+            "acceleration",
+            "speed",
+            "direction_angle",
+            "rotation_angle",
+        )
+        if features_stats is None:
+            features_stats = {
+                feat: ["min", "max", "mean", "std"] for feat in available_feats
+            }
+        super().__init__(features_stats=features_stats, **kwargs)
+        self.available_feats = available_feats
 
     @property
     def _fp(self) -> str:
@@ -339,8 +369,8 @@ class SaccadeFeatures(StatsTransformer):
                 assert self.t is not None, self._err_no_col(feat, "t")
 
     def _calc_feats(
-        self, X: pd.DataFrame, features: List[str], transition_mask: NDArray
-    ) -> List[Tuple[str, pd.Series]]:
+        self, X: pd.DataFrame, features: list[str], transition_mask: NDArray
+    ) -> list[tuple[str, pd.Series]]:
         feats = []
 
         dx: pd.Series = X[self.x].diff()
@@ -348,7 +378,7 @@ class SaccadeFeatures(StatsTransformer):
         dr = np.sqrt(dx**2 + dy**2)
         dt = (
             _calc_dt(X, self.duration, self.t)
-            if any(map(lambda f: f != "length", features))
+            if any(f != "length" for f in features)
             else None
         )
 
@@ -365,9 +395,23 @@ class SaccadeFeatures(StatsTransformer):
             elif feat_nm == "speed":
                 sac_spd = dr / (dt + self.eps)
                 feat_arr = sac_spd[transition_mask]
-            elif feat_nm == "angle":
+            elif feat_nm == "direction_angle":
                 angles = pd.Series(
-                    [_get_angle(dx_val, dy_val) for dx_val, dy_val in zip(dx, dy)],
+                    [
+                        _get_angle(dx_val, dy_val)
+                        for dx_val, dy_val in zip(dx, dy, strict=False)
+                    ],
+                    index=dx.index,
+                )
+                feat_arr = angles[transition_mask]
+            elif feat_nm == "rotation_angle":
+                angles = pd.Series(
+                    [
+                        _get_angle2(dx1, dy1, dx2, dy2)
+                        for dx1, dy1, dx2, dy2 in zip(
+                            dx.shift(1), dy.shift(1), dx, dy, strict=False
+                        )
+                    ],
                     index=dx.index,
                 )
                 feat_arr = angles[transition_mask]
@@ -410,12 +454,26 @@ class RegressionFeatures(StatsTransformer):
 
     def __init__(
         self,
-        rule: Tuple[int, ...] = (2, 3),
-        deviation: int | Tuple[int, ...] = None,
+        rule: tuple[int, ...] = (2, 3),
+        deviation: int | tuple[int, ...] = None,
+        features_stats: dict[str, list[str]] = None,
         **kwargs,
     ):
-        super().__init__(**kwargs)
-        self.available_feats = ("length", "acceleration", "speed", "angle", "mask")
+        available_feats = (
+            "length",
+            "acceleration",
+            "speed",
+            "direction_angle",
+            "rotation_angle",
+            "mask",
+        )
+        if features_stats is None:
+            features_stats = {
+                feat: ["min", "max", "mean", "std"] for feat in available_feats
+            }
+        super().__init__(features_stats=features_stats, **kwargs)
+        self.available_feats = available_feats
+
         self.rule = rule
         self.deviation = deviation
 
@@ -452,8 +510,8 @@ class RegressionFeatures(StatsTransformer):
                 self._err_no_col(feat, "t")
 
     def _calc_feats(
-        self, X: pd.DataFrame, features: List[str], transition_mask: NDArray
-    ) -> List[Tuple[str, pd.Series]]:
+        self, X: pd.DataFrame, features: list[str], transition_mask: NDArray
+    ) -> list[tuple[str, pd.Series]]:
         feats = []
 
         dx: pd.Series = X[self.x].diff()
@@ -462,7 +520,7 @@ class RegressionFeatures(StatsTransformer):
         dr = np.sqrt(dx**2 + dy**2)
         dt = (
             _calc_dt(X, self.duration, self.t)
-            if any(map(lambda f: f != "length", features))
+            if any(f != "length" for f in features)
             else None
         )
 
@@ -477,9 +535,23 @@ class RegressionFeatures(StatsTransformer):
             elif feat_nm == "speed":
                 sac_spd = dr / (dt + self.eps)
                 feat_arr = sac_spd[sm][tm]
-            elif feat_nm == "angle":
+            elif feat_nm == "direction_angle":
                 angles = pd.Series(
-                    [_get_angle(dx_val, dy_val) for dx_val, dy_val in zip(dx, dy)],
+                    [
+                        _get_angle(dx_val, dy_val)
+                        for dx_val, dy_val in zip(dx, dy, strict=False)
+                    ],
+                    index=dx.index,
+                )
+                feat_arr = angles[sm][tm]
+            elif feat_nm == "rotation_angle":
+                angles = pd.Series(
+                    [
+                        _get_angle2(dx1, dy1, dx2, dy2)
+                        for dx1, dy1, dx2, dy2 in zip(
+                            dx.shift(1), dy.shift(1), dx, dy, strict=False
+                        )
+                    ],
                     index=dx.index,
                 )
                 feat_arr = angles[sm][tm]
@@ -502,9 +574,28 @@ class MicroSaccadeFeatures(StatsTransformer):
         max_speed: maximum speed between fixations.
     """
 
-    def __init__(self, min_dispersion: float, max_speed: float, **kwargs):
-        super().__init__(**kwargs)
-        self.available_feats = ("length", "acceleration", "speed", "mask")
+    def __init__(
+        self,
+        min_dispersion: float = 1.0,
+        max_speed: float = 10.0,
+        features_stats: dict[str, list[str]] = None,
+        **kwargs,
+    ):
+        available_feats = (
+            "length",
+            "acceleration",
+            "speed",
+            "direction_angle",
+            "rotation_angle",
+            "mask",
+        )
+        if features_stats is None:
+            features_stats = {
+                feat: ["min", "max", "mean", "std"] for feat in available_feats
+            }
+        super().__init__(features_stats=features_stats, **kwargs)
+        self.available_feats = available_feats
+
         self.min_dispersion = min_dispersion
         self.max_speed = max_speed
 
@@ -522,8 +613,8 @@ class MicroSaccadeFeatures(StatsTransformer):
                 self._err_no_col(feat, "t")
 
     def _calc_feats(
-        self, X: pd.DataFrame, features: List[str], transition_mask: NDArray
-    ) -> List[Tuple[str, pd.Series]]:
+        self, X: pd.DataFrame, features: list[str], transition_mask: NDArray
+    ) -> list[tuple[str, pd.Series]]:
         feats = []
 
         dx: pd.Series = X[self.x].diff()
@@ -535,7 +626,7 @@ class MicroSaccadeFeatures(StatsTransformer):
 
         dt = (
             _calc_dt(X, self.duration, self.t)
-            if any(map(lambda f: f != "length", features))
+            if any(f != "length" for f in features)
             else None
         )
 
@@ -550,6 +641,26 @@ class MicroSaccadeFeatures(StatsTransformer):
             elif feat_nm == "speed":
                 sac_spd = dr / (dt + self.eps)
                 feat_arr = sac_spd[sm][tm]
+            elif feat_nm == "direction_angle":
+                angles = pd.Series(
+                    [
+                        _get_angle(dx_val, dy_val)
+                        for dx_val, dy_val in zip(dx, dy, strict=False)
+                    ],
+                    index=dx.index,
+                )
+                feat_arr = angles[sm][tm]
+            elif feat_nm == "rotation_angle":
+                angles = pd.Series(
+                    [
+                        _get_angle2(dx1, dy1, dx2, dy2)
+                        for dx1, dy1, dx2, dy2 in zip(
+                            dx.shift(1), dy.shift(1), dx, dy, strict=False
+                        )
+                    ],
+                    index=dx.index,
+                )
+                feat_arr = angles[sm][tm]
             elif feat_nm == "mask":
                 feat_arr = pd.Series(sm)
             else:
@@ -564,9 +675,14 @@ class FixationFeatures(StatsTransformer):
     The transformer uses input fixations to extract features.
     """
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.available_feats = ("duration", "vad")
+    def __init__(self, features_stats=None, **kwargs):
+        available_feats = ("duration", "vad")
+        if features_stats is None:
+            features_stats = {
+                feat: ["min", "max", "mean", "std"] for feat in available_feats
+            }
+        super().__init__(features_stats=features_stats, **kwargs)
+        self.available_feats = available_feats
 
     @property
     def _fp(self) -> str:
@@ -580,8 +696,8 @@ class FixationFeatures(StatsTransformer):
                 assert self.dispersion is not None, self._err_no_col(feat, "dispersion")
 
     def _calc_feats(
-        self, X: pd.DataFrame, features: List[str], transition_mask: NDArray
-    ) -> List[Tuple[str, pd.Series]]:
+        self, X: pd.DataFrame, features: list[str], transition_mask: NDArray
+    ) -> list[tuple[str, pd.Series]]:
         feats = []
 
         for feat_nm in features:

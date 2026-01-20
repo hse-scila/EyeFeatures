@@ -1,4 +1,4 @@
-from typing import Callable, Dict, List, Union
+from collections.abc import Callable
 
 import numpy as np
 import pandas as pd
@@ -22,12 +22,12 @@ def get_expected_path(
     data: pd.DataFrame,
     x: str,
     y: str,
-    path_pk: List[str],
-    pk: List[str],
+    path_pk: list[str],
+    pk: list[str],
     method: str = "mean",
     duration: str = None,
     return_df: bool = True,
-) -> Dict[str, Union[pd.DataFrame, np.ndarray]]:
+) -> dict[str, pd.DataFrame | np.ndarray]:
     """Estimates expected path by a given method.
 
     Args:
@@ -106,7 +106,7 @@ def get_expected_path(
 
 
 def _get_fill_path(
-    data: List[pd.DataFrame],
+    data: list[pd.DataFrame],
     x: str,
     y: str,
     method: str = "mean",
@@ -165,7 +165,7 @@ def restore_matrix(matrix: NDArray, tol=1e-9):
     return US.dot(evecs.T).T, A_rank
 
 
-def get_sim_matrix(scanpaths: List[NDArray], sim_metric: Callable) -> np.ndarray:
+def get_sim_matrix(scanpaths: list[NDArray], sim_metric: Callable) -> np.ndarray:
     """Computes similarity matrix given non-trivial metric.
 
     Args:
@@ -189,7 +189,7 @@ def get_sim_matrix(scanpaths: List[NDArray], sim_metric: Callable) -> np.ndarray
 
 
 def get_dist_matrix(
-    scanpaths: List[pd.DataFrame], dist_metric: Callable
+    scanpaths: list[pd.DataFrame], dist_metric: Callable
 ) -> pd.DataFrame:
     """Computes pairwise distance matrix given distance metric.
 
@@ -344,7 +344,7 @@ def compute_rv_coefficient(S1: np.ndarray, S2: np.ndarray) -> float:
     return numerator / denominator
 
 
-def get_compromise_matrix(distance_matrices: List[np.ndarray]) -> np.ndarray:
+def get_compromise_matrix(distance_matrices: list[np.ndarray]) -> np.ndarray:
     """Compute the compromise matrix from a list of distance matrices.
 
     Args:
@@ -372,6 +372,6 @@ def get_compromise_matrix(distance_matrices: List[np.ndarray]) -> np.ndarray:
     _, eigvecs = np.linalg.eigh(similarity_matrix)
     weights = eigvecs[:, -1]  # eigenvector corresponding to the largest eigenvalue
     # Get the compromise matrix as a weighted sum
-    comp_mat = sum(w * G for w, G in zip(weights, cross_product_matrices))
+    comp_mat = sum(w * G for w, G in zip(weights, cross_product_matrices, strict=False))
 
     return comp_mat

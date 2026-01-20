@@ -17,7 +17,13 @@ class TestSaccadeFeatures:
     def test_available_features_and_prefix(self):
         """Test available features include all expected and prefix is correct."""
         sac = SaccadeFeatures(features_stats={"length": ["mean"]})
-        assert set(sac.available_feats) == {"length", "speed", "acceleration", "angle"}
+        assert set(sac.available_feats) == {
+            "length",
+            "speed",
+            "acceleration",
+            "direction_angle",
+            "rotation_angle",
+        }
         assert sac._fp == "sac"
 
     def test_transform_all_features(self, sample_df):
@@ -26,7 +32,8 @@ class TestSaccadeFeatures:
             features_stats={
                 "length": ["mean", "max", "sum"],
                 "speed": ["mean"],
-                "angle": ["mean", "std"],
+                "direction_angle": ["mean", "std"],
+                "rotation_angle": ["mean"],
             },
             x="x",
             y="y",
@@ -42,8 +49,9 @@ class TestSaccadeFeatures:
             "sac_length_max",
             "sac_length_sum",
             "sac_speed_mean",
-            "sac_angle_mean",
-            "sac_angle_std",
+            "sac_direction_angle_mean",
+            "sac_direction_angle_std",
+            "sac_rotation_angle_mean",
         ]:
             assert feat in result.columns
 
@@ -101,7 +109,8 @@ class TestRegressionFeatures:
             "length",
             "speed",
             "acceleration",
-            "angle",
+            "direction_angle",
+            "rotation_angle",
             "mask",
         }
         assert reg._fp == "reg"
@@ -110,7 +119,7 @@ class TestRegressionFeatures:
         """Test regression with quadrant-based and angle-based rules."""
         # Quadrant rule
         reg_quad = RegressionFeatures(
-            features_stats={"length": ["mean"], "angle": ["mean"]},
+            features_stats={"length": ["mean"], "direction_angle": ["mean"]},
             rule=(2, 3),
             x="x",
             y="y",
@@ -120,7 +129,7 @@ class TestRegressionFeatures:
         )
         result_quad = reg_quad.fit(sample_df).transform(sample_df)
         assert "reg_length_mean" in result_quad.columns
-        assert "reg_angle_mean" in result_quad.columns
+        assert "reg_direction_angle_mean" in result_quad.columns
 
         # Angle rule with deviation
         reg_angle = RegressionFeatures(

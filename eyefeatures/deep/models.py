@@ -1,4 +1,4 @@
-from typing import Callable, Dict, Optional, Tuple, Union
+from collections.abc import Callable
 
 import pytorch_lightning as pl
 import torch
@@ -33,7 +33,7 @@ class VGGBlock(nn.Module):
         padding: int = 1,
         stride: int = 1,
     ):
-        super(VGGBlock, self).__init__()
+        super().__init__()
         self.conv = nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding)
         self.bn = nn.BatchNorm2d(out_channels)
         self.relu = nn.ReLU(inplace=True)
@@ -68,7 +68,7 @@ class ResnetBlock(nn.Module):
         padding: int = 1,
         stride: int = 1,
     ):
-        super(ResnetBlock, self).__init__()
+        super().__init__()
         self.conv1 = nn.Conv2d(
             in_channels,
             out_channels,
@@ -126,7 +126,7 @@ class InceptionBlock(nn.Module):
         ch5x5: int,
         pool_proj: int,
     ):
-        super(InceptionBlock, self).__init__()
+        super().__init__()
 
         self.branch1x1 = nn.Conv2d(in_channels, ch1x1, kernel_size=1)
         self.branch3x3 = nn.Sequential(
@@ -168,7 +168,7 @@ class DSCBlock(nn.Module):
     """
 
     def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, padding=1):
-        super(DSCBlock, self).__init__()
+        super().__init__()
         self.depthwise = nn.Conv2d(
             in_channels,
             in_channels,
@@ -199,9 +199,9 @@ _blocks = {
 
 
 def create_simple_CNN(
-    config: Dict[int, Dict[str, Union[str, Dict]]],
+    config: dict[int, dict[str, str | dict]],
     in_channels: int,
-    shape: Tuple[int, int] = None,
+    shape: tuple[int, int] = None,
 ):
     """Creates a simple CNN based on the provided configuration.
 
@@ -219,7 +219,7 @@ def create_simple_CNN(
             Final output shape, if provided.
     """
 
-    modules = list()
+    modules = []
 
     for idx, block_config in tqdm(config.items()):
         block_type = block_config["type"]
@@ -284,7 +284,7 @@ class SimpleRNN(nn.Module):
         bidirectional=False,
         pre_rnn_linear_size=None,
     ):
-        super(SimpleRNN, self).__init__()
+        super().__init__()
         self.hidden_size = hidden_size
         self.num_layers = num_layers
         self.bidirectional = bidirectional
@@ -382,7 +382,7 @@ class VitNet(nn.Module):
     """
 
     def __init__(self, CNN, RNN, fusion_mode="concat", activation=None, embed_dim=32):
-        super(VitNet, self).__init__()
+        super().__init__()
         self.CNN = CNN
         self.RNN = RNN
         self.fusion_mode = fusion_mode
@@ -443,7 +443,7 @@ class VitNetWithCrossAttention(VitNet):
         embed_dim=128,
         return_attention_weights=False,
     ):
-        super(VitNetWithCrossAttention, self).__init__(
+        super().__init__(
             CNN,
             RNN,
             fusion_mode="concat",
@@ -516,7 +516,7 @@ class GCN(torch.nn.Module):
         out_channels,
         use_embeddings=True,
     ):
-        super(GCN, self).__init__()
+        super().__init__()
         self.use_embeddings = use_embeddings
         if use_embeddings:
             self.embeddings = torch.nn.Embedding(
@@ -569,7 +569,7 @@ class GIN(torch.nn.Module):
     def __init__(
         self, num_common_nodes, feature_dim, embedding_dim, layer_sizes, out_channels
     ):
-        super(GIN, self).__init__()
+        super().__init__()
         # Shared embeddings across graphs
         self.embeddings = torch.nn.Embedding(num_common_nodes, embedding_dim)
 
@@ -634,22 +634,22 @@ class BaseModel(pl.LightningModule):
 
     def __init__(
         self,
-        backbone: Union[nn.ModuleList, nn.Module],
+        backbone: nn.ModuleList | nn.Module,
         output_size,
-        hidden_layers: Tuple = (),
+        hidden_layers: tuple = (),
         activation=nn.ReLU(),
         learning_rate: float = 1e-3,
         optimizer_class: Callable = torch.optim.AdamW,
-        optimizer_params: Optional[dict] = None,
-        scheduler_class: Optional[Callable] = None,
-        scheduler_params: Optional[dict] = None,
-        loss_fn: Optional[Callable] = None,
+        optimizer_params: dict | None = None,
+        scheduler_class: Callable | None = None,
+        scheduler_params: dict | None = None,
+        loss_fn: Callable | None = None,
     ):
         super().__init__()
 
         self.backbone = backbone
 
-        modules = list()
+        modules = []
 
         for hidden_units in hidden_layers:
             modules.append(nn.LazyLinear(hidden_units))
@@ -742,15 +742,15 @@ class Classifier(BaseModel):
 
     def __init__(
         self,
-        backbone: Union[nn.ModuleList, nn.Module],
+        backbone: nn.ModuleList | nn.Module,
         n_classes,
         classifier_hidden_layers=(),
         classifier_activation=nn.ReLU(),
         learning_rate=1e-3,
         optimizer_class: Callable = torch.optim.AdamW,
-        optimizer_params: Optional[dict] = None,
-        scheduler_class: Optional[Callable] = None,
-        scheduler_params: Optional[dict] = None,
+        optimizer_params: dict | None = None,
+        scheduler_class: Callable | None = None,
+        scheduler_params: dict | None = None,
     ):
         super().__init__(
             backbone=backbone,
@@ -905,15 +905,15 @@ class Regressor(BaseModel):
 
     def __init__(
         self,
-        backbone: Union[nn.ModuleList, nn.Module],
+        backbone: nn.ModuleList | nn.Module,
         output_dim,
         regressor_hidden_layers=(),
         regressor_activation=nn.ReLU(),
         learning_rate=1e-3,
         optimizer_class: Callable = torch.optim.AdamW,
-        optimizer_params: Optional[dict] = None,
-        scheduler_class: Optional[Callable] = None,
-        scheduler_params: Optional[dict] = None,
+        optimizer_params: dict | None = None,
+        scheduler_class: Callable | None = None,
+        scheduler_params: dict | None = None,
     ):
         super().__init__(
             backbone=backbone,

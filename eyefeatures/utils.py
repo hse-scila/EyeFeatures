@@ -1,5 +1,6 @@
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Any, Iterable, List, Tuple
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -14,14 +15,14 @@ class Types:
     Data: either Dataframe or Partition
     """
 
-    Partition = List[Tuple[Tuple, pd.DataFrame]]
-    EncodedPartition = List[Tuple[str, pd.DataFrame]]
+    Partition = list[tuple[tuple, pd.DataFrame]]
+    EncodedPartition = list[tuple[str, pd.DataFrame]]
     Data = pd.DataFrame | Partition
-    Quadrants = Tuple[int, ...]
+    Quadrants = tuple[int, ...]
 
 
 def _split_dataframe(
-    df: pd.DataFrame, pk: List[str], encode=True
+    df: pd.DataFrame, pk: list[str], encode=True
 ) -> Types.Partition | Types.EncodedPartition:
     """
     :param df: DataFrame to split
@@ -148,8 +149,8 @@ def _normalize_angle(angle):
 def _select_regressions(
     dx: pd.Series,
     dy: pd.Series,
-    rule: Tuple[int, ...],
-    deviation: None | int | Tuple[int, ...] = None,
+    rule: tuple[int, ...],
+    deviation: None | int | tuple[int, ...] = None,
 ) -> NDArray:
     mask = np.zeros(len(dx))
 
@@ -171,7 +172,7 @@ def _select_regressions(
 
         for i in range(len(mask)):
             angle = _get_angle(dx[i], dy[i], degrees=True)
-            for allowed_angle, dev in zip(rule, d):
+            for allowed_angle, dev in zip(rule, d, strict=False):
                 if _check_angle_boundaries(angle, allowed_angle, dev):
                     mask[i] = 1
                     break

@@ -1,5 +1,3 @@
-from typing import List, Tuple
-
 import numpy as np
 import pandas as pd
 from scipy import stats
@@ -70,7 +68,7 @@ def _nearest_odd_integer(x: float) -> int:
 
 
 # Helper function
-def _mask2bounds(mask: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+def _mask2bounds(mask: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     """Method constructs onset and offset arrays of indices based on mask.
     Onset - starting index of segment (segment is continuous block of ones),
     offset - ending index of blink.
@@ -104,12 +102,12 @@ def _mask2bounds(mask: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
 
 # Helper function
 def _merge_blinks(
-    blink_onsets: List | np.ndarray,
-    blink_offsets: List | np.ndarray,
+    blink_onsets: list | np.ndarray,
+    blink_offsets: list | np.ndarray,
     min_dur: int,
     min_separation: int,
-    blink_properties: List | np.ndarray = None,
-) -> List[List]:
+    blink_properties: list | np.ndarray = None,
+) -> list[list]:
     """Method merges blinks given onsets and offsets, also collapses too short ones.
 
     Args:
@@ -174,7 +172,7 @@ def _merge_blinks(
 # Helper function
 def _indices_to_values(
     onsets: np.ndarray, offsets: np.ndarray, timestamps: np.ndarray, Fs: int = None
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray]:
     """Method converts index-based onsets/offsets to
     timestamp-based onsets/offsets.
 
@@ -190,7 +188,7 @@ def _indices_to_values(
 
     # Convert onsets/offsets to ms
     blinks = []
-    for onset, offset in zip(onsets, offsets):
+    for onset, offset in zip(onsets, offsets, strict=False):
         blinks.append([timestamps[onset], timestamps[offset]])
 
     if Fs is not None:
@@ -281,7 +279,7 @@ def detect_blinks_pupil_missing(
     min_dur: int = 20,
     smoothing_window_size: int = 10,  # 10ms
     return_mask: bool = False,
-) -> pd.DataFrame | Tuple[pd.DataFrame, np.ndarray]:
+) -> pd.DataFrame | tuple[pd.DataFrame, np.ndarray]:
     """Method detects blinks based on size of pupil and
     missing recordings (NaN) in its data. Result is boolean array of the same
     length as pupil_signal, with 1 indicating blink, 0 - not blink.
@@ -365,7 +363,7 @@ def detect_blinks_pupil_vt(
     min_pupil_size: int = 2,
     min_separation: int = 50,
     return_mask: bool = False,
-) -> pd.DataFrame | Tuple[pd.DataFrame, np.ndarray]:
+) -> pd.DataFrame | tuple[pd.DataFrame, np.ndarray]:
     """Method detects blinks based on pupil sizes and change of
     pupil sizes.
 
@@ -438,7 +436,7 @@ def detect_blinks_eo(
     min_amplitude: int = 0.1,
     min_separation: int = 100,
     return_eo_vel: bool = False,
-) -> pd.DataFrame | Tuple[pd.DataFrame, np.ndarray]:
+) -> pd.DataFrame | tuple[pd.DataFrame, np.ndarray]:
     """Method detects blinks based on Eye Openness (EO) signal.
 
     Args:

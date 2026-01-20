@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, List, Tuple, Union
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -12,7 +12,7 @@ from eyefeatures.utils import _get_angle, _get_angle3, _split_dataframe
 
 
 class BasePreprocessor(BaseEstimator, TransformerMixin):
-    def __init__(self, pk: List[str] = None):
+    def __init__(self, pk: list[str] = None):
         self.pk = pk
 
     @abstractmethod
@@ -37,13 +37,13 @@ class BasePreprocessor(BaseEstimator, TransformerMixin):
         self._check_params()
         return self
 
-    def transform(self, X: pd.DataFrame) -> Union[pd.DataFrame, NDArray]:
+    def transform(self, X: pd.DataFrame) -> pd.DataFrame | NDArray:
         self._check_params()
         if self.pk is None:
             fixations = self._preprocess(X)
         else:
             fixations = None
-            groups: List[str, pd.DataFrame] = _split_dataframe(X, self.pk, encode=False)
+            groups: list[str, pd.DataFrame] = _split_dataframe(X, self.pk, encode=False)
             for group_ids, group_X in groups:
                 cur_fixations = self._preprocess(group_X)
 
@@ -61,7 +61,7 @@ class BasePreprocessor(BaseEstimator, TransformerMixin):
 
 
 class BaseFixationPreprocessor(BasePreprocessor, ABC):
-    def __init__(self, x: str, y: str, t: str, pk: List[str] = None):
+    def __init__(self, x: str, y: str, t: str, pk: list[str] = None):
         super().__init__(pk=pk)
         self.x = x
         self.y = y
@@ -96,7 +96,7 @@ class BaseFixationPreprocessor(BasePreprocessor, ABC):
         return dist
 
     def _compute_feats(
-        self, fixations_df: pd.DataFrame, feats: Tuple[str, ...]
+        self, fixations_df: pd.DataFrame, feats: tuple[str, ...]
     ) -> pd.DataFrame:
         """
         Method computes list of required features.
@@ -154,7 +154,7 @@ class BaseFixationPreprocessor(BasePreprocessor, ABC):
 
 
 class BaseAOIPreprocessor(BasePreprocessor, ABC):
-    def __init__(self, x: str, y: str, t: str, aoi: str = None, pk: List[str] = None):
+    def __init__(self, x: str, y: str, t: str, aoi: str = None, pk: list[str] = None):
         super().__init__(pk=pk)
         self.x = x
         self.y = y
@@ -211,7 +211,7 @@ class BaseAOIPreprocessor(BasePreprocessor, ABC):
 
 
 class BaseSmoothingPreprocessor(BasePreprocessor, ABC):
-    def __init__(self, x: str, y: str, t: str, pk: List[str] = None):
+    def __init__(self, x: str, y: str, t: str, pk: list[str] = None):
         super().__init__(pk=pk)
         self.x = x
         self.y = y
