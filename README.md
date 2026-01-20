@@ -1,39 +1,64 @@
-## Package Description
+<p align="center">
+  <img src="docs/images/eyefeatures_logo.png" width="400" alt="EyeFeatures Logo">
+</p>
 
-[EyeFeatures](https://github.com/hse-scila/EyeFeatures) is an open-source Python package for analyzing eye movement
-data in any visual task. Its capabilities encompass preprocessing, visualization,
-statistical analysis, feature engineering and machine learning. Its unique feature
-is its architecture and versatility. Accepting data in .csv format containing gaze
-position coordinates, the package allows filtration of raw data to remove noise and
-detecting fixations and saccades with different algorithms. Having fixations any
-standard descriptive statistical eye movement features (such as totalFD, meanFD etc.)
-can be computed, including AOI-wise features. AOIs can be predefined or assigned
-automatically. More complex features, such as chaos measures, topological features,
-density maps, scanpath similarities for various distance metrics can be computed as well.
-The package allows to account for the panel structure of the data, calculating shift
-features relative to group averages. The visualization module allows output a variety
-of visualization options, including static and dynamic scanpath plots. The architecture of
-the package allows seamless embedding of its
-preprocessing and feature extraction classes in Sklearn pipelines. Moreover, it provides
-datasets and models for deep learning with Pytorch.
+# EyeFeatures
 
-## Documentation
+[![PyPI version](https://img.shields.io/pypi/v/eyefeatures.svg)](https://pypi.org/project/eyefeatures/)
+[![Supported Python versions](https://img.shields.io/pypi/pyversions/eyefeatures.svg)](https://pypi.org/project/eyefeatures/)
+[![License](https://img.shields.io/github/license/hse-scila/EyeFeatures.svg)](https://github.com/hse-scila/EyeFeatures/blob/main/LICENSE)
+[![Documentation Status](https://readthedocs.org/projects/eyefeatures-docs/badge/?version=latest)](https://eyefeatures-docs.readthedocs.io/en/latest/?badge=latest)
+[![CI](https://github.com/hse-scila/EyeFeatures/actions/workflows/ci.yml/badge.svg)](https://github.com/hse-scila/EyeFeatures/actions/workflows/ci.yml)
 
-Documentation for the latest version can be found [here](https://eyefeatures-docs.readthedocs.io/en/latest/).
+**EyeFeatures** is a powerful, Scikit-learn-compatible Python library for advanced eye-tracking data analysis. From raw gaze preprocessing to complex topological feature engineering and deep learning, `eyefeatures` provides a unified, production-ready framework for any visual task.
 
-## Tutorials
+## Why EyeFeatures?
 
-Here are package tutorials devoted to different parts of the library:
+- **Unified Pipeline**: Seamlessly integrate smoothing, fixation extraction, and feature calculation into `sklearn.Pipeline`.
+- **Advanced Features**: Go beyond descriptive statistics with Hurst exponents, Chaotic measures, and Scanpath similarities.
+- **Deep Learning Ready**: Native PyTorch datasets and models for gaze-based classification.
+- **Visualization**: Stunning static and dynamic visualizations of scanpaths and heatmaps.
+- **Group Analysis**: Built-in support for individual normalization and group-level comparisons.
 
-| Tutorial                                                                                                                  | Notebook                                                                                                                                                                                       |
-|---------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [Simple Features Tutorial](https://github.com/hse-scila/EyeFeatures/tree/main/tutorials/features_tutorial.ipynb)          | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/hse-scila/EyeFeatures/blob/main/tutorials/features_tutorial.ipynb)       |
-| [Complex Features Tutorial](https://github.com/hse-scila/EyeFeatures/tree/main/tutorials/complex_tutorial.ipynb)          | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/hse-scila/EyeFeatures/blob/main/tutorials/complex_tutorial.ipynb)        |
-| [Gazes Preprocessing Tutorial](https://github.com/hse-scila/EyeFeatures/tree/main/tutorials/preprocessing_tutorial.ipynb) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/hse-scila/EyeFeatures/blob/main/tutorials/preprocessing_tutorial.ipynb)  |
-| [AOI Definition Tutorial](https://github.com/hse-scila/EyeFeatures/tree/main/tutorials/AOI_definition_tutorial.ipynb)     | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/hse-scila/EyeFeatures/blob/main/tutorials/AOI_definition_tutorial.ipynb) |
-| [Visualization Tutorial](https://github.com/hse-scila/EyeFeatures/tree/main/tutorials/visualization_tutorial.ipynb)       | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/hse-scila/EyeFeatures/blob/main/tutorials/visualization_tutorial.ipynb)  |
-| [Deep Learning Tutorial](https://github.com/hse-scila/EyeFeatures/tree/main/tutorials/DL_tutorial.ipynb)                  | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/hse-scila/EyeFeatures/blob/main/tutorials/DL_tutorial.ipynb)             |
+## Installation
 
-## Coming soon
+```bash
+pip install eyefeatures
+```
 
-Extensive table with references to all methods is coming soon.
+## API at a Glance
+
+### Preprocessing
+| Module | Components |
+| :--- | :--- |
+| **Fixation Extraction** | `IDT` (I-DT algorithm) |
+| **Smoothing** | `WienerFilter`, `SavGolFilter` |
+| **Blinks** | `BlinkExtractor` |
+| **AOI Extraction** | `GridAOI`, `CircleAOI`, `ConvexHullAOI` |
+
+### Feature Engineering
+| Category | Key Transformers / Methods |
+| :--- | :--- |
+| **Statistical** | `FixationFeatures`, `SaccadeFeatures`, `RegressionFeatures`, `MicroSaccadeFeatures` |
+| **Measures** | `HurstExponent`, `ShannonEntropy`, `SpectralEntropy`, `FuzzyEntropy`, `LyapunovExponent` |
+| **Distances** | `EucDist`, `HauDist`, `DTWDist`, `ScanMatchDist`, `MannanDist`, `MultiMatchDist` |
+| **Complex** | `get_heatmap`, `get_mtf` (Markov Transition Field), `get_gaf` (Gramian Angular Field), `RQAMeasures` |
+| **Normalization**| `IndividualNormalization` (Auto-discovery of features for group-relative scaling) |
+
+### Visualization & Deep Learning
+| Module | Components |
+| :--- | :--- |
+| **Visualization** | `static_scanpath_plot`, `dynamic_scanpath_plot`, `heatmap_plot`, `aoi_plot` |
+| **Deep Learning**| `GazeDataset`, `CNNModel`, `LSTMModel`, `GNNModel` |
+
+## Documentation & Tutorials
+
+Check out our [Full Documentation](https://eyefeatures-docs.readthedocs.io/) and the following interactive tutorials:
+
+- 🚀 [Quickstart Examples](https://eyefeatures-docs.readthedocs.io/en/latest/quickstart/quickstart.html)
+- 📊 [Simple Features](https://colab.research.google.com/github/hse-scila/EyeFeatures/blob/main/tutorials/features_tutorial.ipynb)
+- 🧠 [Complex Features & Timeseries](https://colab.research.google.com/github/hse-scila/EyeFeatures/blob/main/tutorials/complex_tutorial.ipynb)
+- 🛠️ [Preprocessing & Smoothing](https://colab.research.google.com/github/hse-scila/EyeFeatures/blob/main/tutorials/preprocessing_tutorial.ipynb)
+- 🧿 [AOI Definition](https://colab.research.google.com/github/hse-scila/EyeFeatures/blob/main/tutorials/AOI_definition_tutorial.ipynb)
+- 🎥 [Visualization](https://colab.research.google.com/github/hse-scila/EyeFeatures/blob/main/tutorials/visualization_tutorial.ipynb)
+- ⚡ [Deep Learning with Gaze](https://colab.research.google.com/github/hse-scila/EyeFeatures/blob/main/tutorials/DL_tutorial.ipynb)
