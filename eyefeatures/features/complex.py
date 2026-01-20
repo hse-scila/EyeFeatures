@@ -292,9 +292,9 @@ def _shrink_matrix(
         height: height of shrunk matrix.
         width: width of shrunk matrix.
         strategy: strategy to use while shrinking.
-         * 'mean' - 2d convolution with uniform kernel.
-         * 'normal' - 2d convolution with Gauss kernel.
-         * 'max' - max pooling, resulting image is the closest
+        * 'mean' - 2d convolution with uniform kernel.
+        * 'normal' - 2d convolution with Gauss kernel.
+        * 'max' - max pooling, resulting image is the closest
             possible to provided 'size'.
 
     Returns:
@@ -372,8 +372,8 @@ def get_gaf(
         field_type: which type of field to calculate. If "difference",
             then GADF is returned, otherwise ("sum") GASF is returned.
         to_polar: conversion from cartesian to polar coordinates.
-                 * 'regular': standard conversion calculating arctan(y/x).
-                 * 'cosine': angle is calculated as cosine of series data,
+                * 'regular': standard conversion calculating arctan(y/x).
+                * 'cosine': angle is calculated as cosine of series data,
                     radius is taken as timestamps.
         flatten: bool, whether to flatten the array.
 
