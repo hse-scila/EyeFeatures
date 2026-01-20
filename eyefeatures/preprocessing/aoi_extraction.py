@@ -285,10 +285,9 @@ class ThresholdBased(BaseAOIPreprocessor):
 
 class GradientBased(BaseAOIPreprocessor):
     """Defines the AOI for each fixation using a gradient-based algorithm.
-    Locates local maxima, applies thresholding, and uses them as AOI centers.
-    After that, uses the Sobel operator to compute the gradient magnitude for
-    each point. Next, defines the queue of areas of interest. Algorithm of aoi
-    defining:\n
+    Finds the local maximum, pre-threshold it, and uses it as a center of aoi.
+    After that, uses the Sobel operator to compute the gradient magnitude for each point.
+    Next, defines the queue of areas of interest. Algorithm of aoi defining:\n
     * Gets the point from the queue. It is a center\n
     * Looks at the points near the center\n
     * Tries to find the point with defined aoi and maximum gradient magnitude\n
@@ -771,7 +770,7 @@ class AOIMatcher(BaseEstimator, TransformerMixin):
 
             # === Correction of the AOI labels ===
             # Make the new aoi labels
-            all_areas = np.unique(cur_fixations[self.aoi].values)
+            all_areas = np.unique(cur_fixations[self.aoi].astype(str).values)
             if (self.n_aoi > 0) and (len(all_areas) > self.n_aoi):
                 centers = []
                 for i in range(len(all_areas)):
@@ -820,7 +819,7 @@ class AOIMatcher(BaseEstimator, TransformerMixin):
                             centers[i][-1] = False
                     count_of_aoi -= 1
 
-            all_areas = np.unique(cur_fixations[self.aoi].values)
+            all_areas = np.unique(cur_fixations[self.aoi].astype(str).values)
             areas_names = [f"aoi_{i}" for i in range(len(all_areas))]
             map_areas = dict(zip(all_areas, areas_names, strict=False))
             cur_fixations[self.aoi] = cur_fixations[self.aoi].map(map_areas)
@@ -903,7 +902,9 @@ class AOIMatcher(BaseEstimator, TransformerMixin):
                 )
                 new_pattern[area] = [cur_x_max, cur_y_max, cur_x_min, cur_y_min]
             # === End of the correction ===
-            prev_pattern[len(np.unique(cur_fixations[self.aoi].values))] = new_pattern
+            prev_pattern[len(np.unique(cur_fixations[self.aoi].astype(str).values))] = (
+                new_pattern
+            )
             cur_fixations[self.x] = copy_x
             cur_fixations[self.y] = copy_y
             if fixations is None:

@@ -26,7 +26,19 @@
 pip install eyefeatures
 ```
 
-## API at a Glance
+## Documentation & Tutorials
+
+Check out our [Full Documentation](https://eyefeatures-docs.readthedocs.io/) and the following interactive tutorials:
+
+- 🚀 [Quickstart Examples](https://eyefeatures-docs.readthedocs.io/en/latest/quickstart/quickstart.html)
+- 📊 [Simple Features](https://colab.research.google.com/github/hse-scila/EyeFeatures/blob/main/tutorials/features_tutorial.ipynb)
+- 🧠 [Complex Features & Timeseries](https://colab.research.google.com/github/hse-scila/EyeFeatures/blob/main/tutorials/complex_tutorial.ipynb)
+- 🛠️ [Preprocessing & Smoothing](https://colab.research.google.com/github/hse-scila/EyeFeatures/blob/main/tutorials/preprocessing_tutorial.ipynb)
+- 🧿 [AOI Definition](https://colab.research.google.com/github/hse-scila/EyeFeatures/blob/main/tutorials/AOI_definition_tutorial.ipynb)
+- 🎥 [Visualization](https://colab.research.google.com/github/hse-scila/EyeFeatures/blob/main/tutorials/visualization_tutorial.ipynb)
+- ⚡ [Deep Learning with Gaze](https://colab.research.google.com/github/hse-scila/EyeFeatures/blob/main/tutorials/DL_tutorial.ipynb)
+
+## Major Components
 
 ### Preprocessing
 | Module | Components |
@@ -43,22 +55,15 @@ pip install eyefeatures
 | **Measures** | `HurstExponent`, `ShannonEntropy`, `SpectralEntropy`, `FuzzyEntropy`, `LyapunovExponent` |
 | **Distances** | `EucDist`, `HauDist`, `DTWDist`, `ScanMatchDist`, `MannanDist`, `MultiMatchDist` |
 | **Complex** | `get_heatmap`, `get_mtf` (Markov Transition Field), `get_gaf` (Gramian Angular Field), `RQAMeasures` |
-| **Normalization**| `IndividualNormalization` (Auto-discovery of features for group-relative scaling) |
+| **Normalization**| `IndividualNormalization` (Group-relative scaling) |
 
-### Visualization & Deep Learning
+### Deep Learning
+| Module | Components |
+| :--- | :--- |
+| **Deep Learning**| `GazeDataset`, `CNNModel`, `LSTMModel`, `GNNModel` |
+
+### Visualization
 | Module | Components |
 | :--- | :--- |
 | **Visualization** | `static_scanpath_plot`, `dynamic_scanpath_plot`, `heatmap_plot`, `aoi_plot` |
-| **Deep Learning**| `GazeDataset`, `CNNModel`, `LSTMModel`, `GNNModel` |
 
-## Documentation & Tutorials
-
-Check out our [Full Documentation](https://eyefeatures-docs.readthedocs.io/) and the following interactive tutorials:
-
-- 🚀 [Quickstart Examples](https://eyefeatures-docs.readthedocs.io/en/latest/quickstart/quickstart.html)
-- 📊 [Simple Features](https://colab.research.google.com/github/hse-scila/EyeFeatures/blob/main/tutorials/features_tutorial.ipynb)
-- 🧠 [Complex Features & Timeseries](https://colab.research.google.com/github/hse-scila/EyeFeatures/blob/main/tutorials/complex_tutorial.ipynb)
-- 🛠️ [Preprocessing & Smoothing](https://colab.research.google.com/github/hse-scila/EyeFeatures/blob/main/tutorials/preprocessing_tutorial.ipynb)
-- 🧿 [AOI Definition](https://colab.research.google.com/github/hse-scila/EyeFeatures/blob/main/tutorials/AOI_definition_tutorial.ipynb)
-- 🎥 [Visualization](https://colab.research.google.com/github/hse-scila/EyeFeatures/blob/main/tutorials/visualization_tutorial.ipynb)
-- ⚡ [Deep Learning with Gaze](https://colab.research.google.com/github/hse-scila/EyeFeatures/blob/main/tutorials/DL_tutorial.ipynb)
