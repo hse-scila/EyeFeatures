@@ -104,3 +104,5 @@ for participant_id in (0, 1):
 print("\nCalculation complete.")
 print(f"Feature Matrix Shape: {features_df.shape}")
 print(f"Total Features Evaluated: {features_df.shape[1]}")
+
+assert features_df.shape[1] == 258
