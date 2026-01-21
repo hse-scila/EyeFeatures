@@ -15,7 +15,7 @@ First, clone the repository and set up your environment:
     git clone https://github.com/hse-scila/EyeFeatures.git
     cd EyeFeatures
 
-Create a virtual environment:
+Create a virtual environment with Python 3.10, 3.11, or 3.12:
 
 .. code-block:: bash
 
@@ -67,10 +67,8 @@ Development Workflow
 
    This runs:
 
-   - **black**: Code formatting (88-char line limit)
-   - **isort**: Import sorting
-   - **ruff**: Fast linting with auto-fixes
-   - **flake8**: Additional style checks
+   - **black**: Code formatting.
+   - **ruff**: Fast linting with auto-fixes.
 
    If any tool modifies files, re-run to confirm they pass.
 
@@ -107,26 +105,6 @@ Code Quality Standards
 - **Type hints**: Strongly encouraged
 
 
-Continuous Integration
-----------------------
-
-Every PR triggers automated checks:
-
-1. **Linting** (black, isort, flake8, ruff)
-2. **Tests** with coverage on Python 3.10, 3.11, 3.12
-3. **Coverage upload** to Codecov
-
-PRs must pass all checks before merging.
-
-
-Reporting Issues
-----------------
-
-- Use GitHub Issues for bug reports and feature requests
-- Include minimal reproducible examples when reporting bugs
-- Check existing issues before creating new ones
-
-
 Building Documentation
 ----------------------
 
@@ -142,7 +120,7 @@ To build the documentation locally:
     poetry run make html
 
     # View in browser
-    open _build/html/index.html  # macOS
     xdg-open _build/html/index.html  # Linux
+    # open _build/html/index.html  # macOS
 
 Documentation is built with Sphinx and uses the ReadTheDocs theme.
