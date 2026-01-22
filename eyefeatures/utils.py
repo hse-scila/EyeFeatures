@@ -128,22 +128,38 @@ def _get_angle3(
     )
 
 
+def _check_angle_in_range(angle: float, r: tuple[float, float]) -> bool:
+    """
+    Checks if angle is within range r = (start, end).
+    If start < end, then start <= angle <= end.
+    If start > end (crosses 0/360), then start <= angle <= 360 or 0 <= angle <= end.
+    """
+    start, end = r
+    angle = _normalize_angle(angle)
+    # Range is automatically normalized in usage if logic is correct,
+    # but we assume r values are in [0, 360].
+
+    if start <= end:
+        return start <= angle <= end
+    else:
+        # Range crosses the 0/360 boundary (e.g., 350 to 10)
+        return (start <= angle <= 360) or (0 <= angle <= end)
+
+
 def _check_angle_boundaries(angle, allowed_angle, deviation):
     left = _normalize_angle(allowed_angle - deviation)
     right = _normalize_angle(allowed_angle + deviation)
-    angle = _normalize_angle(angle)
-    if left > right:  # [-10, 10] -> [350, 10] -> left > right
-        return (0 <= angle <= right) or (left <= angle <= 360)
-    else:
-        return left <= angle <= right
+    return _check_angle_in_range(angle, (left, right))
 
 
 def _normalize_angle(angle):
     """
-    Map angle to interval on [-360, 360]. Mapping
+    Map angle to interval on [0, 360).
     """
-    a = abs(angle) % 360
-    return a if angle > 0 else 360 - a
+    # commented code is the same as pure modulus.
+    # a = abs(angle) % 360
+    # return a if angle > 0 else 360 - a
+    return angle % 360
 
 
 def _select_regressions(
@@ -176,6 +192,24 @@ def _select_regressions(
                 if _check_angle_boundaries(angle, allowed_angle, dev):
                     mask[i] = 1
                     break
+
+    return mask.astype(bool)
+
+
+def _select_regressions_by_ranges(
+    dx: pd.Series,
+    dy: pd.Series,
+    ranges: tuple[tuple[float, float], ...],
+) -> NDArray:
+    mask = np.zeros(len(dx))
+    dx_val, dy_val = dx.values, dy.values
+
+    for i in range(len(mask)):
+        angle = _get_angle(dx_val[i], dy_val[i], degrees=True)
+        for r in ranges:
+            if _check_angle_in_range(angle, r):
+                mask[i] = 1
+                break
 
     return mask.astype(bool)
 

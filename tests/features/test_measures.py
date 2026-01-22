@@ -133,7 +133,7 @@ class TestDynamics:
         x = np.random.randn(n)
         df = pd.DataFrame({"x": x, "p": ["1"] * n})
 
-        he = HurstExponent(x="x", pk=["p"], return_df=True)
+        he = HurstExponent(coordinate="x", pk=["p"], return_df=True)
         res = he.fit(df).transform(df)
         val = res.iloc[0, 0]
         assert isinstance(val, (float, np.floating))
@@ -144,7 +144,7 @@ class TestDynamics:
         x = np.linspace(0, 10, n)
         df = pd.DataFrame({"x": x, "p": ["1"] * n})
 
-        he = HurstExponent(x="x", pk=["p"])
+        he = HurstExponent(coordinate="x", pk=["p"])
         res = he.fit(df).transform(df)
         val = res.iloc[0, 0]
         assert isinstance(val, (float, np.floating))
@@ -152,7 +152,7 @@ class TestDynamics:
     def test_check_init_validates_length(self, sample_df):
         """Test initialization check for Hurst (too short sequence)."""
         he = HurstExponent(
-            x="x", pk=["participant"], n_iters=10
+            coordinate="x", pk=["participant"], n_iters=10
         )  # Requires 1024 points
 
         # sample_df length is 10.

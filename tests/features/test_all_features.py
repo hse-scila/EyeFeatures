@@ -109,7 +109,7 @@ def test_all_features_extractor():
         RegressionFeatures(),
         MicroSaccadeFeatures(),
         # Measures Features
-        HurstExponent(n_iters=8),  # Adjusted for test speed/data size
+        HurstExponent(coordinate="x", n_iters=8),  # Adjusted for test speed/data size
         ShannonEntropy(),
         SpectralEntropy(),
         FuzzyEntropy(),

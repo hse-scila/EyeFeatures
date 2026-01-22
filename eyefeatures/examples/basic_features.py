@@ -23,7 +23,7 @@ transformers = [
     SaccadeFeatures(),
     # 2. Measures: Complexity/Entropy measures
     SpectralEntropy(),
-    HurstExponent(n_iters=5),
+    HurstExponent(coordinate="norm_pos_x", n_iters=5),
     # 3. Scanpath Distances: Euclidean distance to the 'mean' path of the group
     EucDist(),
 ]

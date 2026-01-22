@@ -11,7 +11,7 @@ from eyefeatures.utils import (
     _calc_dt,
     _get_angle,
     _get_angle2,
-    _select_regressions,
+    _select_regressions_by_ranges,
     _split_dataframe,
 )
 
@@ -425,37 +425,32 @@ class SaccadeFeatures(StatsTransformer):
 class RegressionFeatures(StatsTransformer):
     """Regression Features Transformer.
     The transformer identifies saccades, and then selects regressions
-    from them using user-defined set of rules.
+    from them using user-defined set of ranges.
 
     Args:
-        rule: must be either 1) tuple of quadrants direction to classify
-            regressions, 1st quadrant being upper-right square of plane and counting
-            anti-clockwise or 2) tuple of angles in degrees (0 <= angle <= 360).
-            Default: (2, 3) selects left-ward regressions (common in reading).
-        deviation: if None, then `rule` is interpreted as quadrants. Otherwise,
-            `rule` is interpreted as angles. If integer, then is a +-deviation
-            for all angles. If tuple of integers, then must be of the same
-            length as `rule`, each value being a corresponding deviation for
-            each angle. Angle = 0 is positive x-axis direction,
-            rotating anti-clockwise.
+        ranges: tuple of tuples (l, r), where l and r are angles in degrees
+            between 0 and 360 such that l <= r. If one wants a range that
+            passes 360 degrees, they could use two ranges like
+            ((270, 360), (0, 90)). Default: ((135, 225),) which corresponds to
+            left-wards movements.
 
     Example:
         Quick start with default parameters::
 
             from eyefeatures.features.stats import RegressionFeatures
 
-            # Detect left-ward regressions (quadrants 2 and 3)
+            # Detect regressions in [-90, 90] degrees.
             transformer = RegressionFeatures(
                 features_stats={"length": ["mean", "std"]},
-                x="x", y="y", t="time"
+                x="x", y="y", t="time",
+                ranges=((270, 360), (0, 90))
             )
             features = transformer.fit_transform(fixations_df)
     """
 
     def __init__(
         self,
-        rule: tuple[int, ...] = (2, 3),
-        deviation: int | tuple[int, ...] = None,
+        ranges: tuple[tuple[float, float], ...] = ((135, 225),),
         features_stats: dict[str, list[str]] = None,
         **kwargs,
     ):
@@ -471,36 +466,26 @@ class RegressionFeatures(StatsTransformer):
             features_stats = {
                 feat: ["min", "max", "mean", "std"] for feat in available_feats
             }
+
         super().__init__(features_stats=features_stats, **kwargs)
         self.available_feats = available_feats
 
-        self.rule = rule
-        self.deviation = deviation
+        self.ranges = ranges
 
     @property
     def _fp(self) -> str:
         return "reg"
 
     def _check_params(self):
-        if self.deviation is None:
-            for q in self.rule:
-                assert q in (1, 2, 3, 4), f"Wrong quadrant {q} in 'rule'."
-        else:
-            for a in self.rule:
-                assert 0 <= a <= 360, f"Angles must be 0 <= angle <= 360, got {a}."
-            if isinstance(self.deviation, int):
-                assert 0 <= self.deviation <= 180, (
-                    f"Deviation must be 0 <= deviation <= 180," f"got {self.deviation}."
-                )
-            elif isinstance(self.deviation, tuple):
-                for d in self.deviation:
-                    assert (
-                        0 <= d <= 180
-                    ), f"Deviation must be 0 <= deviation <= 180, got {d}."
-            else:
-                raise ValueError(
-                    f"Wrong type for 'deviation': '{type(self.deviation)}'."
-                )
+        for r in self.ranges:
+            assert len(r) == 2, f"Range must be tuple of length 2, got {r}."
+            assert r[0] <= r[1], (
+                f"Range must be (l, r) where l <= r, got {r}. "
+                f"If you want to cross 360, split into two ranges."
+            )
+            assert (
+                0 <= r[0] <= 360 and 0 <= r[1] <= 360
+            ), f"Angles must be between 0 and 360, got {r}."
 
         for feat in self.feature_names_in:
             assert self.x is not None, self._err_no_col(feat, "x")
@@ -516,7 +501,7 @@ class RegressionFeatures(StatsTransformer):
 
         dx: pd.Series = X[self.x].diff()
         dy: pd.Series = X[self.y].diff()
-        sm = _select_regressions(dx, dy, self.rule, self.deviation)  # selection_mask
+        sm = _select_regressions_by_ranges(dx, dy, self.ranges)  # selection_mask
         dr = np.sqrt(dx**2 + dy**2)
         dt = (
             _calc_dt(X, self.duration, self.t)

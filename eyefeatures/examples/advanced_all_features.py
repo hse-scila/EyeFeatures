@@ -58,7 +58,7 @@ transformers = [
     RegressionFeatures(),
     MicroSaccadeFeatures(),
     # Measures
-    HurstExponent(n_iters=5),
+    HurstExponent(coordinate="norm_pos_x", n_iters=5),
     ShannonEntropy(),
     SpectralEntropy(),
     FuzzyEntropy(),

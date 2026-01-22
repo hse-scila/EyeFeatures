@@ -104,7 +104,9 @@ class TestRegressionFeatures:
 
     def test_available_features_and_prefix(self):
         """Test available features and prefix."""
-        reg = RegressionFeatures(features_stats={"length": ["mean"]}, rule=(2,))
+        reg = RegressionFeatures(
+            features_stats={"length": ["mean"]}, ranges=((90, 180),)
+        )
         assert set(reg.available_feats) == {
             "length",
             "speed",
@@ -117,10 +119,10 @@ class TestRegressionFeatures:
 
     def test_quadrant_and_angle_rules(self, sample_df):
         """Test regression with quadrant-based and angle-based rules."""
-        # Quadrant rule
+        # Quadrants II and III
         reg_quad = RegressionFeatures(
             features_stats={"length": ["mean"], "direction_angle": ["mean"]},
-            rule=(2, 3),
+            ranges=((90, 270),),
             x="x",
             y="y",
             t="t",
@@ -131,44 +133,21 @@ class TestRegressionFeatures:
         assert "reg_length_mean" in result_quad.columns
         assert "reg_direction_angle_mean" in result_quad.columns
 
-        # Angle rule with deviation
-        reg_angle = RegressionFeatures(
-            features_stats={"length": ["mean"]},
-            rule=(180,),
-            deviation=20,
-            x="x",
-            y="y",
-            pk=["participant", "stimulus"],
-        )
-        result_angle = reg_angle.fit(sample_df).transform(sample_df)
-        assert "reg_length_mean" in result_angle.columns
-
     def test_validation_errors(self):
         """Test parameter validation."""
-        # Invalid quadrant
-        reg_quad = RegressionFeatures(
-            features_stats={"length": ["mean"]}, rule=(5,), x="x", y="y"
+        # Invalid range (l > r)
+        reg_invalid = RegressionFeatures(
+            features_stats={"length": ["mean"]}, ranges=((200, 100),), x="x", y="y"
         )
         with pytest.raises(AssertionError):
-            reg_quad._check_features_stats()
+            reg_invalid._check_features_stats()
 
-        # Invalid angle
-        reg_angle = RegressionFeatures(
-            features_stats={"length": ["mean"]}, rule=(400,), deviation=10, x="x", y="y"
+        # Invalid range length
+        reg_invalid_len = RegressionFeatures(
+            features_stats={"length": ["mean"]}, ranges=((100,),), x="x", y="y"
         )
         with pytest.raises(AssertionError):
-            reg_angle._check_features_stats()
-
-        # Invalid deviation
-        reg_dev = RegressionFeatures(
-            features_stats={"length": ["mean"]},
-            rule=(180,),
-            deviation=200,
-            x="x",
-            y="y",
-        )
-        with pytest.raises(AssertionError):
-            reg_dev._check_features_stats()
+            reg_invalid_len._check_features_stats()
 
 
 class TestFixationFeatures:
