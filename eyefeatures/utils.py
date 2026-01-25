@@ -5,6 +5,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
+from sklearn.base import BaseEstimator, TransformerMixin
 
 
 @dataclass
@@ -253,3 +254,27 @@ def _cut_matrix(mat: np.array, n: int, axis: int) -> np.array:
     else:
         mat = mat[:, w // 2 - n // 2 : w // 2 + n // 2 + d]
     return mat
+
+
+class ColumnDropper(BaseEstimator, TransformerMixin):
+    """
+    Transformer that drops specified columns. Use this to remove metadata columns
+    (e.g. primary keys) before passing features to a machine learning model.
+
+    Args:
+        columns: List of column names to drop.
+    """
+
+    def __init__(self, columns: list[str]):
+        self.columns = columns
+
+    def fit(self, X, y=None):
+        return self
+
+    def transform(self, X):
+        if not isinstance(X, pd.DataFrame):
+            # If input is not DataFrame, do nothing (or raise error)
+            return X
+        return X.drop(
+            columns=[c for c in self.columns if c in X.columns], errors="ignore"
+        )

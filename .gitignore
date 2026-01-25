@@ -18,3 +18,4 @@ poetry.lock
 
 _build/
 .coverage
+coverage.xml
