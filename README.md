@@ -40,6 +40,8 @@ Check out our [Full Documentation](https://eyefeatures-docs.readthedocs.io/) and
 
 ## Supported Methods
 
+Check a comprehensive list of all methods.
+
 <details>
 <summary><b>🔧 Preprocessing</b></summary>
 
