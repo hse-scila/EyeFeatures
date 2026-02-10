@@ -22,6 +22,8 @@
 
 ## Installation
 
+**Note**: Latest version in PyPi is `v1.0.1`. Check [Contribution](https://eyefeatures-docs.readthedocs.io/en/latest/contribution.html) page in the documentation for installation with `poetry`.
+
 ```bash
 pip install eyefeatures
 ```

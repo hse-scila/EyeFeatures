@@ -91,6 +91,7 @@ This is an alphabetical list of all public transformers and functions in the ``e
    eyefeatures.preprocessing.smoothing.IIRFilter
    eyefeatures.preprocessing.smoothing.SavGolFilter
    eyefeatures.preprocessing.smoothing.WienerFilter
+   eyefeatures.utils.ColumnDropper
    eyefeatures.visualization.dynamic_visualization.scanpath_animation
    eyefeatures.visualization.dynamic_visualization.tracker_animation
    eyefeatures.visualization.static_visualization.aoi_visualization
