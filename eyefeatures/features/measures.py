@@ -83,8 +83,15 @@ class MeasureTransformer(ABC, BaseTransformer):
 class HurstExponent(MeasureTransformer):
     r"""Approximates Hurst Exponent using R/S analysis.
 
+    The Hurst exponent is a measure of the long-term memory of time series.
+    It relates to the autocorrelations of the time series, and the rate at
+    which these decrease as the lag between pairs of values increases.
+    $H \in (0.5, 1)$ indicates a persistent behavior (trend).
+    $H \in (0, 0.5)$ indicates an anti-persistent behavior (mean-reverting).
+    $H = 0.5$ indicates a completely random series (Geometric Brownian Motion).
+
     Args:
-        x: coordinate column name (1D Hurst exponent currently available).
+        coordinate: coordinate column name (1D Hurst exponent currently available).
         n_iters: number of iterations to complete. Note: data must be
             of length more than :math:`2^{n\_iters}`.
         fill_strategy: how to make vector be length of power of :math:`2`.
@@ -102,20 +109,23 @@ class HurstExponent(MeasureTransformer):
 
             from eyefeatures.features.measures import HurstExponent
 
-            transformer = HurstExponent(x="x")
+            transformer = HurstExponent(coordinate="x")
             features = transformer.fit_transform(fixations_df)
     """
 
     def __init__(
         self,
-        x="x",
-        n_iters=10,
+        coordinate: str,
+        n_iters: int = 10,
         fill_strategy: Literal["mean", "reduce", "last"] = "last",
         pk: list[str] = None,
         eps: float = 1e-22,
         return_df: bool = True,
     ):
-        super().__init__(x=x, pk=pk, return_df=return_df, feature_name="hurst_exponent")
+        super().__init__(
+            x=coordinate, pk=pk, return_df=return_df, feature_name="hurst_exponent"
+        )
+        self.coordinate = coordinate
         self.n_iters = n_iters
         self.fill_strategy = fill_strategy
         self.eps = eps
@@ -155,7 +165,7 @@ class HurstExponent(MeasureTransformer):
             raise NotImplementedError
 
     def calculate_features(self, X: pd.DataFrame) -> tuple[list[str], list[float]]:
-        x = X[self.x].values
+        x = X[self.coordinate].values
         x = self._make_pow2(x)
         n = len(x)
 
@@ -177,18 +187,32 @@ class HurstExponent(MeasureTransformer):
             n //= 2
             cnt += 1
 
-        # OLS
+        # OLS via polynomial fitting
         rs = rs[:cnt]
         bs = bs[:cnt]
-        # Hurst is slope of log(RS) vs log(n)
-        X_ols = np.vstack([np.ones(cnt), np.log(bs)]).T
-        grad = (np.linalg.inv(X_ols.T @ X_ols) @ X_ols.T) @ np.log(rs)
 
-        return [self.feature_name], [grad[1]]
+        # Hurst exponent is slope of log(RS) vs log(n)
+        coeffs = np.polyfit(np.log(bs), np.log(rs), 1)
+
+        # Manual OLS (unstable)
+        # X_ols = np.vstack([np.ones(cnt), np.log(bs)]).T  # [1, log(bs)]
+        # grad = (np.linalg.inv(X_ols.T @ X_ols) @ X_ols.T) @ np.log(rs)
+
+        return [self.feature_name], [coeffs[0]]
 
 
 class ShannonEntropy(MeasureTransformer):
-    """Shannon Entropy."""
+    """Shannon Entropy.
+
+    Measures the uncertainty or randomness of the gaze distribution over Areas of Interest (AOIs).
+    Higher entropy indicates a more uniform distribution of fixations across AOIs (scanning),
+    while lower entropy indicates concentration on specific AOIs.
+
+    Args:
+        aoi: Area Of Interest column name.
+        pk: primary key.
+        return_df: whether to return output as DataFrame or numpy array.
+    """
 
     def __init__(
         self,
@@ -217,7 +241,20 @@ class ShannonEntropy(MeasureTransformer):
 
 
 class SpectralEntropy(MeasureTransformer):
-    """Spectral Entropy."""
+    """Spectral Entropy.
+
+    Measures the complexity of the fixation trajectory in the frequency domain using
+    Power Spectral Density (PSD). It treats the scanpath coordinates as a signal.
+    High spectral entropy implies a more random/complex signal (white noise),
+    while low entropy implies a more periodic/predictable signal.
+
+    Args:
+        x: X coordinate column name.
+        y: Y coordinate column name.
+        aoi: Area Of Interest column name(-s).
+        pk: primary key.
+        return_df: whether to return output as DataFrame or numpy array.
+    """
 
     def __init__(
         self,
@@ -243,9 +280,19 @@ class SpectralEntropy(MeasureTransformer):
 class FuzzyEntropy(MeasureTransformer):
     """Fuzzy Entropy.
 
+    A variation of Sample Entropy that uses a fuzzy membership function (typically exponential)
+    to assess the similarity between vectors, rather than a hard Heaviside step function.
+    This makes it more robust to noise and less sensitive to the choice of parameters.
+    Measures the complexity of the scanpath.
+
     Args:
-        m: embedding dimension
-        r: tolerance threshold for matches acceptance (usually std)
+        m: embedding dimension (length of sequences to compare).
+        r: tolerance threshold/width of the fuzzy membership function (usually 0.2 * std).
+        x: X coordinate column name.
+        y: Y coordinate column name.
+        aoi: Area Of Interest column name(-s).
+        pk: primary key.
+        return_df: whether to return output as DataFrame or numpy array.
     """
 
     def __init__(
@@ -286,9 +333,20 @@ class FuzzyEntropy(MeasureTransformer):
 class SampleEntropy(MeasureTransformer):
     """Sample Entropy.
 
+    Measures the complexity or irregularity of the scanpath. It is defined as the negative
+    natural logarithm of the conditional probability that two sequences similar for `m` points
+    remain similar at the next point, excluding self-matches.
+    Lower values indicate more self-similarity (regularity), higher values indicate more
+    complexity/randomness.
+
     Args:
-        m: embedding dimension
-        r: tolerance threshold for matches acceptance (usually std)
+        m: embedding dimension (length of sequences to compare).
+        r: tolerance threshold for matches acceptance (usually 0.2 * std).
+        x: X coordinate column name.
+        y: Y coordinate column name.
+        aoi: Area Of Interest column name(-s).
+        pk: primary key.
+        return_df: whether to return output as DataFrame or numpy array.
     """
 
     def __init__(
@@ -327,7 +385,20 @@ class SampleEntropy(MeasureTransformer):
 
 
 class IncrementalEntropy(MeasureTransformer):
-    """Incremental Entropy."""
+    """Incremental Entropy.
+
+    Measures the average entropy of the fixation distribution as it evolves over time.
+    It calculates the Shannon entropy of the coordinate distribution at each step $i$
+    (using fixations $1$ to $i$) and then averages these values. This captures how
+    the spatial distribution complexity changes as more of the visual stimulus is explored.
+
+    Args:
+        x: X coordinate column name.
+        y: Y coordinate column name.
+        aoi: Area Of Interest column name(-s).
+        pk: primary key.
+        return_df: whether to return output as DataFrame or numpy array.
+    """
 
     def __init__(
         self,
@@ -356,10 +427,20 @@ class IncrementalEntropy(MeasureTransformer):
 
 
 class GriddedDistributionEntropy(MeasureTransformer):
-    """Gridded Distrbituion Entropy.
+    """Gridded Distribution Entropy.
+
+    Measures the randomness of the spatial distribution of fixations by discretizing the
+    2D plane into a grid. It calculates the Shannon entropy of the 2D histogram of
+    fixations over this grid. High entropy indicates fixations are spread out across
+    the grid; low entropy indicates clustering.
 
     Args:
-        grid_size: the number of bins (grid cells) for creating the histogram
+        grid_size: the number of bins (grid cells) per dimension for creating the histogram.
+        x: X coordinate column name.
+        y: Y coordinate column name.
+        aoi: Area Of Interest column name(-s).
+        pk: primary key.
+        return_df: whether to return output as DataFrame or numpy array.
     """
 
     def __init__(
@@ -396,12 +477,21 @@ class GriddedDistributionEntropy(MeasureTransformer):
 class PhaseEntropy(MeasureTransformer):
     """Phase Entropy.
 
+    Measures the complexity of the phase space trajectory. The scanpath (time series) is
+    embedded into a multi-dimensional phase space using time-delay embedding.
+    The entropy of the distribution of pairwise distances (or density) in this phase space
+    is calculated. Higher values distinguish chaotic signals from periodic/predictable ones.
+
     Args:
         m: embedding dimension (default: 2).
         tau: time delay for phase space reconstruction (default: 1).
+        x: X coordinate column name.
+        y: Y coordinate column name.
+        aoi: Area Of Interest column name(-s).
+        pk: primary key.
+        return_df: whether to return output as DataFrame or numpy array.
 
-    Example::
-
+    Example:
         from eyefeatures.features.measures import PhaseEntropy
 
         transformer = PhaseEntropy(x="x", y="y")
@@ -449,13 +539,22 @@ class PhaseEntropy(MeasureTransformer):
 class LyapunovExponent(MeasureTransformer):
     """Lyapunov Exponent.
 
+    Estimates the largest Lyapunov exponent, which characterizes the rate of separation of
+    infinitesimally close trajectories in phase space.
+    A positive Lyapunov exponent indicates chaos (sensitive dependence on initial conditions).
+    Calculated using the Rosenstein algorithm (tracking divergence of nearest neighbors).
+
     Args:
         m: embedding dimension (default: 2).
         tau: time delay for phase space reconstruction (default: 1).
         T: time steps to average the divergence over (default: 1).
+        x: X coordinate column name.
+        y: Y coordinate column name.
+        aoi: Area Of Interest column name(-s).
+        pk: primary key.
+        return_df: whether to return output as DataFrame or numpy array.
 
-    Example::
-
+    Example:
         from eyefeatures.features.measures import LyapunovExponent
 
         transformer = LyapunovExponent(x="x", y="y")
@@ -522,9 +621,18 @@ class LyapunovExponent(MeasureTransformer):
 class FractalDimension(MeasureTransformer):
     """Fractal Dimension.
 
+    Estimates the fractal dimension of the scanpath (or its embedding) using the
+    Box-Counting method. It measures how the scanpath fills the space. A higher
+    fractal dimension indicates a more complex, space-filling pattern.
+
     Args:
-        m: embedding dimension
-        tau: time delay for phase space reconstruction
+        m: embedding dimension.
+        tau: time delay for phase space reconstruction.
+        x: X coordinate column name.
+        y: Y coordinate column name.
+        aoi: Area Of Interest column name(-s).
+        pk: primary key.
+        return_df: whether to return output as DataFrame or numpy array.
     """
 
     def __init__(
@@ -577,10 +685,20 @@ class FractalDimension(MeasureTransformer):
 class CorrelationDimension(MeasureTransformer):
     """Correlation Dimension.
 
+    A measure of the dimensionality of the space occupied by a set of random points
+    (the attractor of the dynamical system). It is related to the fractal dimension but
+    calculated based on the correlation sum (fraction of pairs of points closer than distance r).
+    It provides a lower bound for the fractal dimension.
+
     Args:
-        m: embedding dimension
-        tau: time delay for phase space reconstruction
-        r: radius threshold for correlation sum
+        m: embedding dimension.
+        tau: time delay for phase space reconstruction.
+        r: radius threshold for correlation sum.
+        x: X coordinate column name.
+        y: Y coordinate column name.
+        aoi: Area Of Interest column name(-s).
+        pk: primary key.
+        return_df: whether to return output as DataFrame or numpy array.
     """
 
     def __init__(
@@ -629,13 +747,27 @@ class CorrelationDimension(MeasureTransformer):
 
 class RQAMeasures(MeasureTransformer):
     """Calculates REC, DET, LAM and CORM measures.
-    These are parts of the Recurrence Quantification Analysis.
+
+    Recurrence Quantification Analysis (RQA) is a nonlinear technique to quantify the
+    structure of dynamical systems based on recurrence plots. It identifies recurrent states
+    and their patterns.
+    - REC (Recurrence Rate): Percentage of recurrent points.
+    - DET (Determinism): Percentage of recurrent points forming diagonal lines.
+    - LAM (Laminarity): Percentage of recurrent points forming vertical/horizontal lines.
+    - CORM (Center of Recurrence Mass): Average distance of recurrence points from the
+        main diagonal.
 
     Args:
-        metric: callable metric on R^2 points
-        rho: threshold radius for RQA matrix
-        min_length: min length of lines
-        measures: list of measure to calculate.
+        metric: callable metric on R^2 points (e.g., `scipy.spatial.distance.euclidean`).
+        rho: threshold radius for RQA matrix. Two points are considered recurrent if their
+            distance is less than `rho`.
+        min_length: minimum length of diagonal/vertical/horizontal lines to be counted.
+        measures: list of measures to calculate (subset of ['rec', 'det', 'lam', 'corm']).
+        x: X coordinate column name.
+        y: Y coordinate column name.
+        aoi: Area Of Interest column name(-s).
+        pk: primary key.
+        return_df: whether to return output as DataFrame or numpy array.
     """
 
     def __init__(
@@ -747,20 +879,27 @@ class SaccadeUnlikelihood(MeasureTransformer):
     """Saccade Unlikelihood.
 
     Calculates cumulative negative log-likelihood of all the saccades in a
-    scanpath with respect to the saccade transition model. Default distribution
-    parameters are derived from Potsdam Sentence Corpus.
+    scanpath with respect to a probabilistic saccade transition model. This model assumes
+    saccades are either progressive or regressive, each following an asymmetric Gaussian
+    distribution. Default distribution parameters are derived from Potsdam Sentence Corpus.
+    Higher NLL indicates a less typical (or more unusual) scanpath according to the model.
 
     Args:
-        mu_p: mean of the progression distribution
-        sigma_p1: left standard deviation of the progression distribution
-        sigma_p2: right standard deviation of the progression distribution
-        mu_r: mean of the regression distribution
-        sigma_r1: left standard deviation of the regression distribution
-        sigma_r2: right standard deviation of the regression distribution
-        psi: probability of performing a progressive saccade
+        mu_p: mean of the progression (forward saccade) distribution.
+        sigma_p1: left standard deviation of the progression distribution (for lengths < mu_p).
+        sigma_p2: right standard deviation of the progression distribution (for lengths >= mu_p).
+        mu_r: mean of the regression (backward saccade) distribution.
+        sigma_r1: left standard deviation of the regression distribution.
+        sigma_r2: right standard deviation of the regression distribution.
+        psi: probability of performing a progressive saccade (vs. a regression).
+        x: X coordinate column name.
+        y: Y coordinate column name.
+        aoi: Area Of Interest column name(-s).
+        pk: primary key.
+        return_df: whether to return output as DataFrame or numpy array.
 
     Returns:
-        the cumulative Negative Log-Likelihood (NLL) of the saccades
+        the cumulative Negative Log-Likelihood (NLL) of the saccades.
     """
 
     def __init__(
@@ -835,16 +974,26 @@ class SaccadeUnlikelihood(MeasureTransformer):
 
 
 class HHTFeatures(MeasureTransformer):
-    """Hilbert-Huang Transform.
+    """Hilbert-Huang Transform (HHT) Features.
+
+    Decomposes the signal (scanpath coordinates) into Intrinsic Mode Functions (IMFs) using
+    Empirical Mode Decomposition (EMD), then extracts statistical features from these IMFs.
+    HHT is well-suited for analyzing non-linear, non-stationary signals.
 
     Args:
-        max_imfs: maximum number of intrinsic mode functions (IMFs) to extract
-        features: features to extract from the HHT.
-            Special functions: ['entropy', 'energy', 'dom_freq',
-            'sample_entropy', 'complexity_index'].
+        max_imfs: maximum number of intrinsic mode functions (IMFs) to extract.
+            Set to -1 for automatic determination.
+        features: list of features to extract from each IMF. Available options are:
+            'mean', 'std', 'var', 'median', 'max', 'min', 'skew', 'kurtosis',
+            'entropy', 'energy', 'dom_freq'.
+        x: X coordinate column name.
+        y: Y coordinate column name.
+        aoi: Area Of Interest column name(-s).
+        pk: primary key.
+        return_df: whether to return output as DataFrame or numpy array.
 
     Returns:
-        features extracted from the HHT
+        features extracted from each IMF of the HHT decomposition.
     """
 
     def __init__(

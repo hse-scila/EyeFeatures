@@ -11,5 +11,6 @@ Eyetracking Features Library
    installation
    quickstart/quickstart
    api/index
+   all_methods
    contribution
    changelog
