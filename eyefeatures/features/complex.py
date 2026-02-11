@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
 from PyEMD.EMD2d import EMD2D
+from scipy.ndimage import gaussian_filter, zoom as ndimage_zoom
 from scipy.signal import convolve2d
 from scipy.stats import gaussian_kde
 
@@ -24,7 +25,8 @@ def _check_shape(shape: tuple[int, int]):
 
 
 def get_heatmap(
-    x: NDArray, y: NDArray, shape: tuple[int, int], check: bool = True
+    x: NDArray, y: NDArray, shape: tuple[int, int], check: bool = True,
+    zoom_to_data: bool = False
 ) -> np.ndarray:
     """Get heatmap from scanpath (given coordinates are scaled and
     sorted in time) using Gaussian KDE.
@@ -36,6 +38,8 @@ def get_heatmap(
             otherwise k must be (height, width) tuple and rectangular matrix
             is returned.
         check: whether to check 'shape' for correct typing.
+        zoom_to_data: if True, normalize coordinates to fill the entire heatmap.
+            If False, use coordinates as-is (assumes [0,1] range).
 
     Returns:
         heatmap matrix.
@@ -43,22 +47,91 @@ def get_heatmap(
     if check:
         _check_shape(shape)
 
-    if len(x) <= 2:  # TODO warning
+    x = np.asarray(x)
+    y = np.asarray(y)
+    
+    # Handle edge cases where KDE cannot be applied
+    if len(x) <= 2:
         # in case of small number of samples, KDE cannot be applied and
         # default kernel estimate is returned instead
         x, y = np.array([0.25, 0.50, 0.75]), np.array([0.50, 0.50, 0.50])
+    
+    # Normalize coordinates to [0, 1] if zoom_to_data is enabled
+    if zoom_to_data:
+        x_min, x_max = x.min(), x.max()
+        y_min, y_max = y.min(), y.max()
+        # Add small margin to avoid edge effects
+        x_range = x_max - x_min if x_max > x_min else 1.0
+        y_range = y_max - y_min if y_max > y_min else 1.0
+        x = (x - x_min) / x_range
+        y = (y - y_min) / y_range
+    
+    # Check if all points are the same (zero variance)
+    if len(np.unique(x)) == 1 and len(np.unique(y)) == 1:
+        # All points at same location - return uniform heatmap centered at that point
+        heatmap = np.zeros(shape)
+        center_x = int(np.clip(x[0] * shape[1], 0, shape[1] - 1))
+        center_y = int(np.clip(y[0] * shape[0], 0, shape[0] - 1))
+        heatmap[center_y, center_x] = 1.0
+        return heatmap
+    
+    # Check if points are collinear (all x same or all y same)
+    if len(np.unique(x)) == 1 or len(np.unique(y)) == 1:
+        # Points lie on a line - use histogram-based approach instead
+        return _get_heatmap_histogram(x, y, shape)
+    
+    # Try to create KDE, with fallback to histogram if it fails
+    try:
+        scanpath = np.vstack([x, y])
+        kernel = gaussian_kde(scanpath)
+        interval_x, interval_y = np.linspace(0, 1, shape[1]), np.linspace(0, 1, shape[0])
+        x_grid, y_grid = np.meshgrid(interval_x, interval_y)
+        
+        # Query KDE with same [x, y] order as training data
+        positions = np.vstack([x_grid.ravel(), y_grid.ravel()])
+        return np.reshape(kernel(positions), x_grid.shape)
+    except (np.linalg.LinAlgError, ValueError) as e:
+        # KDE failed due to singular covariance matrix - fallback to histogram
+        return _get_heatmap_histogram(x, y, shape)
 
-    scanpath = np.vstack([x, y])
-    kernel = gaussian_kde(scanpath)
-    interval_x, interval_y = np.linspace(0, 1, shape[1]), np.linspace(0, 1, shape[0])
-    x, y = np.meshgrid(interval_x, interval_y)
 
-    positions = np.vstack([y.ravel(), x.ravel()])
-    return np.reshape(kernel(positions), x.shape)
+def _get_heatmap_histogram(
+    x: NDArray, y: NDArray, shape: tuple[int, int]
+) -> np.ndarray:
+    """Fallback method: create heatmap using 2D histogram when KDE fails.
+    
+    Args:
+        x: X coordinates (normalized 0-1)
+        y: Y coordinates (normalized 0-1)
+        shape: Output shape (height, width)
+    
+    Returns:
+        heatmap matrix
+    """
+    # Convert normalized coordinates to pixel indices
+    x_indices = np.clip((x * shape[1]).astype(int), 0, shape[1] - 1)
+    y_indices = np.clip((y * shape[0]).astype(int), 0, shape[0] - 1)
+    
+    # Create histogram
+    heatmap = np.zeros(shape)
+    for xi, yi in zip(x_indices, y_indices):
+        heatmap[yi, xi] += 1.0
+    
+    # Normalize
+    if heatmap.sum() > 0:
+        heatmap = heatmap / heatmap.sum()
+    
+    # Apply slight Gaussian smoothing to avoid completely sparse heatmaps
+    if heatmap.sum() > 0:
+        heatmap = gaussian_filter(heatmap, sigma=0.5)
+        heatmap = heatmap / heatmap.sum() if heatmap.sum() > 0 else heatmap
+    
+    return heatmap
 
 
 def get_heatmaps(
-    data: pd.DataFrame, x: str, y: str, shape: tuple[int, int], pk: list[str] = None
+    data: pd.DataFrame, x: str, y: str, shape: tuple[int, int], pk: list[str] = None,
+    zoom_to_data: bool = False
 ) -> np.ndarray:
     """Get heatmaps from scanpaths (given coordinates are scaled and
         sorted in time) using Gaussian KDE.
@@ -71,6 +144,8 @@ def get_heatmaps(
             otherwise k must be (height, width) tuple and rectangular matrix
             is returned.
         pk: List of columns being primary key.
+        zoom_to_data: if True, normalize coordinates to fill the entire heatmap.
+            If False, use coordinates as-is (assumes [0,1] range).
 
     Returns:
         heatmap matrices.
@@ -79,7 +154,7 @@ def get_heatmaps(
 
     if pk is None:
         x_path, y_path = data[x].values, data[y].values
-        heatmap = get_heatmap(x_path, y_path, shape)
+        heatmap = get_heatmap(x_path, y_path, shape, zoom_to_data=zoom_to_data)
         heatmaps = heatmap[np.newaxis, :, :]
     else:
         groups: list[str, pd.DataFrame] = _split_dataframe(data, pk)
@@ -88,7 +163,7 @@ def get_heatmaps(
         heatmaps = np.zeros(hshape)
         for i, (_, group_X) in enumerate(groups):
             x_path, y_path = group_X[x], group_X[y]
-            heatmaps[i, :, :] = get_heatmap(x_path, y_path, shape, check=False)
+            heatmaps[i, :, :] = get_heatmap(x_path, y_path, shape, check=False, zoom_to_data=zoom_to_data)
 
     return heatmaps
 
@@ -471,6 +546,113 @@ def _encode_car(x: np.array, t: np.array) -> tuple[np.ndarray, np.ndarray]:
     rho = t
     phi = np.arccos(_rescale(x))
     return rho, phi
+
+
+def _resize_2d_maps_to_shape(maps: np.ndarray, shape: tuple[int, int]) -> np.ndarray:
+    """Resize (2, h, w) or (c, h, w) array to (c, shape[0], shape[1]) using bilinear interpolation."""
+    _check_shape(shape)
+    if maps.shape[1] == shape[0] and maps.shape[2] == shape[1]:
+        return maps
+    n, h, w = maps.shape
+    zoom_factors = (1, shape[0] / h, shape[1] / w)
+    return ndimage_zoom(maps, zoom_factors, order=1, mode="nearest")
+
+
+# =========================== GAF/MTF batch (2D DL representations) ===========================
+def get_gafs(
+    data: pd.DataFrame,
+    x: str,
+    y: str,
+    shape: tuple[int, int],
+    pk: list[str] = None,
+    t: str = None,
+    field_type: Literal["difference", "sum"] = "difference",
+    to_polar: Literal["regular", "cosine"] = "cosine",
+) -> np.ndarray:
+    """Batch Gramian Angular Fields for 2D DL: one (2, H, W) image per group, resized to shape.
+
+    Args:
+        data: input DataFrame with fixations.
+        x: X coordinate column name.
+        y: Y coordinate column name.
+        shape: (height, width) of output images per channel.
+        pk: list of primary key columns for grouping.
+        t: timestamps column name.
+        field_type: "difference" (GADF) or "sum" (GASF).
+        to_polar: "regular" or "cosine".
+
+    Returns:
+        array of shape (n_groups, 2, shape[0], shape[1]), dtype float.
+    """
+    _check_shape(shape)
+    if pk is None:
+        groups = [(None, data)]
+    else:
+        groups = list(_split_dataframe(data, pk))
+    out = np.zeros((len(groups), 2, shape[0], shape[1]), dtype=np.float64)
+    for i, (_, group_X) in enumerate(groups):
+        if len(group_X) < 2:
+            # Pad with duplicate row so GAF is at least 2x2, then resize
+            group_X = pd.concat([group_X, group_X.iloc[-1:]], ignore_index=True)
+        gaf = get_gaf(
+            group_X, x, y, t=t, field_type=field_type, to_polar=to_polar, flatten=False
+        )
+        gaf = _resize_2d_maps_to_shape(gaf, shape)
+        out[i] = gaf
+    return out
+
+
+def get_mtfs(
+    data: pd.DataFrame,
+    x: str,
+    y: str,
+    shape: tuple[int, int],
+    pk: list[str] = None,
+    n_bins: int = 10,
+    shrink_strategy: Literal["max", "mean", "normal"] = "normal",
+) -> np.ndarray:
+    """Batch Markov Transition Fields for 2D DL: one (2, H, W) image per group, resized to shape.
+
+    Args:
+        data: input DataFrame with fixations.
+        x: X coordinate column name.
+        y: Y coordinate column name.
+        shape: (height, width) of output images per channel.
+        pk: list of primary key columns for grouping.
+        n_bins: number of bins for MTF discretization.
+        shrink_strategy: strategy when shrinking MTF matrix.
+
+    Returns:
+        array of shape (n_groups, 2, shape[0], shape[1]), dtype float.
+    """
+    _check_shape(shape)
+    if pk is None:
+        groups = [(None, data)]
+    else:
+        groups = list(_split_dataframe(data, pk))
+    out = np.zeros((len(groups), 2, shape[0], shape[1]), dtype=np.float64)
+    min_len = max(n_bins + 1, 2)
+    for i, (_, group_X) in enumerate(groups):
+        grp = group_X
+        if len(grp) < min_len:
+            # Repeat rows to reach min_len
+            while len(grp) < min_len:
+                grp = pd.concat([grp, grp.iloc[-1:]], ignore_index=True)
+        try:
+            # get_mtf requires output_size in [2, len(data)] and len(data) > n_bins
+            out_size = max(2, min(len(grp), shape[0], shape[1]))
+            mtf = get_mtf(
+                grp, x, y, n_bins=n_bins,
+                output_size=out_size,
+                shrink_strategy=shrink_strategy,
+                flatten=False,
+            )
+            mtf = _resize_2d_maps_to_shape(mtf, shape)
+            out[i] = mtf
+        except Exception:
+            # Fallback: zeros or small constant
+            out[i] = np.zeros((2, shape[0], shape[1]), dtype=np.float64)
+    return out
 
 
 # =========================== HILBERT CURVE ===========================

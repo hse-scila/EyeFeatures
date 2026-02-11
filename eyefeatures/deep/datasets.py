@@ -2,6 +2,8 @@ import warnings
 from collections.abc import Callable
 from copy import copy
 from functools import partial
+from pathlib import Path
+from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -9,54 +11,14 @@ import pytorch_lightning as pl
 import torch
 from numpy.typing import ArrayLike
 from sklearn.model_selection import train_test_split
-from skmultilearn.model_selection import IterativeStratification
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader, Dataset, Subset
 from torch_geometric.data import Data
 from tqdm import tqdm
 
-from eyefeatures.features.complex import get_heatmaps
+from eyefeatures.features.complex import get_gafs, get_heatmaps, get_mtfs
 from eyefeatures.preprocessing.base import BaseFixationPreprocessor
 from eyefeatures.utils import _split_dataframe
 from eyefeatures.visualization.static_visualization import get_visualizations
-
-
-def iterative_split(
-    df: pd.DataFrame, y: ArrayLike, test_size: float, stratify_columns: list[str]
-):
-    """Custom iterative train test split which
-    'maintains balanced representation with respect
-    to order-th label combinations.'
-
-    Args:
-        df (pd.DataFrame): Input dataframe to split.
-        y (np.ndarray): Labels corresponding to the dataframe.
-        test_size (float): Proportion of the dataset to include in the test split.
-        stratify_columns (List[str]): List of column names to stratify by.
-
-    Returns:
-        tuple (pd.DataFrame, pd.DataFrame, np.ndarray, np.ndarray): A tuple
-            (X_train, X_test, y_train, y_test):
-                (1) Training split of the dataframe.
-                (2) Test split of the dataframe.
-                (3) Training labels.
-                (4) Test labels.
-
-    Note:
-        From https://madewithml.com/courses/mlops/splitting/#stratified-split
-    """
-    # One-hot encode the stratify columns and concatenate them
-    one_hot_cols = [pd.get_dummies(df[col]) for col in stratify_columns]
-    one_hot_cols = pd.concat(one_hot_cols, axis=1).to_numpy()
-    stratifier = IterativeStratification(
-        n_splits=2,
-        order=len(stratify_columns),
-        sample_distribution_per_fold=[test_size, 1 - test_size],
-    )
-    train_indices, test_indices = next(stratifier.split(df.to_numpy(), one_hot_cols))
-    # Return the train and test set dataframes
-    X_train, X_test = df.iloc[train_indices], df.iloc[test_indices]
-    y_train, y_test = y[train_indices], y[test_indices]
-    return X_train, X_test, y_train, y_test
 
 
 def _coord_to_grid(coords: np.array, xlim: tuple, ylim: tuple, shape: tuple):
@@ -320,11 +282,29 @@ def create_graph_data_from_dataframe(
     return data
 
 
+# Representation types with zoom options:
+# - *_fixed: uses fixed [0,1] coordinate space (shows absolute position)
+# - *_zoomed: zooms to data range (fills the image with the scanpath region)
 _representations = {
-    "heatmap": get_heatmaps,
-    "baseline_visualization": partial(get_visualizations, pattern="baseline"),
+    # Heatmaps
+    "heatmap": get_heatmaps,  # Default: fixed [0,1] space (backward compat)
+    "heatmap_fixed": partial(get_heatmaps, zoom_to_data=False),
+    "heatmap_zoomed": partial(get_heatmaps, zoom_to_data=True),
+    # Baseline visualization
+    "baseline_visualization": partial(get_visualizations, pattern="baseline"),  # Default: zoomed (backward compat)
+    "baseline_fixed": partial(get_visualizations, pattern="baseline", zoom_to_data=False),
+    "baseline_zoomed": partial(get_visualizations, pattern="baseline", zoom_to_data=True),
+    # AOI visualization
     "aoi_visualization": partial(get_visualizations, pattern="aoi"),
-    "saccade_visualization": partial(get_visualizations, pattern="saccades"),
+    "aoi_fixed": partial(get_visualizations, pattern="aoi", zoom_to_data=False),
+    "aoi_zoomed": partial(get_visualizations, pattern="aoi", zoom_to_data=True),
+    # Saccade visualization (with sequential colormap)
+    "saccade_visualization": partial(get_visualizations, pattern="saccades"),  # Default: zoomed
+    "saccade_fixed": partial(get_visualizations, pattern="saccades", zoom_to_data=False),
+    "saccade_zoomed": partial(get_visualizations, pattern="saccades", zoom_to_data=True),
+    # GAF (Gramian Angular Field) and MTF (Markov Transition Field) 2D maps for DL (no zoom variant)
+    "gaf_fixed": get_gafs,
+    "mtf_fixed": get_mtfs,
 }
 
 
@@ -354,16 +334,16 @@ class Dataset2D(Dataset):
         transforms=None,
     ):
         self.pmk = pk
-        self.X = torch.cat(
-            [
-                torch.tensor(
-                    _representations[i](X, x, y, pk=pk, shape=shape),
-                    dtype=torch.float32,
-                ).unsqueeze(1)
-                for i in representations
-            ],
-            dim=1,
-        )
+        rep_tensors = []
+        for i in representations:
+            rep_data = _representations[i](X, x, y, pk=pk, shape=shape)
+            rep_tensor = torch.tensor(rep_data, dtype=torch.float32)
+            # Only add channel dimension if not already present
+            # Heatmaps return (n, h, w), visualizations return (n, c, h, w)
+            if rep_tensor.ndim == 3:
+                rep_tensor = rep_tensor.unsqueeze(1)
+            rep_tensors.append(rep_tensor)
+        self.X = torch.cat(rep_tensors, dim=1)
         self.channels_dim = self.X.shape[1]
         print(f"Number of channels = {self.channels_dim}.")
         if not isinstance(Y, pd.Series):
@@ -382,23 +362,32 @@ class Dataset2D(Dataset):
         return self.X.shape[0]
 
     def __getitem__(self, idx: int):
-        if self.transforms is None:
-            X = self.X[idx, :, :, :]
-            label = self.y[idx]
+        X = self.X[idx, :, :, :]
+        label = self.y[idx]
+        
+        if self.transforms is not None:
+            X = self.transforms(X)
 
         return {
             "images": X,
-            "y": label,  #
+            "y": label,
         }
 
     def collate_fn(self, batch):
         images = torch.stack([x["images"] for x in batch])
         y = torch.tensor([x["y"] for x in batch])
         return {"images": images, "y": y}
-        return batch
 
 
 def _get_features(X, features, x, y, t, pk):
+    # Handle None features case - return only x and y coordinates
+    if features is None:
+        output = []
+        groups = _split_dataframe(X, pk)
+        for group_id, group_X in tqdm(groups):
+            output.append(group_X[[x, y]].values)
+        return output
+    
     preprocessor = BaseFixationPreprocessor(x, y, t, pk)
     features_to_get = copy(features)
     for i in features:
@@ -420,7 +409,7 @@ class DatasetTimeSeries(Dataset):
         X: Input time-series data.
         Y: Labels for the data.
         pk: Primary keys for grouping.
-        features: List of features to extract.
+        features: List of features to extract. If None, only x and y coordinates are used.
         transforms: Transformations to apply to the data.
         max_length: maximum length of scanpath.
     """
@@ -432,7 +421,7 @@ class DatasetTimeSeries(Dataset):
         x: str,
         y: str,
         pk: list[str],
-        features: list[str],
+        features: Optional[list[str]] = None,
         transforms: Callable = None,
         max_length: int = 10,
     ):
@@ -446,7 +435,7 @@ class DatasetTimeSeries(Dataset):
         else:
             self.Y = torch.tensor(self.Y, dtype=torch.float)
 
-        self.n_features = 2 + len(features)
+        self.n_features = 2 + (len(features) if features is not None else 0)
         self.transforms = transforms
         self.max_length = max_length
 
@@ -540,7 +529,7 @@ class TimeSeries_2D_Dataset(Dataset):
             torch.cat(
                 [
                     x["sequences"],
-                    torch.zeros(max_len - x["sequences"].shape[0], self.n_features),
+                    torch.zeros(max_len - x["sequences"].shape[0], self.sequence_dataset.n_features),
                 ],
                 axis=0,
             )
@@ -552,7 +541,7 @@ class TimeSeries_2D_Dataset(Dataset):
         return {
             "sequences": torch.stack(padded_batch),
             "lengths": torch.tensor(lengths),
-            "images": batch["images"],
+            "images": torch.stack([x["images"] for x in batch]),
             "y": y,
         }
 
@@ -627,267 +616,3 @@ class GridGraphDataset(Dataset):
 
     def collate_fn(self, batch):
         return batch
-
-
-class DatasetLightningBase(pl.LightningDataModule):
-    """Base PyTorch Lightning DataModule for managing datasets and dataloaders.
-
-    Args:
-        X: Input data.
-        y: Labels for the data.
-        x: X coordinate column name.
-        y: Y coordinate column name.
-        pk: Primary keys for grouping.
-        test_size: Test size for the train-validation split.
-        batch_size: Batch size for the dataloaders.
-        split_type: Type of train-validation split.
-    """
-
-    def __init__(
-        self,
-        X: pd.DataFrame,
-        Y: ArrayLike,
-        x: str,
-        y: str,
-        pk: list[str],
-        test_size: int,
-        batch_size: int,
-        split_type: str = "simple",
-    ):
-        super().__init__()
-        self.X = X
-        self.Y = Y
-
-        self.x = x
-        self.y = y
-        self.pk = pk
-        self.test_size = test_size
-        self.batch_size = batch_size
-        self.split_type = split_type
-
-    def setup(self, stage=None):
-        X_train, y_train, X_val, y_val = self.split_train_val()
-        self.create_train_val_datasets(X_train, y_train, X_val, y_val)
-
-    def train_dataloader(self):
-        return DataLoader(
-            self.train_dataset,
-            batch_size=self.batch_size,
-            shuffle=True,
-            collate_fn=self.train_dataset.collate_fn,
-        )
-
-    def val_dataloader(self):
-        return DataLoader(
-            self.val_dataset,
-            batch_size=self.batch_size,
-            shuffle=False,
-            collate_fn=self.val_dataset.collate_fn,
-        )
-
-    def split_train_val(self):
-        pk = self.pk
-        groups = self.X[self.pk].drop_duplicates()
-        if len(self.pk) == 1 or self.split_type == "simple":
-            if self.split_type != "simple":
-                warnings.warn(
-                    """Ignoring split type.
-                        Split type cannot != "simple" if there is a
-                        single primary key."""
-                )
-            groups_train, groups_val = train_test_split(
-                groups, test_size=self.test_size
-            )
-        elif self.split_type == "all_categories_unique":
-            groups_train, groups_val = groups.copy(), groups.copy()
-            for i in self.pk:
-                gr = (
-                    groups[i]
-                    .drop_duplicates()
-                    .sort_values()
-                    .sample(frac=1 - self.test_size)
-                    .astype(str)
-                )
-                groups_train = groups_train[groups_train[i].isin(gr)]
-                groups_val = groups_val[~groups_val[i].isin(gr)]
-        elif self.split_type == "all_categories_repetitive":
-            groups_train, groups_val = iterative_split(groups, self.test_size, self.pk)
-        elif self.split_type == "first_category_repetitive":
-            groups_train, groups_val = train_test_split(
-                groups, test_size=self.test_size, stratify=groups.iloc[:, 0]
-            )
-        elif self.split_type == "first_category_unique":
-            pk_col = self.pk[0]
-            unique_vals = groups[pk_col].drop_duplicates()
-            vals_train, vals_val = train_test_split(
-                unique_vals, test_size=self.test_size
-            )
-            groups_train = groups[groups[pk_col].isin(vals_train)]
-            groups_val = groups[groups[pk_col].isin(vals_val)]
-        else:
-            raise ValueError(
-                f"""Invalid split type: {self.split_type}.
-                    Supported split types are: simple,
-                    first_category_unique, first_category_repetitive,
-                    all_categories_unique, all_categories_repetitive."""
-            )
-
-        X_train = self.X.merge(groups_train, on=pk)
-        y_train = self.Y.merge(groups_train, on=pk)
-        X_val = self.X.merge(groups_val, on=pk)
-        y_val = self.Y.merge(groups_val, on=pk)
-
-        return X_train, y_train, X_val, y_val
-
-    def create_train_val_datasets(self, X_train, y_train, X_val, y_val):
-        raise NotImplementedError("This method should be implemented by subclasses")
-
-
-class DatasetLightning2D(DatasetLightningBase):
-    """PyTorch Lightning DataModule for 2D datasets and dataloaders."""
-
-    def __init__(
-        self,
-        X: pd.DataFrame,
-        Y: ArrayLike,
-        x: str,
-        y: str,
-        pk: list[str],
-        shape: tuple[int] | int,
-        representations: list[str],
-        test_size: int,
-        batch_size: int,
-        split_type: str = "simple",
-    ):
-        super().__init__(X, Y, x, y, pk, test_size, batch_size, split_type)
-        self.shape = shape
-        self.representations = representations
-        self.train_dataset = None
-        self.val_dataset = None
-
-    def create_train_val_datasets(self, X_train, y_train, X_val, y_val):
-        self.train_dataset = Dataset2D(
-            X_train,
-            y_train,
-            self.x,
-            self.y,
-            pk=self.pk,
-            shape=self.shape,
-            representations=self.representations,
-        )
-        self.val_dataset = Dataset2D(
-            X_val,
-            y_val,
-            self.x,
-            self.y,
-            pk=self.pk,
-            shape=self.shape,
-            representations=self.representations,
-        )
-
-
-class DatasetLightningTimeSeries(DatasetLightningBase):
-    """PyTorch Lightning DataModule for Time Series datasets and dataloaders."""
-
-    def __init__(
-        self,
-        X: pd.DataFrame,
-        Y: ArrayLike,
-        x: str,
-        y: str,
-        pk: list[str],
-        features: list[str],
-        test_size: int,
-        batch_size: int,
-        split_type: str = "simple",
-        max_length=10,
-    ):
-        super().__init__(X, Y, x, y, pk, test_size, batch_size, split_type)
-        self.features = features
-        self.max_length = max_length
-
-    def create_train_val_datasets(self, X_train, y_train, X_val, y_val):
-        self.train_dataset = DatasetTimeSeries(
-            X_train,
-            y_train,
-            self.x,
-            self.y,
-            pk=self.pk,
-            features=self.features,
-            max_length=self.max_length,
-        )
-        self.val_dataset = DatasetTimeSeries(
-            X_val,
-            y_val,
-            self.x,
-            self.y,
-            pk=self.pk,
-            features=self.features,
-            max_length=self.max_length,
-        )
-
-
-class DatasetLightningTimeSeries2D(DatasetLightningBase):
-    """PyTorch Lightning DataModule for Time Series 2D datasets and dataloaders."""
-
-    def __init__(
-        self,
-        X: pd.DataFrame,
-        Y: ArrayLike,
-        x: str,
-        y: str,
-        pk: list[str],
-        shape: tuple[int] | int,
-        representations: list[str],
-        features: list[str],
-        test_size: int,
-        batch_size: int,
-        split_type: str = "simple",
-        max_length: int = 10,
-    ):
-        super().__init__(X, Y, x, y, pk, test_size, batch_size, split_type)
-        self.shape = shape
-        self.representations = representations
-        self.features = features
-        self.max_length = max_length
-
-    def create_train_val_datasets(self, X_train, y_train, X_val, y_val):
-        data2D = Dataset2D(
-            X_train,
-            y_train,
-            self.x,
-            self.y,
-            pk=self.pk,
-            shape=self.shape,
-            representations=self.representations,
-        )
-        dataTime = DatasetTimeSeries(
-            X_train,
-            y_train,
-            self.x,
-            self.y,
-            pk=self.pk,
-            features=self.features,
-            max_length=self.max_length,
-        )
-        self.train_dataset = TimeSeries_2D_Dataset(data2D, dataTime)
-
-        data2D = Dataset2D(
-            X_val,
-            y_val,
-            self.x,
-            self.y,
-            pk=self.pk,
-            shape=self.shape,
-            representations=self.representations,
-        )
-        dataTime = DatasetTimeSeries(
-            X_val,
-            y_val,
-            self.x,
-            self.y,
-            pk=self.pk,
-            features=self.features,
-            max_length=self.max_length,
-        )
-        self.val_dataset = TimeSeries_2D_Dataset(data2D, dataTime)

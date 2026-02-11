@@ -82,9 +82,14 @@ class ResnetBlock(nn.Module):
             out_channels, out_channels, kernel_size=kernel_size, padding=padding
         )
         self.bn2 = nn.BatchNorm2d(out_channels)
+        # Shortcut when channels or spatial size change (standard ResNet)
+        if in_channels != out_channels or stride != 1:
+            self.shortcut = nn.Conv2d(in_channels, out_channels, 1, stride=stride)
+        else:
+            self.shortcut = nn.Identity()
 
     def forward(self, images):
-        identity = images
+        identity = self.shortcut(images)
         out = self.conv1(images)
         out = self.bn1(out)
         out = self.relu(out)
@@ -207,7 +212,9 @@ def create_simple_CNN(
 
     Args:
         config: (Dict) Configuration dictionary where each key represents
-            a layer/block and its corresponding parameters.
+            a layer/block and its corresponding parameters. Supported types:
+            - Block types: 'VGG_block', 'Resnet_block', 'DSC_block', 'Inception_block'
+            - Pooling: 'MaxPool2d' (with params: kernel_size, stride, padding)
         in_channels: (int) Number of input channels for the first layer.
         shape: (Tuple[int, int], optional) Input shape for the CNN. If provided,
             checks that the final output shape is valid.
@@ -225,7 +232,24 @@ def create_simple_CNN(
         block_type = block_config["type"]
         params = block_config.get("params", {})
 
-        if block_type != "Inception_block":
+        # Handle MaxPool2d separately (doesn't change channel count)
+        if block_type == "MaxPool2d":
+            kernel_size = params.get("kernel_size", 2)
+            stride = params.get("stride", kernel_size)
+            padding = params.get("padding", 0)
+            module = nn.MaxPool2d(kernel_size=kernel_size, stride=stride, padding=padding)
+            if shape is not None:
+                shape = (
+                    (shape[0] + 2 * padding - kernel_size) // stride + 1,
+                    (shape[1] + 2 * padding - kernel_size) // stride + 1,
+                )
+                if shape[0] < 1 or shape[1] < 1:
+                    raise ValueError(
+                        """Your CNN backbone is too large for the input shape!
+                        Increase resolution or consider reducing the number of
+                        layers/removing stride/adding padding."""
+                    )
+        elif block_type != "Inception_block":
             module = _blocks[block_type](in_channels=in_channels, **params)
             in_channels = params.get("out_channels", in_channels)
             if shape is not None:
@@ -832,28 +856,54 @@ class Classifier(BaseModel):
 
         # Log precision, recall, and F1-score for each class
         if getattr(self, "_trainer", None) is not None:
-            for i in range(len(precision)):
+            # Handle both binary (scalar) and multiclass (array) metrics
+            if precision.dim() == 0:
+                # Binary classification - metrics are scalars
                 self.log(
-                    f"val_precision_class_{i}",
-                    precision[i],
+                    "val_precision_class_1",
+                    precision,
                     on_step=False,
                     on_epoch=True,
                     prog_bar=False,
                 )
                 self.log(
-                    f"val_recall_class_{i}",
-                    recall[i],
+                    "val_recall_class_1",
+                    recall,
                     on_step=False,
                     on_epoch=True,
                     prog_bar=False,
                 )
                 self.log(
-                    f"val_f1_class_{i}",
-                    f1[i],
+                    "val_f1_class_1",
+                    f1,
                     on_step=False,
                     on_epoch=True,
                     prog_bar=False,
                 )
+            else:
+                # Multiclass classification - metrics are arrays
+                for i in range(len(precision)):
+                    self.log(
+                        f"val_precision_class_{i}",
+                        precision[i],
+                        on_step=False,
+                        on_epoch=True,
+                        prog_bar=False,
+                    )
+                    self.log(
+                        f"val_recall_class_{i}",
+                        recall[i],
+                        on_step=False,
+                        on_epoch=True,
+                        prog_bar=False,
+                    )
+                    self.log(
+                        f"val_f1_class_{i}",
+                        f1[i],
+                        on_step=False,
+                        on_epoch=True,
+                        prog_bar=False,
+                    )
 
         # Log macro averages
         if getattr(self, "_trainer", None) is not None:
