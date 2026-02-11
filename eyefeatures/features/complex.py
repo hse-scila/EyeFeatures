@@ -25,8 +25,11 @@ def _check_shape(shape: tuple[int, int]):
 
 
 def get_heatmap(
-    x: NDArray, y: NDArray, shape: tuple[int, int], check: bool = True,
-    zoom_to_data: bool = False
+    x: NDArray,
+    y: NDArray,
+    shape: tuple[int, int],
+    check: bool = True,
+    zoom_to_data: bool = False,
 ) -> np.ndarray:
     """Get heatmap from scanpath (given coordinates are scaled and
     sorted in time) using Gaussian KDE.
@@ -49,13 +52,13 @@ def get_heatmap(
 
     x = np.asarray(x)
     y = np.asarray(y)
-    
+
     # Handle edge cases where KDE cannot be applied
     if len(x) <= 2:
         # in case of small number of samples, KDE cannot be applied and
         # default kernel estimate is returned instead
         x, y = np.array([0.25, 0.50, 0.75]), np.array([0.50, 0.50, 0.50])
-    
+
     # Normalize coordinates to [0, 1] if zoom_to_data is enabled
     if zoom_to_data:
         x_min, x_max = x.min(), x.max()
@@ -65,7 +68,7 @@ def get_heatmap(
         y_range = y_max - y_min if y_max > y_min else 1.0
         x = (x - x_min) / x_range
         y = (y - y_min) / y_range
-    
+
     # Check if all points are the same (zero variance)
     if len(np.unique(x)) == 1 and len(np.unique(y)) == 1:
         # All points at same location - return uniform heatmap centered at that point
@@ -74,23 +77,25 @@ def get_heatmap(
         center_y = int(np.clip(y[0] * shape[0], 0, shape[0] - 1))
         heatmap[center_y, center_x] = 1.0
         return heatmap
-    
+
     # Check if points are collinear (all x same or all y same)
     if len(np.unique(x)) == 1 or len(np.unique(y)) == 1:
         # Points lie on a line - use histogram-based approach instead
         return _get_heatmap_histogram(x, y, shape)
-    
+
     # Try to create KDE, with fallback to histogram if it fails
     try:
         scanpath = np.vstack([x, y])
         kernel = gaussian_kde(scanpath)
-        interval_x, interval_y = np.linspace(0, 1, shape[1]), np.linspace(0, 1, shape[0])
+        interval_x, interval_y = np.linspace(0, 1, shape[1]), np.linspace(
+            0, 1, shape[0]
+        )
         x_grid, y_grid = np.meshgrid(interval_x, interval_y)
-        
+
         # Query KDE with same [x, y] order as training data
         positions = np.vstack([x_grid.ravel(), y_grid.ravel()])
         return np.reshape(kernel(positions), x_grid.shape)
-    except (np.linalg.LinAlgError, ValueError) as e:
+    except (np.linalg.LinAlgError, ValueError):
         # KDE failed due to singular covariance matrix - fallback to histogram
         return _get_heatmap_histogram(x, y, shape)
 
@@ -99,39 +104,43 @@ def _get_heatmap_histogram(
     x: NDArray, y: NDArray, shape: tuple[int, int]
 ) -> np.ndarray:
     """Fallback method: create heatmap using 2D histogram when KDE fails.
-    
+
     Args:
         x: X coordinates (normalized 0-1)
         y: Y coordinates (normalized 0-1)
         shape: Output shape (height, width)
-    
+
     Returns:
         heatmap matrix
     """
     # Convert normalized coordinates to pixel indices
     x_indices = np.clip((x * shape[1]).astype(int), 0, shape[1] - 1)
     y_indices = np.clip((y * shape[0]).astype(int), 0, shape[0] - 1)
-    
+
     # Create histogram
     heatmap = np.zeros(shape)
-    for xi, yi in zip(x_indices, y_indices):
+    for xi, yi in zip(x_indices, y_indices, strict=False):
         heatmap[yi, xi] += 1.0
-    
+
     # Normalize
     if heatmap.sum() > 0:
         heatmap = heatmap / heatmap.sum()
-    
+
     # Apply slight Gaussian smoothing to avoid completely sparse heatmaps
     if heatmap.sum() > 0:
         heatmap = gaussian_filter(heatmap, sigma=0.5)
         heatmap = heatmap / heatmap.sum() if heatmap.sum() > 0 else heatmap
-    
+
     return heatmap
 
 
 def get_heatmaps(
-    data: pd.DataFrame, x: str, y: str, shape: tuple[int, int], pk: list[str] = None,
-    zoom_to_data: bool = False
+    data: pd.DataFrame,
+    x: str,
+    y: str,
+    shape: tuple[int, int],
+    pk: list[str] = None,
+    zoom_to_data: bool = False,
 ) -> np.ndarray:
     """Get heatmaps from scanpaths (given coordinates are scaled and
         sorted in time) using Gaussian KDE.
@@ -163,7 +172,9 @@ def get_heatmaps(
         heatmaps = np.zeros(hshape)
         for i, (_, group_X) in enumerate(groups):
             x_path, y_path = group_X[x], group_X[y]
-            heatmaps[i, :, :] = get_heatmap(x_path, y_path, shape, check=False, zoom_to_data=zoom_to_data)
+            heatmaps[i, :, :] = get_heatmap(
+                x_path, y_path, shape, check=False, zoom_to_data=zoom_to_data
+            )
 
     return heatmaps
 
@@ -642,7 +653,10 @@ def get_mtfs(
             # get_mtf requires output_size in [2, len(data)] and len(data) > n_bins
             out_size = max(2, min(len(grp), shape[0], shape[1]))
             mtf = get_mtf(
-                grp, x, y, n_bins=n_bins,
+                grp,
+                x,
+                y,
+                n_bins=n_bins,
                 output_size=out_size,
                 shrink_strategy=shrink_strategy,
                 flatten=False,

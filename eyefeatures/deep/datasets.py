@@ -1,17 +1,12 @@
-import warnings
 from collections.abc import Callable
 from copy import copy
 from functools import partial
-from pathlib import Path
-from typing import Optional
 
 import numpy as np
 import pandas as pd
-import pytorch_lightning as pl
 import torch
 from numpy.typing import ArrayLike
-from sklearn.model_selection import train_test_split
-from torch.utils.data import DataLoader, Dataset, Subset
+from torch.utils.data import Dataset
 from torch_geometric.data import Data
 from tqdm import tqdm
 
@@ -291,17 +286,29 @@ _representations = {
     "heatmap_fixed": partial(get_heatmaps, zoom_to_data=False),
     "heatmap_zoomed": partial(get_heatmaps, zoom_to_data=True),
     # Baseline visualization
-    "baseline_visualization": partial(get_visualizations, pattern="baseline"),  # Default: zoomed (backward compat)
-    "baseline_fixed": partial(get_visualizations, pattern="baseline", zoom_to_data=False),
-    "baseline_zoomed": partial(get_visualizations, pattern="baseline", zoom_to_data=True),
+    "baseline_visualization": partial(
+        get_visualizations, pattern="baseline"
+    ),  # Default: zoomed (backward compat)
+    "baseline_fixed": partial(
+        get_visualizations, pattern="baseline", zoom_to_data=False
+    ),
+    "baseline_zoomed": partial(
+        get_visualizations, pattern="baseline", zoom_to_data=True
+    ),
     # AOI visualization
     "aoi_visualization": partial(get_visualizations, pattern="aoi"),
     "aoi_fixed": partial(get_visualizations, pattern="aoi", zoom_to_data=False),
     "aoi_zoomed": partial(get_visualizations, pattern="aoi", zoom_to_data=True),
     # Saccade visualization (with sequential colormap)
-    "saccade_visualization": partial(get_visualizations, pattern="saccades"),  # Default: zoomed
-    "saccade_fixed": partial(get_visualizations, pattern="saccades", zoom_to_data=False),
-    "saccade_zoomed": partial(get_visualizations, pattern="saccades", zoom_to_data=True),
+    "saccade_visualization": partial(
+        get_visualizations, pattern="saccades"
+    ),  # Default: zoomed
+    "saccade_fixed": partial(
+        get_visualizations, pattern="saccades", zoom_to_data=False
+    ),
+    "saccade_zoomed": partial(
+        get_visualizations, pattern="saccades", zoom_to_data=True
+    ),
     # GAF (Gramian Angular Field) and MTF (Markov Transition Field) 2D maps for DL (no zoom variant)
     "gaf_fixed": get_gafs,
     "mtf_fixed": get_mtfs,
@@ -364,7 +371,7 @@ class Dataset2D(Dataset):
     def __getitem__(self, idx: int):
         X = self.X[idx, :, :, :]
         label = self.y[idx]
-        
+
         if self.transforms is not None:
             X = self.transforms(X)
 
@@ -387,7 +394,7 @@ def _get_features(X, features, x, y, t, pk):
         for group_id, group_X in tqdm(groups):
             output.append(group_X[[x, y]].values)
         return output
-    
+
     preprocessor = BaseFixationPreprocessor(x, y, t, pk)
     features_to_get = copy(features)
     for i in features:
@@ -421,7 +428,7 @@ class DatasetTimeSeries(Dataset):
         x: str,
         y: str,
         pk: list[str],
-        features: Optional[list[str]] = None,
+        features: list[str] | None = None,
         transforms: Callable = None,
         max_length: int = 10,
     ):

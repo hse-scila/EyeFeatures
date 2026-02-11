@@ -381,7 +381,9 @@ def get_visualizations(
         if pattern == "baseline":
             res = baseline_visualization(data, x, y, shape, zoom_to_data=zoom_to_data)
         elif pattern == "aoi":
-            res = aoi_visualization(data, x, y, shape, aoi="AOI", zoom_to_data=zoom_to_data)
+            res = aoi_visualization(
+                data, x, y, shape, aoi="AOI", zoom_to_data=zoom_to_data
+            )
         elif pattern == "saccades":
             res = saccade_visualization(data, x, y, shape, zoom_to_data=zoom_to_data)
         else:
@@ -394,15 +396,34 @@ def get_visualizations(
         for group_id, group_X in tqdm(groups):
             if pattern == "baseline":
                 res = baseline_visualization(
-                    group_X, x, y, shape, show_plot=False, dpi=dpi, zoom_to_data=zoom_to_data
+                    group_X,
+                    x,
+                    y,
+                    shape,
+                    show_plot=False,
+                    dpi=dpi,
+                    zoom_to_data=zoom_to_data,
                 )
             elif pattern == "aoi":
                 res = aoi_visualization(
-                    group_X, x, y, shape, aoi="AOI", show_plot=False, dpi=dpi, zoom_to_data=zoom_to_data
+                    group_X,
+                    x,
+                    y,
+                    shape,
+                    aoi="AOI",
+                    show_plot=False,
+                    dpi=dpi,
+                    zoom_to_data=zoom_to_data,
                 )
             elif pattern == "saccades":
                 res = saccade_visualization(
-                    group_X, x, y, shape, show_plot=False, dpi=dpi, zoom_to_data=zoom_to_data
+                    group_X,
+                    x,
+                    y,
+                    shape,
+                    show_plot=False,
+                    dpi=dpi,
+                    zoom_to_data=zoom_to_data,
                 )
             else:
                 raise ValueError(f"Unsupported pattern: {pattern}")
@@ -432,17 +453,17 @@ def baseline_visualization(
     # Use a reasonable figure size with adjusted DPI
     internal_dpi = 100.0
     fig_size = (internal_resolution / internal_dpi, internal_resolution / internal_dpi)
-    
+
     # Scale sizes proportionally to internal resolution
     scale_factor = internal_resolution / 256.0  # Normalize to 256 as base
     scaled_points_width = points_width * scale_factor
     scaled_path_width = path_width * scale_factor
-    
+
     # Set axes limits based on zoom_to_data
     # If zoom_to_data=True, let matplotlib auto-scale (axes_limits=None)
     # If zoom_to_data=False, use fixed [0,1] coordinate space
     axes_limits = None if zoom_to_data else (0, 1, 0, 1)
-    
+
     arr = scanpath_visualization(
         data_,
         x,
@@ -458,15 +479,20 @@ def baseline_visualization(
         show_plot=show_plot,
         dpi=internal_dpi,
     )
-    
+
     # Resize to target shape if needed
-    if return_ndarray and arr is not None and (arr.shape[0] != shape[0] or arr.shape[1] != shape[1]):
+    if (
+        return_ndarray
+        and arr is not None
+        and (arr.shape[0] != shape[0] or arr.shape[1] != shape[1])
+    ):
         from PIL import Image
+
         # arr is (H, W, C) with values in [0, 1]
         img = Image.fromarray((arr * 255).astype(np.uint8))
         img = img.resize((shape[1], shape[0]), Image.Resampling.LANCZOS)
         arr = np.array(img) / 255.0
-    
+
     return arr
 
 
@@ -497,16 +523,16 @@ def aoi_visualization(
     # Render at higher internal resolution for better quality, then resize
     internal_dpi = 100.0
     fig_size = (internal_resolution / internal_dpi, internal_resolution / internal_dpi)
-    
+
     # Scale sizes proportionally to internal resolution
     scale_factor = internal_resolution / 256.0
     scaled_points_width = points_width * scale_factor
     scaled_path_width = path_width * scale_factor
-    
+
     # Set axes limits based on zoom_to_data (if not explicitly provided)
     if axes_limits is None and not zoom_to_data:
         axes_limits = (0, 1, 0, 1)
-    
+
     arr = scanpath_visualization(
         data_,
         x,
@@ -530,14 +556,19 @@ def aoi_visualization(
         show_plot=show_plot,
         dpi=internal_dpi,
     )
-    
+
     # Resize to target shape if needed
-    if return_ndarray and arr is not None and (arr.shape[0] != shape[0] or arr.shape[1] != shape[1]):
+    if (
+        return_ndarray
+        and arr is not None
+        and (arr.shape[0] != shape[0] or arr.shape[1] != shape[1])
+    ):
         from PIL import Image
+
         img = Image.fromarray((arr * 255).astype(np.uint8))
         img = img.resize((shape[1], shape[0]), Image.Resampling.LANCZOS)
         arr = np.array(img) / 255.0
-    
+
     return arr
 
 
@@ -570,16 +601,16 @@ def saccade_visualization(
     # Render at higher internal resolution for better quality, then resize
     internal_dpi = 100.0
     fig_size = (internal_resolution / internal_dpi, internal_resolution / internal_dpi)
-    
+
     # Scale sizes proportionally to internal resolution
     scale_factor = internal_resolution / 256.0
     scaled_points_width = points_width * scale_factor
     scaled_path_width = path_width * scale_factor
-    
+
     # Set axes limits based on zoom_to_data (if not explicitly provided)
     if axes_limits is None and not zoom_to_data:
         axes_limits = (0, 1, 0, 1)
-    
+
     arr = scanpath_visualization(
         data_,
         x,
@@ -604,12 +635,17 @@ def saccade_visualization(
         show_plot=show_plot,
         dpi=internal_dpi,
     )
-    
+
     # Resize to target shape if needed
-    if return_ndarray and arr is not None and (arr.shape[0] != shape[0] or arr.shape[1] != shape[1]):
+    if (
+        return_ndarray
+        and arr is not None
+        and (arr.shape[0] != shape[0] or arr.shape[1] != shape[1])
+    ):
         from PIL import Image
+
         img = Image.fromarray((arr * 255).astype(np.uint8))
         img = img.resize((shape[1], shape[0]), Image.Resampling.LANCZOS)
         arr = np.array(img) / 255.0
-    
+
     return arr

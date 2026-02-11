@@ -237,7 +237,9 @@ def create_simple_CNN(
             kernel_size = params.get("kernel_size", 2)
             stride = params.get("stride", kernel_size)
             padding = params.get("padding", 0)
-            module = nn.MaxPool2d(kernel_size=kernel_size, stride=stride, padding=padding)
+            module = nn.MaxPool2d(
+                kernel_size=kernel_size, stride=stride, padding=padding
+            )
             if shape is not None:
                 shape = (
                     (shape[0] + 2 * padding - kernel_size) // stride + 1,

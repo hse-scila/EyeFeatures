@@ -73,7 +73,7 @@ class MeasureTransformer(ABC, BaseTransformer):
                 return features_df if self.return_df else features_df.values
             else:
                 self._check_init(X_len=X.shape[0])
-        
+
         # Check initialization (catch errors if ignore_errors=True)
         try:
             self._check_init(X_len=X.shape[0])
@@ -191,10 +191,14 @@ class HurstExponent(MeasureTransformer):
         pk: list[str] = None,
         eps: float = 1e-22,
         return_df: bool = True,
-        ignore_errors: bool = False
+        ignore_errors: bool = False,
     ):
         super().__init__(
-            x=coordinate, pk=pk, return_df=return_df, feature_name="hurst_exponent", ignore_errors=ignore_errors
+            x=coordinate,
+            pk=pk,
+            return_df=return_df,
+            feature_name="hurst_exponent",
+            ignore_errors=ignore_errors,
         )
         self.coordinate = coordinate
         self.n_iters = n_iters
@@ -218,7 +222,9 @@ class HurstExponent(MeasureTransformer):
         """Generate feature name that includes coordinate column and hyperparameters."""
         # Determine coordinate name (x or y) from the column name
         # Build feature name with coordinate and hyperparameters
-        feature_name = f"hurst_{self.coordinate}_n{self.n_iters}_fill_{self.fill_strategy}"
+        feature_name = (
+            f"hurst_{self.coordinate}_n{self.n_iters}_fill_{self.fill_strategy}"
+        )
         return [feature_name]
 
     def _make_pow2(self, x: np.array) -> np.array:
@@ -299,7 +305,11 @@ class ShannonEntropy(MeasureTransformer):
         ignore_errors: bool = False,
     ):
         super().__init__(
-            aoi=aoi, pk=pk, return_df=return_df, feature_name="entropy", ignore_errors=ignore_errors
+            aoi=aoi,
+            pk=pk,
+            return_df=return_df,
+            feature_name="entropy",
+            ignore_errors=ignore_errors,
         )
 
     def _check_init(self, X_len: int):
@@ -347,7 +357,12 @@ class SpectralEntropy(MeasureTransformer):
         ignore_errors: bool = False,
     ):
         super().__init__(
-            x=x, y=y, pk=pk, return_df=return_df, feature_name="spectral_entropy", ignore_errors=ignore_errors
+            x=x,
+            y=y,
+            pk=pk,
+            return_df=return_df,
+            feature_name="spectral_entropy",
+            ignore_errors=ignore_errors,
         )
         self.aoi = aoi
 
@@ -390,7 +405,12 @@ class FuzzyEntropy(MeasureTransformer):
         ignore_errors: bool = False,
     ):
         super().__init__(
-            x=x, y=y, pk=pk, return_df=return_df, feature_name=f"fuzzy_m_{m}_r_{r}", ignore_errors=ignore_errors
+            x=x,
+            y=y,
+            pk=pk,
+            return_df=return_df,
+            feature_name=f"fuzzy_m_{m}_r_{r}",
+            ignore_errors=ignore_errors,
         )
         self.m = m
         self.r = r
@@ -498,7 +518,12 @@ class IncrementalEntropy(MeasureTransformer):
         ignore_errors: bool = False,
     ):
         super().__init__(
-            x=x, y=y, pk=pk, return_df=return_df, feature_name="incremental_entropy", ignore_errors=ignore_errors
+            x=x,
+            y=y,
+            pk=pk,
+            return_df=return_df,
+            feature_name="incremental_entropy",
+            ignore_errors=ignore_errors,
         )
         self.aoi = aoi
 
@@ -891,7 +916,12 @@ class RQAMeasures(MeasureTransformer):
         if measures is None:
             measures = ["rec", "det", "lam", "corm"]
         super().__init__(
-            x=x, y=y, pk=pk, return_df=return_df, feature_name="rqa", ignore_errors=ignore_errors
+            x=x,
+            y=y,
+            pk=pk,
+            return_df=return_df,
+            feature_name="rqa",
+            ignore_errors=ignore_errors,
         )
         self.rho = rho
         self.metric = metric
@@ -1028,7 +1058,12 @@ class SaccadeUnlikelihood(MeasureTransformer):
         ignore_errors: bool = False,
     ):
         super().__init__(
-            x=x, y=y, pk=pk, return_df=return_df, feature_name="saccade_nll", ignore_errors=ignore_errors
+            x=x,
+            y=y,
+            pk=pk,
+            return_df=return_df,
+            feature_name="saccade_nll",
+            ignore_errors=ignore_errors,
         )
         self.mu_p = mu_p
         self.sigma_p1 = sigma_p1
@@ -1121,7 +1156,12 @@ class HHTFeatures(MeasureTransformer):
         if features is None:
             features = ["mean", "std"]
         super().__init__(
-            x=x, y=y, pk=pk, return_df=return_df, feature_name="hht", ignore_errors=ignore_errors
+            x=x,
+            y=y,
+            pk=pk,
+            return_df=return_df,
+            feature_name="hht",
+            ignore_errors=ignore_errors,
         )
         self.max_imfs = max_imfs
         self.features = features
