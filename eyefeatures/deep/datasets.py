@@ -519,8 +519,12 @@ class TimeSeries_2D_Dataset(Dataset):
         image = self.image_dataset.X[idx, :, :, :]
         sequence = self.sequence_dataset.X[idx]
         y = self.image_dataset.y[idx]
-
-        return {"images": image, "sequences": torch.tensor(sequence), "y": y}
+        # Use float32 so batch matches model parameters (avoid Double vs Float mismatch)
+        return {
+            "images": torch.as_tensor(image, dtype=torch.float32),
+            "sequences": torch.as_tensor(sequence, dtype=torch.float32),
+            "y": y,
+        }
 
     def collate_fn(self, batch):
         lengths = [x["sequences"].shape[0] for x in batch]
@@ -529,7 +533,11 @@ class TimeSeries_2D_Dataset(Dataset):
             torch.cat(
                 [
                     x["sequences"],
-                    torch.zeros(max_len - x["sequences"].shape[0], self.sequence_dataset.n_features),
+                    torch.zeros(
+                        max_len - x["sequences"].shape[0],
+                        self.sequence_dataset.n_features,
+                        dtype=torch.float32,
+                    ),
                 ],
                 axis=0,
             )
