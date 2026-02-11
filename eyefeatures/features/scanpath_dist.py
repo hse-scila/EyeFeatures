@@ -991,7 +991,7 @@ def calc_mm_features(
     shortest_path.reverse()
 
     # calculate features using the shortest path
-    p_fix_x, p_fix_y = p.values[:, 0], p.values[:, 0]
+    p_fix_x, p_fix_y = p.values[:, 0], p.values[:, 1]
     q_fix_x, q_fix_y = q.values[:, 0], q.values[:, 1]
     p_fix_dur, q_fix_dur = p.values[:, 2], q.values[:, 2]
     p_sac_rho, p_sac_phi = (
