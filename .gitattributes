@@ -1,0 +1,5 @@
+# Track all files in data/benchmark and its subfolders with Git LFS
+data/benchmark/** filter=lfs diff=lfs merge=lfs -text
+
+# Track meta.json file with Git LFS
+data/benchmark/meta.json filter=lfs diff=lfs merge=lfs -text

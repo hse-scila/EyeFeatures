@@ -2,7 +2,8 @@
 .venv
 .idea/
 
-data/
+data/*
+!data/benchmark/
 *.xlsx
 
 __pycache__/
