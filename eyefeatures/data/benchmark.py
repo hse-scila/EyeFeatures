@@ -12,7 +12,7 @@ Column conventions:
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any
 
 import pandas as pd
 
@@ -31,12 +31,12 @@ def _classify_dataset_type(dataset_name: str) -> str:
 
 
 def list_datasets(
-    benchmark_dir: Optional[Union[str, Path]] = None,
+    benchmark_dir: str | Path | None = None,
     *,
     include_extensive_collection: bool = True,
     extensive_collection_only: bool = False,
-    dataset_type: Optional[str] = None,
-) -> List[str]:
+    dataset_type: str | None = None,
+) -> list[str]:
     """List available dataset names in the benchmark directory.
 
     Parameters
@@ -60,7 +60,9 @@ def list_datasets(
     list of str
         Sorted list of dataset names (without .parquet extension).
     """
-    benchmark_path = Path(benchmark_dir) if benchmark_dir is not None else DEFAULT_BENCHMARK_DIR
+    benchmark_path = (
+        Path(benchmark_dir) if benchmark_dir is not None else DEFAULT_BENCHMARK_DIR
+    )
     dataset_names = set()
 
     if extensive_collection_only:
@@ -79,7 +81,8 @@ def list_datasets(
 
     if dataset_type is not None:
         dataset_names = {
-            name for name in dataset_names
+            name
+            for name in dataset_names
             if _classify_dataset_type(name) == dataset_type
         }
 
@@ -88,10 +91,10 @@ def list_datasets(
 
 def load_dataset(
     dataset_name: str,
-    benchmark_dir: Optional[Union[str, Path]] = None,
+    benchmark_dir: str | Path | None = None,
     *,
     normalize: bool = True,
-) -> Tuple[pd.DataFrame, Dict]:
+) -> tuple[pd.DataFrame, dict]:
     """Load a benchmark dataset by name.
 
     Parameters
@@ -113,12 +116,16 @@ def load_dataset(
         - meta_info: dict with 'pk', 'labels', 'meta' column lists and 'info'
           (from benchmark_dir/meta.json under key dataset_name, if present).
     """
-    benchmark_path = Path(benchmark_dir) if benchmark_dir is not None else DEFAULT_BENCHMARK_DIR
+    benchmark_path = (
+        Path(benchmark_dir) if benchmark_dir is not None else DEFAULT_BENCHMARK_DIR
+    )
     dataset_path = benchmark_path / f"{dataset_name}.parquet"
-    
+
     if not dataset_path.exists():
         # Try in extensive_collection
-        extensive_path = benchmark_path / "extensive_collection" / f"{dataset_name}.parquet"
+        extensive_path = (
+            benchmark_path / "extensive_collection" / f"{dataset_name}.parquet"
+        )
         if extensive_path.exists():
             dataset_path = extensive_path
         else:
@@ -126,9 +133,9 @@ def load_dataset(
                 f"Dataset '{dataset_name}' not found in {benchmark_path} "
                 f"or {benchmark_path / 'extensive_collection'}"
             )
-    
+
     df = pd.read_parquet(dataset_path)
-    
+
     # Parquet preserves types; ensure numeric for x/y if present (e.g. from older exports)
     if "x" in df.columns and not pd.api.types.is_numeric_dtype(df["x"]):
         df["x"] = pd.to_numeric(
@@ -138,14 +145,14 @@ def load_dataset(
         df["y"] = pd.to_numeric(
             df["y"].astype(str).str.replace(",", "."), errors="coerce"
         )
-    
+
     # Handle left/right eye columns
     if "x_left" in df.columns and "x_right" in df.columns:
         if "x" not in df.columns:
             df["x"] = (df["x_left"] + df["x_right"]) / 2
         if "y" not in df.columns:
             df["y"] = (df["y_left"] + df["y_right"]) / 2
-    
+
     # Normalize if requested and needed
     if normalize and "x" in df.columns and "y" in df.columns:
         if "norm_pos_x" not in df.columns:
@@ -153,7 +160,7 @@ def load_dataset(
             max_y = df["y"].max()
             df["norm_pos_x"] = df["x"] / max_x if max_x > 0 else df["x"]
             df["norm_pos_y"] = df["y"] / max_y if max_y > 0 else df["y"]
-    
+
     # Build meta info
     meta_info = {
         "pk": get_pk(df),
@@ -161,11 +168,11 @@ def load_dataset(
         "meta": get_meta(df),
         "info": _load_meta_info(benchmark_path, dataset_name),
     }
-    
+
     return df, meta_info
 
 
-def _load_meta_info(benchmark_path: Path, dataset_name: str) -> Optional[Any]:
+def _load_meta_info(benchmark_path: Path, dataset_name: str) -> Any | None:
     """Load meta.json from benchmark dir and return value for dataset_name key."""
     meta_path = benchmark_path / "meta.json"
     if not meta_path.exists():
@@ -178,7 +185,7 @@ def _load_meta_info(benchmark_path: Path, dataset_name: str) -> Optional[Any]:
         return None
 
 
-def get_pk(df: pd.DataFrame) -> List[str]:
+def get_pk(df: pd.DataFrame) -> list[str]:
     """Get primary key column names (columns starting with group_).
 
     Parameters
@@ -194,7 +201,7 @@ def get_pk(df: pd.DataFrame) -> List[str]:
     return [col for col in df.columns if col.startswith("group_")]
 
 
-def get_labels(df: pd.DataFrame) -> List[str]:
+def get_labels(df: pd.DataFrame) -> list[str]:
     """Get label column names (columns ending with _label).
 
     Parameters
@@ -210,7 +217,7 @@ def get_labels(df: pd.DataFrame) -> List[str]:
     return [col for col in df.columns if col.endswith("_label")]
 
 
-def get_meta(df: pd.DataFrame) -> List[str]:
+def get_meta(df: pd.DataFrame) -> list[str]:
     """Get meta column names (columns starting with meta_).
 
     Parameters
