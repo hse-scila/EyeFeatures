@@ -16,7 +16,7 @@ from typing import Any
 
 import pandas as pd
 
-# Default path: data/benchmark in the repo (Git LFS)
+#: Default root directory for benchmark Parquet files (``data/benchmark`` in the repo, Git LFS).
 DEFAULT_BENCHMARK_DIR = Path("data/benchmark")
 
 
@@ -186,7 +186,7 @@ def _load_meta_info(benchmark_path: Path, dataset_name: str) -> Any | None:
 
 
 def get_pk(df: pd.DataFrame) -> list[str]:
-    """Get primary key column names (columns starting with group_).
+    r"""Get primary key column names (columns starting with ``group\_``).
 
     Parameters
     ----------
@@ -218,7 +218,7 @@ def get_labels(df: pd.DataFrame) -> list[str]:
 
 
 def get_meta(df: pd.DataFrame) -> list[str]:
-    """Get meta column names (columns starting with meta_).
+    r"""Get meta column names (columns starting with ``meta\_``).
 
     Parameters
     ----------

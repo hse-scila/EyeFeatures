@@ -8,11 +8,13 @@ This is an alphabetical list of all public transformers and functions in the ``e
 
    eyefeatures.features.complex.calculate_topological_features
    eyefeatures.features.complex.get_gaf
+   eyefeatures.features.complex.get_gafs
    eyefeatures.features.complex.get_heatmap
    eyefeatures.features.complex.get_heatmaps
    eyefeatures.features.complex.get_hilbert_curve
    eyefeatures.features.complex.get_hilbert_curve_enc
    eyefeatures.features.complex.get_mtf
+   eyefeatures.features.complex.get_mtfs
    eyefeatures.features.complex.get_pca
    eyefeatures.features.complex.get_rqa
    eyefeatures.features.complex.hilbert_huang_transform

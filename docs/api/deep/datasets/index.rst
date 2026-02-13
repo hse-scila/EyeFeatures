@@ -21,15 +21,3 @@ fast integration in model pipeline for eyetracking data.
 .. autoclass:: GridGraphDataset
    :members:
    :exclude-members: __init__
-
-.. autoclass:: DatasetLightning2D
-   :members:
-   :exclude-members: __init__
-
-.. autoclass:: DatasetLightningTimeSeries
-   :members:
-   :exclude-members: __init__
-
-.. autoclass:: DatasetLightningTimeSeries2D
-   :members:
-   :exclude-members: __init__
