@@ -226,3 +226,10 @@ Check a comprehensive list of all methods.
 > </details>
 
 </details>
+
+<details>
+<summary><b>📁 Data</b></summary>
+
+> Utilities to list and load benchmark datasets (Parquet), with column conventions for keys, labels, and meta. [API](https://eyefeatures-docs.readthedocs.io/en/latest/api/data.html)
+
+</details>
