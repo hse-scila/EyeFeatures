@@ -2,7 +2,7 @@
 Simple data loading utilities for the eye-tracking benchmark.
 """
 
-from eyefeatures.data.benchmark import (
+from eyefeatures.data.utils import (
     DEFAULT_BENCHMARK_DIR,
     get_labels,
     get_meta,

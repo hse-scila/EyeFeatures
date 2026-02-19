@@ -18,6 +18,7 @@ tqdm = "4.66.4"
 EMD-signal = "1.6.4"
 gudhi = "3.10.1"
 kaleido = "1.0.0"
+fastparquet = "*"
 
 [tool.poetry.group.docs.dependencies]
 sphinx = "8.1.3"

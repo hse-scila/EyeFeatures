@@ -35,6 +35,8 @@ def list_datasets(
     *,
     include_extensive_collection: bool = True,
     extensive_collection_only: bool = False,
+    include_extracted_fixations: bool = True,
+    extracted_fixations_only: bool = False,
     dataset_type: str | None = None,
 ) -> list[str]:
     """List available dataset names in the benchmark directory.
@@ -46,9 +48,15 @@ def list_datasets(
         Defaults to ``data/benchmark`` (repo data tracked with Git LFS).
     include_extensive_collection : bool, default True
         If True, also search in extensive_collection subfolder.
-        Ignored when extensive_collection_only is True.
+        Ignored when extensive_collection_only or extracted_fixations_only is True.
     extensive_collection_only : bool, default False
         If True, list only datasets from extensive_collection subfolder
+        (main directory is not scanned).
+    include_extracted_fixations : bool, default True
+        If True, also search in extracted_fixations subfolder.
+        Ignored when extensive_collection_only or extracted_fixations_only is True.
+    extracted_fixations_only : bool, default False
+        If True, list only datasets from extracted_fixations subfolder
         (main directory is not scanned).
     dataset_type : str, optional
         If "gaze", return only gaze datasets (names ending with _gaze/_gazes).
@@ -65,7 +73,12 @@ def list_datasets(
     )
     dataset_names = set()
 
-    if extensive_collection_only:
+    if extracted_fixations_only:
+        extracted_dir = benchmark_path / "extracted_fixations"
+        if extracted_dir.exists():
+            for f in extracted_dir.glob("*.parquet"):
+                dataset_names.add(f.stem)
+    elif extensive_collection_only:
         extensive_dir = benchmark_path / "extensive_collection"
         if extensive_dir.exists():
             for f in extensive_dir.glob("*.parquet"):
@@ -77,6 +90,11 @@ def list_datasets(
             extensive_dir = benchmark_path / "extensive_collection"
             if extensive_dir.exists():
                 for f in extensive_dir.glob("*.parquet"):
+                    dataset_names.add(f.stem)
+        if include_extracted_fixations:
+            extracted_dir = benchmark_path / "extracted_fixations"
+            if extracted_dir.exists():
+                for f in extracted_dir.glob("*.parquet"):
                     dataset_names.add(f.stem)
 
     if dataset_type is not None:
@@ -129,10 +147,18 @@ def load_dataset(
         if extensive_path.exists():
             dataset_path = extensive_path
         else:
-            raise FileNotFoundError(
-                f"Dataset '{dataset_name}' not found in {benchmark_path} "
-                f"or {benchmark_path / 'extensive_collection'}"
+            # Try in extracted_fixations
+            extracted_path = (
+                benchmark_path / "extracted_fixations" / f"{dataset_name}.parquet"
             )
+            if extracted_path.exists():
+                dataset_path = extracted_path
+            else:
+                raise FileNotFoundError(
+                    f"Dataset '{dataset_name}' not found in {benchmark_path}, "
+                    f"{benchmark_path / 'extensive_collection'}, or "
+                    f"{benchmark_path / 'extracted_fixations'}"
+                )
 
     df = pd.read_parquet(dataset_path)
 
