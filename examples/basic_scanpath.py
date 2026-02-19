@@ -10,7 +10,7 @@ often used for Deep Learning input.
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from eyefeatures.features.complex import get_gaf
+from eyefeatures.features.feature_maps import get_gaf
 
 # Load sample data
 fixations_df = pd.read_csv("data/fixations/fixations_subset.csv")

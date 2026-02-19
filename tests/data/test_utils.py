@@ -6,12 +6,11 @@ import pandas as pd
 import pytest
 
 from eyefeatures.data.utils import (
-    DEFAULT_BENCHMARK_DIR,
     get_labels,
     get_meta,
     get_pk,
-    load_dataset,
     list_datasets,
+    load_dataset,
 )
 
 
@@ -80,7 +79,9 @@ class TestListDatasets:
 
     def test_list_returns_sorted_names(self):
         """Test listing datasets from benchmark dir returns sorted names."""
-        benchmark_dir = Path(__file__).resolve().parent.parent.parent / "data" / "benchmark"
+        benchmark_dir = (
+            Path(__file__).resolve().parent.parent.parent / "data" / "benchmark"
+        )
         if not benchmark_dir.exists():
             pytest.skip("Benchmark data dir not found")
         result = list_datasets(benchmark_dir=benchmark_dir)
@@ -95,15 +96,19 @@ class TestLoadDataset:
 
     def test_load_paris_experiment_fixations(self):
         """Test loading Paris_experiment_fixations dataset from benchmark."""
-        benchmark_dir = Path(__file__).resolve().parent.parent.parent / "data" / "benchmark"
+        benchmark_dir = (
+            Path(__file__).resolve().parent.parent.parent / "data" / "benchmark"
+        )
         dataset_path = benchmark_dir / "Paris_experiment_fixations.parquet"
         if not dataset_path.exists():
             pytest.skip("Paris_experiment_fixations.parquet not found (Git LFS?)")
-        df, meta = load_dataset("Paris_experiment_fixations", benchmark_dir=benchmark_dir)
+        df, meta = load_dataset(
+            "Paris_experiment_fixations", benchmark_dir=benchmark_dir
+        )
         assert isinstance(df, pd.DataFrame)
         assert len(df) > 0
         assert "info" in meta
         assert "labels" in meta
-        assert "general_info" in meta['info']
-        assert "reference" in meta['info']
-        assert "source_url" in meta['info']
+        assert "general_info" in meta["info"]
+        assert "reference" in meta["info"]
+        assert "source_url" in meta["info"]

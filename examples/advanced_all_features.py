@@ -8,6 +8,18 @@ It serves as a benchmark and a demonstration of the comprehensive capability of 
 
 import pandas as pd
 
+from eyefeatures.features.dist import (
+    DFDist,
+    DTWDist,
+    EucDist,
+    EyeAnalysisDist,
+    HauDist,
+    MannanDist,
+    MultiMatchDist,
+    ScanMatchDist,
+    SimpleDistances,
+    TDEDist,
+)
 from eyefeatures.features.extractor import Extractor
 from eyefeatures.features.measures import (
     CorrelationDimension,
@@ -21,18 +33,6 @@ from eyefeatures.features.measures import (
     SaccadeUnlikelihood,
     ShannonEntropy,
     SpectralEntropy,
-)
-from eyefeatures.features.scanpath_dist import (
-    DFDist,
-    DTWDist,
-    EucDist,
-    EyeAnalysisDist,
-    HauDist,
-    MannanDist,
-    MultiMatchDist,
-    ScanMatchDist,
-    SimpleDistances,
-    TDEDist,
 )
 from eyefeatures.features.stats import (
     FixationFeatures,
