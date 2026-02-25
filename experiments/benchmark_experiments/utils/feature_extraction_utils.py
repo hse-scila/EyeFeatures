@@ -19,15 +19,14 @@ from .benchmark_utils import (
 
 
 def setup_paths(
-    benchmark_dir: str | Path | None = None,
     output_dir: str | Path | None = None,
     splits_dir: str | Path | None = None,
 ) -> Dict[str, Path]:
     """
-    Set up paths for feature extraction. benchmark_dir defaults to repo data/benchmark.
+    Set up paths for feature extraction. Always uses repo data/benchmark.
     output_dir default 'features_output'; splits_dir default output_dir / 'splits'.
     """
-    benchmark_path = Path(get_benchmark_dir(benchmark_dir))
+    benchmark_path = get_benchmark_dir()
     if output_dir is None:
         output_dir = Path("features_output")
     else:

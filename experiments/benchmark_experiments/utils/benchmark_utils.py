@@ -16,7 +16,6 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 
 from eyefeatures.data import (
-    DEFAULT_BENCHMARK_DIR,
     get_labels,
     get_pk,
     load_dataset,
@@ -24,34 +23,26 @@ from eyefeatures.data import (
 )
 
 
-# Default benchmark dir: repo data/benchmark (this file lives in benchmark_experiments/utils/ -> repo root -> data/benchmark)
-def _default_benchmark_dir() -> Path:
-    return Path(__file__).resolve().parent.parent.parent / "data" / "benchmark"
-
-
-def get_benchmark_dir(benchmark_dir: str | Path | None = None) -> Path:
-    """Return benchmark root (Parquet + meta.json). Uses repo data/benchmark if None."""
-    if benchmark_dir is None:
-        d = _default_benchmark_dir()
-        if d.exists():
-            return d
-        return Path(DEFAULT_BENCHMARK_DIR)
-    return Path(benchmark_dir)
+# Always use repo data/benchmark (this file lives in benchmark_experiments/utils/ -> repo root -> data/benchmark)
+def get_benchmark_dir() -> Path:
+    """Return benchmark root (Parquet + meta.json). Always repo data/benchmark."""
+    return Path(__file__).resolve().parent.parent.parent.parent / "data" / "benchmark"
 
 
 def list_datasets(
-    benchmark_dir: str | Path | None = None,
     *,
     dataset_type: str | None = "fixation",
     include_extensive_collection: bool = True,
     extracted_fixations_only: bool = False,
     extensive_collection_only: bool = False,
+    subdir: str | None = None,
 ) -> List[str]:
     """
     List dataset names from the benchmark (Parquet). Uses eyefeatures.data.list_datasets.
     Default: fixation datasets only (same as old experiments that skipped gaze).
+    subdir: optional subfolder of repo data/benchmark (e.g. 'extracted_fixations').
     """
-    bdir = get_benchmark_dir(benchmark_dir)
+    bdir = get_benchmark_dir() if subdir is None else get_benchmark_dir() / subdir
     return _list_datasets(
         bdir,
         include_extensive_collection=include_extensive_collection,
@@ -64,7 +55,6 @@ def list_datasets(
 
 def load_dataset_with_meta(
     dataset_name: str,
-    benchmark_dir: str | Path | None = None,
     *,
     normalize: bool = True,
 ) -> Tuple[pd.DataFrame, Dict[str, Any]]:
@@ -72,7 +62,7 @@ def load_dataset_with_meta(
     Load one dataset and its meta using eyefeatures.data.
     Returns (df, meta_info) with meta_info['pk'], 'labels', 'meta', 'info' (from meta.json).
     """
-    bdir = get_benchmark_dir(benchmark_dir)
+    bdir = get_benchmark_dir()
     df, meta_info = load_dataset(dataset_name, benchmark_dir=bdir, normalize=normalize)
     df = ensure_duration(df)
     return df, meta_info
@@ -365,22 +355,25 @@ def apply_split_to_labels(
 
 
 def find_datasets_parquet(
-    benchmark_dir: str | Path,
     include_extensive_collection: bool = True,
+    subdir: str | None = None,
     **kwargs,
 ) -> Dict[str, List[Path]]:
     """
     Return structure {'fixation': [Path(...), ...], ...} for DL training battery.
     Paths are dummy (stem = dataset name) so load_dataset_parquet can use path.stem.
+    subdir: optional subfolder of repo data/benchmark (e.g. 'extracted_fixations').
     """
     names = list_datasets(
-        benchmark_dir=Path(benchmark_dir),
         dataset_type="fixation",
         include_extensive_collection=include_extensive_collection,
+        subdir=subdir,
         **kwargs,
     )
+    # Encode subdir in path so load_dataset_parquet knows where to load from
+    prefix = f"/x/{subdir}/" if subdir else "/x/"
     return {
-        "fixation": [Path(f"/x/{n}.parquet") for n in names],
+        "fixation": [Path(f"{prefix}{n}.parquet") for n in names],
         "unknown": [],
         "skip": [],
         "gaze": [],
@@ -390,13 +383,20 @@ def find_datasets_parquet(
 
 def load_dataset_parquet(
     dataset_path: Path,
-    benchmark_dir: str | Path | None = None,
 ) -> Tuple[pd.DataFrame, Dict[str, Any], str]:
     """
     Load one dataset by name (dataset_path.stem) using eyefeatures.data.
     Returns (df, col_info, 'fixation') for compatibility with run_dl_training_battery.
+    If path contains 'extracted_fixations', loads from repo data/benchmark/extracted_fixations.
     """
     name = dataset_path.stem
-    df, meta_info = load_dataset_with_meta(name, benchmark_dir=benchmark_dir)
+    # Paths from find_datasets_parquet(subdir='extracted_fixations') encode subdir in parts
+    parts = getattr(dataset_path, "parts", ()) or ()
+    if len(parts) >= 2 and parts[1] == "extracted_fixations":
+        bdir = get_benchmark_dir() / "extracted_fixations"
+        df, meta_info = load_dataset(name, benchmark_dir=bdir, normalize=True)
+        df = ensure_duration(df)
+    else:
+        df, meta_info = load_dataset_with_meta(name)
     col_info = col_info_from_meta(df, meta_info)
     return df, col_info, "fixation"

@@ -38,7 +38,7 @@ from eyefeatures.deep.models import (
     Classifier, Regressor, SimpleRNN, VitNet, create_simple_CNN
 )
 from eyefeatures.utils import _split_dataframe
-from .benchmark_utils import get_split_info_paths_for_dataset
+from .benchmark_utils import get_benchmark_dir, get_split_info_paths_for_dataset
 from .training_common import (
     REGRESSION_DATASET_PREFIXES,
     SKIP_DATASET_SUBSTRINGS,
@@ -832,7 +832,6 @@ def _append_result_to_csv(results_file: Path, result_dict: Dict[str, Any]) -> No
 
 
 def run_dl_training_battery(
-    benchmark_dir: Union[str, Path],
     splits_dir: Union[str, Path],
     results_file: Union[str, Path],
     find_datasets_func,
@@ -849,10 +848,9 @@ def run_dl_training_battery(
     test_mode: bool = False,
     test_max_samples: int = 100
 ) -> pd.DataFrame:
-    """Run DL training battery for all datasets.
+    """Run DL training battery for all datasets. Data is always read from repo data/benchmark.
     
     Args:
-        benchmark_dir: Benchmark root (Parquet dir) when using find_datasets_parquet; else dir with raw data
         splits_dir: Directory with split JSONs from create_splits ({dataset}_*_split_info.json)
         results_file: Path to save results CSV
         find_datasets_func: Function to find all datasets
@@ -874,7 +872,7 @@ def run_dl_training_battery(
     """
     import json
     
-    benchmark_dir = Path(benchmark_dir)
+    benchmark_dir = get_benchmark_dir()
     splits_dir = Path(splits_dir)
     results_file = Path(results_file)
     
@@ -901,11 +899,11 @@ def run_dl_training_battery(
                 ))
     
     # Find all datasets (main + extensive; include extracted_fixations if present)
-    all_datasets = find_datasets_func(benchmark_dir, include_extensive_collection=True)
+    all_datasets = find_datasets_func(include_extensive_collection=True)
     datasets_to_process = all_datasets.get('fixation', []) + all_datasets.get('unknown', [])
-    extracted_dir = Path(benchmark_dir) / 'extracted_fixations'
+    extracted_dir = benchmark_dir / 'extracted_fixations'
     if extracted_dir.exists():
-        ext = find_datasets_func(extracted_dir, include_extensive_collection=False)
+        ext = find_datasets_func(include_extensive_collection=False, subdir='extracted_fixations')
         datasets_to_process = datasets_to_process + ext.get('fixation', []) + ext.get('saccade', [])
 
     # For Cognitive_load and Emotions, keep only 0.02 dispersion to reduce computation
