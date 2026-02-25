@@ -23,7 +23,7 @@ def setup_paths(
     splits_dir: str | Path | None = None,
 ) -> Dict[str, Path]:
     """
-    Set up paths for feature extraction. Always uses repo data/benchmark.
+    Set up paths for feature extraction.
     output_dir default 'features_output'; splits_dir default output_dir / 'splits'.
     """
     benchmark_path = get_benchmark_dir()

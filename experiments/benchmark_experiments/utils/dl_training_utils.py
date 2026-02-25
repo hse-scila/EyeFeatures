@@ -1,12 +1,10 @@
 """
 Deep Learning Training Utilities for Eye Features Benchmark.
 
-Aligned with Parquet benchmark: use find_datasets_parquet and load_dataset_parquet from utils.benchmark_utils.
-- benchmark_dir: benchmark root (data/benchmark with Parquet + meta.json); find_datasets_func lists by name.
-- splits_dir: create_splits output; get_split_info_paths_for_dataset(splits_dir, dataset_name) finds
+Uses find_datasets_parquet and load_dataset_parquet from utils.benchmark_utils.
+splits_dir: create_splits output; get_split_info_paths_for_dataset(splits_dir, dataset_name) finds
   {dataset_name}_split_info.json or {dataset_name}_*_split_info.json (per-label splits).
-- load_dataset_func(dataset_path) receives Path with .stem = dataset name; returns (df, col_info, type).
-No disk saving of intermediate datasets - everything is processed in memory.
+load_dataset_func(dataset_path) receives Path with .stem = dataset name; returns (df, col_info, type).
 """
 
 import gc
@@ -51,7 +49,6 @@ from .training_common import (
 # Configuration
 # ============================================================================
 
-# Default configurations
 DEFAULT_IMAGE_SHAPE = (100, 100)
 ALL_REPRESENTATIONS = [
     'heatmap_fixed', 'heatmap_zoomed', 'baseline_fixed', 'baseline_zoomed',
@@ -498,7 +495,6 @@ def create_collate_with_label_remap(base_collate_fn, label_encoder: Optional[Lab
         if base_collate_fn is not None:
             result = base_collate_fn(batch)
         else:
-            # Default collation
             result = {}
             if 'images' in batch[0]:
                 result['images'] = torch.stack([x['images'] for x in batch])
@@ -848,7 +844,7 @@ def run_dl_training_battery(
     test_mode: bool = False,
     test_max_samples: int = 100
 ) -> pd.DataFrame:
-    """Run DL training battery for all datasets. Data is always read from repo data/benchmark.
+    """Run DL training battery for all datasets.
     
     Args:
         splits_dir: Directory with split JSONs from create_splits ({dataset}_*_split_info.json)

@@ -25,7 +25,6 @@ from eyefeatures.features.dist import (
 )
 
 
-# Default config (match old notebook)
 SIMPLE_DISTANCE_METHODS = ["euc", "hau", "dtw", "man", "eye", "dfr"]
 ADVANCED_DISTANCE_METHODS = ["tde", "multimatch"]
 EXPECTED_PATH_METHODS = ["mean", "fwp"]

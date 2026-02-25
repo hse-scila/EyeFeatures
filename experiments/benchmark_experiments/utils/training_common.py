@@ -6,7 +6,6 @@ from typing import Optional
 
 import pandas as pd
 
-# Dataset name prefixes for which targets are regression by default (except group_task_label).
 REGRESSION_DATASET_PREFIXES = ("Cognitive_load", "Emotions", "Surgical")
 
 # Dataset/split names containing any of these substrings are skipped in training.

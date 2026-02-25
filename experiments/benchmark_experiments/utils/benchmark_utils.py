@@ -23,9 +23,8 @@ from eyefeatures.data import (
 )
 
 
-# Always use repo data/benchmark (this file lives in benchmark_experiments/utils/ -> repo root -> data/benchmark)
 def get_benchmark_dir() -> Path:
-    """Return benchmark root (Parquet + meta.json). Always repo data/benchmark."""
+    """Return benchmark root (Parquet + meta.json)."""
     return Path(__file__).resolve().parent.parent.parent.parent / "data" / "benchmark"
 
 
@@ -40,7 +39,7 @@ def list_datasets(
     """
     List dataset names from the benchmark (Parquet). Uses eyefeatures.data.list_datasets.
     Default: fixation datasets only (same as old experiments that skipped gaze).
-    subdir: optional subfolder of repo data/benchmark (e.g. 'extracted_fixations').
+    subdir: optional subfolder of benchmark root (e.g. 'extracted_fixations').
     """
     bdir = get_benchmark_dir() if subdir is None else get_benchmark_dir() / subdir
     return _list_datasets(
@@ -362,7 +361,7 @@ def find_datasets_parquet(
     """
     Return structure {'fixation': [Path(...), ...], ...} for DL training battery.
     Paths are dummy (stem = dataset name) so load_dataset_parquet can use path.stem.
-    subdir: optional subfolder of repo data/benchmark (e.g. 'extracted_fixations').
+    subdir: optional subfolder of benchmark root (e.g. 'extracted_fixations').
     """
     names = list_datasets(
         dataset_type="fixation",
@@ -370,7 +369,6 @@ def find_datasets_parquet(
         subdir=subdir,
         **kwargs,
     )
-    # Encode subdir in path so load_dataset_parquet knows where to load from
     prefix = f"/x/{subdir}/" if subdir else "/x/"
     return {
         "fixation": [Path(f"{prefix}{n}.parquet") for n in names],
@@ -387,10 +385,8 @@ def load_dataset_parquet(
     """
     Load one dataset by name (dataset_path.stem) using eyefeatures.data.
     Returns (df, col_info, 'fixation') for compatibility with run_dl_training_battery.
-    If path contains 'extracted_fixations', loads from repo data/benchmark/extracted_fixations.
     """
     name = dataset_path.stem
-    # Paths from find_datasets_parquet(subdir='extracted_fixations') encode subdir in parts
     parts = getattr(dataset_path, "parts", ()) or ()
     if len(parts) >= 2 and parts[1] == "extracted_fixations":
         bdir = get_benchmark_dir() / "extracted_fixations"
