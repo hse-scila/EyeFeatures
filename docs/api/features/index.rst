@@ -4,10 +4,10 @@ Feature Extraction
 The ``features`` module provides tools for calculating eye-tracking features. There are two types
 of features:
 
-1. Single value features
-------------------------
+1. Scalar Features
+------------------
 
-In simple words, the module coheres all features that are functions from scanpaths to single value.
+In simple words, the module coheres all features that are functions from scanpaths to :math:`\mathbb{R}`.
 This could be used in ``scikit-learn`` pipeline, giving an object (like person reading the text)
 a mean saccade length.
 
@@ -21,7 +21,7 @@ interface.
 
    stats/index
    measures/index
-   scanpath_dist/index
+   dist/index
    shift/index
 
 Statistical Features
@@ -51,10 +51,10 @@ The collection of algorithms that compare a pair of scanpaths. There is a wide r
 of methods, starting from simple Euclidean/Hausdorff distances, and going up to
 `Dynamic Time Warp <https://en.wikipedia.org/wiki/Dynamic_time_warping>`_ algorithm.
 
-Refer to ``scanpath_dist`` submodule.
+Refer to ``dist`` submodule.
 
-Shift Features
-**************
+Shift
+*****
 
 The submodule provides ``InstanceNormalization`` class interface, which is capable of
 normalizing features across any user-defined dimensions. For example, normalize input features
@@ -63,37 +63,37 @@ already extracted features (for instance, from ``Extractor`` class).
 
 Refer to ``shift`` submodule.
 
-2. Feature maps
----------------
+2. Maps
+-------
 
 Instead of outputting a single number, functions in this module output a feature map. For example,
 ``get_mtf`` returns Markov Transition Field (MTF), which is a matrix, and cannot be integrated into
 a classical Machine Learning pipeline in some unified format. Its usage is either in Deep Learning
-networks or other custom analysis.
+networks or other specific analysis.
 
 There are two submodules that work with that type of features.
 
 .. toctree::
    :maxdepth: 1
 
-   complex/index
-   scanpath_complex/index
+   feature_maps/index
+   pairwise/index
 
-Complex Features
-****************
+Feature Maps
+************
 
 The collection of algorithms to get various feature maps from scanpath. The user can find here
 scanpath heatmaps, MTF, Recurrence Quantification Analysis (RQA) matrix, and other.
 
-Refer to ``complex`` submodule.
+Refer to ``feature_maps`` submodule.
 
-Complex Scanpath Distances
-**************************
+Pairwise Scanpath Distances
+***************************
 
 The collection of algorithms to aggregate several scanpaths. There are similarity/distance
 matrix calculations, spectral/optimal leaf matrix reorderings, and more.
 
-Refer to ``scanpath_complex`` submodule.
+Refer to ``pairwise`` submodule.
 
 Extractor
 ---------

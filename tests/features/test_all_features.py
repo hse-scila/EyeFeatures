@@ -2,6 +2,17 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from eyefeatures.features.dist import (
+    DFDist,
+    DTWDist,
+    EucDist,
+    EyeAnalysisDist,
+    HauDist,
+    MannanDist,
+    MultiMatchDist,
+    ScanMatchDist,
+    TDEDist,
+)
 from eyefeatures.features.extractor import Extractor
 from eyefeatures.features.measures import (
     CorrelationDimension,
@@ -15,17 +26,6 @@ from eyefeatures.features.measures import (
     SaccadeUnlikelihood,
     ShannonEntropy,
     SpectralEntropy,
-)
-from eyefeatures.features.scanpath_dist import (
-    DFDist,
-    DTWDist,
-    EucDist,
-    EyeAnalysisDist,
-    HauDist,
-    MannanDist,
-    MultiMatchDist,
-    ScanMatchDist,
-    TDEDist,
 )
 from eyefeatures.features.stats import (
     FixationFeatures,

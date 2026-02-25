@@ -10,7 +10,7 @@ from torch.utils.data import Dataset
 from torch_geometric.data import Data
 from tqdm import tqdm
 
-from eyefeatures.features.complex import get_gafs, get_heatmaps, get_mtfs
+from eyefeatures.features.feature_maps import get_gafs, get_heatmaps, get_mtfs
 from eyefeatures.preprocessing.base import BaseFixationPreprocessor
 from eyefeatures.utils import _split_dataframe
 from eyefeatures.visualization.static_visualization import get_visualizations

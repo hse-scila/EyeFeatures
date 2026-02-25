@@ -9,8 +9,8 @@ from scipy.fftpack import fft2, ifft
 from scipy.spatial.distance import euclidean, pdist, squareform
 from scipy.stats import entropy, kurtosis, skew
 
-from eyefeatures.features.complex import get_rqa, hilbert_huang_transform
 from eyefeatures.features.extractor import BaseTransformer
+from eyefeatures.features.feature_maps import get_rqa, hilbert_huang_transform
 from eyefeatures.utils import _split_dataframe
 
 

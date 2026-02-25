@@ -6,24 +6,50 @@ This is an alphabetical list of all public transformers and functions in the ``e
 .. autosummary::
    :nosignatures:
 
-   eyefeatures.features.complex.calculate_topological_features
-   eyefeatures.features.complex.get_gaf
-   eyefeatures.features.complex.get_gafs
-   eyefeatures.features.complex.get_heatmap
-   eyefeatures.features.complex.get_heatmaps
-   eyefeatures.features.complex.get_hilbert_curve
-   eyefeatures.features.complex.get_hilbert_curve_enc
-   eyefeatures.features.complex.get_mtf
-   eyefeatures.features.complex.get_mtfs
-   eyefeatures.features.complex.get_pca
-   eyefeatures.features.complex.get_rqa
-   eyefeatures.features.complex.hilbert_huang_transform
-   eyefeatures.features.complex.lower_star_filtration
-   eyefeatures.features.complex.persistence_curve
-   eyefeatures.features.complex.persistence_entropy_curve
-   eyefeatures.features.complex.vietoris_rips_filtration
-   eyefeatures.features.complex.xy2h
+   eyefeatures.data.utils.get_labels
+   eyefeatures.data.utils.get_meta
+   eyefeatures.data.utils.get_pk
+   eyefeatures.data.utils.list_datasets
+   eyefeatures.data.utils.load_dataset
+   eyefeatures.features.dist.calc_dfr_dist
+   eyefeatures.features.dist.calc_dtw_dist
+   eyefeatures.features.dist.calc_euc_dist
+   eyefeatures.features.dist.calc_eye_dist
+   eyefeatures.features.dist.calc_hau_dist
+   eyefeatures.features.dist.calc_man_dist
+   eyefeatures.features.dist.calc_mm_features
+   eyefeatures.features.dist.calc_scan_match_dist
+   eyefeatures.features.dist.calc_tde_dist
+   eyefeatures.features.dist.DFDist
+   eyefeatures.features.dist.DistanceTransformer
+   eyefeatures.features.dist.DTWDist
+   eyefeatures.features.dist.EucDist
+   eyefeatures.features.dist.EyeAnalysisDist
+   eyefeatures.features.dist.get_expected_path
+   eyefeatures.features.dist.HauDist
+   eyefeatures.features.dist.MannanDist
+   eyefeatures.features.dist.MultiMatchDist
+   eyefeatures.features.dist.ScanMatchDist
+   eyefeatures.features.dist.SimpleDistances
+   eyefeatures.features.dist.TDEDist
    eyefeatures.features.extractor.Extractor
+   eyefeatures.features.feature_maps.calculate_topological_features
+   eyefeatures.features.feature_maps.get_gaf
+   eyefeatures.features.feature_maps.get_gafs
+   eyefeatures.features.feature_maps.get_heatmap
+   eyefeatures.features.feature_maps.get_heatmaps
+   eyefeatures.features.feature_maps.get_hilbert_curve
+   eyefeatures.features.feature_maps.get_hilbert_curve_enc
+   eyefeatures.features.feature_maps.get_mtf
+   eyefeatures.features.feature_maps.get_mtfs
+   eyefeatures.features.feature_maps.get_pca
+   eyefeatures.features.feature_maps.get_rqa
+   eyefeatures.features.feature_maps.hilbert_huang_transform
+   eyefeatures.features.feature_maps.lower_star_filtration
+   eyefeatures.features.feature_maps.persistence_curve
+   eyefeatures.features.feature_maps.persistence_entropy_curve
+   eyefeatures.features.feature_maps.vietoris_rips_filtration
+   eyefeatures.features.feature_maps.xy2h
    eyefeatures.features.measures.CorrelationDimension
    eyefeatures.features.measures.FractalDimension
    eyefeatures.features.measures.FuzzyEntropy
@@ -39,38 +65,17 @@ This is an alphabetical list of all public transformers and functions in the ``e
    eyefeatures.features.measures.SampleEntropy
    eyefeatures.features.measures.ShannonEntropy
    eyefeatures.features.measures.SpectralEntropy
-   eyefeatures.features.scanpath_complex.compute_rv_coefficient
-   eyefeatures.features.scanpath_complex.dimensionality_reduction_order
-   eyefeatures.features.scanpath_complex.get_center_matrix
-   eyefeatures.features.scanpath_complex.get_compromise_matrix
-   eyefeatures.features.scanpath_complex.get_cross_product_matrix
-   eyefeatures.features.scanpath_complex.get_dist_matrix
-   eyefeatures.features.scanpath_complex.get_expected_path
-   eyefeatures.features.scanpath_complex.get_sim_matrix
-   eyefeatures.features.scanpath_complex.hierarchical_clustering_order
-   eyefeatures.features.scanpath_complex.optimal_leaf_ordering_clustering
-   eyefeatures.features.scanpath_complex.restore_matrix
-   eyefeatures.features.scanpath_complex.spectral_order
-   eyefeatures.features.scanpath_dist.calc_dfr_dist
-   eyefeatures.features.scanpath_dist.calc_dtw_dist
-   eyefeatures.features.scanpath_dist.calc_euc_dist
-   eyefeatures.features.scanpath_dist.calc_eye_dist
-   eyefeatures.features.scanpath_dist.calc_hau_dist
-   eyefeatures.features.scanpath_dist.calc_man_dist
-   eyefeatures.features.scanpath_dist.calc_mm_features
-   eyefeatures.features.scanpath_dist.calc_scan_match_dist
-   eyefeatures.features.scanpath_dist.calc_tde_dist
-   eyefeatures.features.scanpath_dist.DFDist
-   eyefeatures.features.scanpath_dist.DistanceTransformer
-   eyefeatures.features.scanpath_dist.DTWDist
-   eyefeatures.features.scanpath_dist.EucDist
-   eyefeatures.features.scanpath_dist.EyeAnalysisDist
-   eyefeatures.features.scanpath_dist.HauDist
-   eyefeatures.features.scanpath_dist.MannanDist
-   eyefeatures.features.scanpath_dist.MultiMatchDist
-   eyefeatures.features.scanpath_dist.ScanMatchDist
-   eyefeatures.features.scanpath_dist.SimpleDistances
-   eyefeatures.features.scanpath_dist.TDEDist
+   eyefeatures.features.pairwise.compute_rv_coefficient
+   eyefeatures.features.pairwise.dimensionality_reduction_order
+   eyefeatures.features.pairwise.get_center_matrix
+   eyefeatures.features.pairwise.get_compromise_matrix
+   eyefeatures.features.pairwise.get_cross_product_matrix
+   eyefeatures.features.pairwise.get_dist_matrix
+   eyefeatures.features.pairwise.get_sim_matrix
+   eyefeatures.features.pairwise.hierarchical_clustering_order
+   eyefeatures.features.pairwise.optimal_leaf_ordering_clustering
+   eyefeatures.features.pairwise.restore_matrix
+   eyefeatures.features.pairwise.spectral_order
    eyefeatures.features.shift.IndividualNormalization
    eyefeatures.features.stats.FixationFeatures
    eyefeatures.features.stats.MicroSaccadeFeatures
