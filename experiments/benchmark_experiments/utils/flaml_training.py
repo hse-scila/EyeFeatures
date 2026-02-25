@@ -25,13 +25,6 @@ except ImportError:
         "FLAML is not installed. Install it with: pip install flaml[notebook]"
     )
 
-try:
-    from dataset_utils import find_all_datasets
-except ImportError:
-    # Fallback if dataset_utils is not available
-    def find_all_datasets(datasets_dir, include_extensive_collection=True):
-        return {"fixation": [], "unknown": []}
-
 from .benchmark_utils import load_split_info
 from .training_common import (
     REGRESSION_DATASET_PREFIXES,

@@ -2,7 +2,7 @@
 Deep Learning Training Utilities for Eye Features Benchmark.
 
 Aligned with Parquet benchmark: use find_datasets_parquet and load_dataset_parquet from utils.benchmark_utils.
-- datasets_dir: benchmark root (data/benchmark with Parquet + meta.json); find_datasets_func lists by name.
+- benchmark_dir: benchmark root (data/benchmark with Parquet + meta.json); find_datasets_func lists by name.
 - splits_dir: create_splits output; get_split_info_paths_for_dataset(splits_dir, dataset_name) finds
   {dataset_name}_split_info.json or {dataset_name}_*_split_info.json (per-label splits).
 - load_dataset_func(dataset_path) receives Path with .stem = dataset name; returns (df, col_info, type).
@@ -832,7 +832,7 @@ def _append_result_to_csv(results_file: Path, result_dict: Dict[str, Any]) -> No
 
 
 def run_dl_training_battery(
-    datasets_dir: Union[str, Path],
+    benchmark_dir: Union[str, Path],
     splits_dir: Union[str, Path],
     results_file: Union[str, Path],
     find_datasets_func,
@@ -852,7 +852,7 @@ def run_dl_training_battery(
     """Run DL training battery for all datasets.
     
     Args:
-        datasets_dir: Benchmark root (Parquet dir) when using find_datasets_parquet; else dir with raw data
+        benchmark_dir: Benchmark root (Parquet dir) when using find_datasets_parquet; else dir with raw data
         splits_dir: Directory with split JSONs from create_splits ({dataset}_*_split_info.json)
         results_file: Path to save results CSV
         find_datasets_func: Function to find all datasets
@@ -874,7 +874,7 @@ def run_dl_training_battery(
     """
     import json
     
-    datasets_dir = Path(datasets_dir)
+    benchmark_dir = Path(benchmark_dir)
     splits_dir = Path(splits_dir)
     results_file = Path(results_file)
     
@@ -901,9 +901,9 @@ def run_dl_training_battery(
                 ))
     
     # Find all datasets (main + extensive; include extracted_fixations if present)
-    all_datasets = find_datasets_func(datasets_dir, include_extensive_collection=True)
+    all_datasets = find_datasets_func(benchmark_dir, include_extensive_collection=True)
     datasets_to_process = all_datasets.get('fixation', []) + all_datasets.get('unknown', [])
-    extracted_dir = Path(datasets_dir) / 'extracted_fixations'
+    extracted_dir = Path(benchmark_dir) / 'extracted_fixations'
     if extracted_dir.exists():
         ext = find_datasets_func(extracted_dir, include_extensive_collection=False)
         datasets_to_process = datasets_to_process + ext.get('fixation', []) + ext.get('saccade', [])

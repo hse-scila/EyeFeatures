@@ -3,7 +3,7 @@ Shared benchmark utilities using eyefeatures.data (Parquet + meta.json).
 
 - Load data via eyefeatures.data.load_dataset / list_datasets
 - Resolve split groups from data/benchmark/meta.json (labels[*].splitting_column)
-- Create and apply train/val/test splits by group (no CSV, no duplicate dataset_utils)
+- Create and apply train/val/test splits by group (no CSV)
 """
 
 from __future__ import annotations
@@ -365,16 +365,16 @@ def apply_split_to_labels(
 
 
 def find_datasets_parquet(
-    datasets_dir: str | Path,
+    benchmark_dir: str | Path,
     include_extensive_collection: bool = True,
     **kwargs,
 ) -> Dict[str, List[Path]]:
     """
-    Return same structure as old find_all_datasets: {'fixation': [Path(...), ...], ...}.
+    Return structure {'fixation': [Path(...), ...], ...} for DL training battery.
     Paths are dummy (stem = dataset name) so load_dataset_parquet can use path.stem.
     """
     names = list_datasets(
-        benchmark_dir=Path(datasets_dir),
+        benchmark_dir=Path(benchmark_dir),
         dataset_type="fixation",
         include_extensive_collection=include_extensive_collection,
         **kwargs,

@@ -17,7 +17,7 @@ from .benchmark_utils import (
     load_split_info,
     split_dataframe_by_split_info,
 )
-from eyefeatures.features.scanpath_dist import (
+from eyefeatures.features.dist import (
     SimpleDistances,
     ScanMatchDist,
     TDEDist,
