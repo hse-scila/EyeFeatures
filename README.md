@@ -40,6 +40,12 @@ Check out our [Full Documentation](https://eyefeatures-docs.readthedocs.io/) and
 - 🎥 [Visualization](https://colab.research.google.com/github/hse-scila/EyeFeatures/blob/main/tutorials/visualization_tutorial.ipynb)
 - ⚡ [Deep Learning with Gaze](https://colab.research.google.com/github/hse-scila/EyeFeatures/blob/main/tutorials/DL_tutorial.ipynb)
 
+## Benchmark experiments
+
+The **[benchmark_experiments](benchmark_experiments/)** folder contains reproducible pipelines that use the library on benchmark data (`data/benchmark`):
+
+See [benchmark_experiments/README.md](benchmark_experiments/README.md) for more details.
+
 ## Supported Methods
 
 Check a comprehensive list of all methods.
