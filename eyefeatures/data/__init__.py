@@ -1,9 +1,9 @@
 """
-Simple data loading utilities for the eye-tracking benchmark.
+Simple data loading utilities for the eye-tracking collection.
 """
 
 from eyefeatures.data.utils import (
-    DEFAULT_BENCHMARK_DIR,
+    DEFAULT_COLLECTION_DIR,
     get_labels,
     get_meta,
     get_pk,
@@ -12,7 +12,7 @@ from eyefeatures.data.utils import (
 )
 
 __all__ = [
-    "DEFAULT_BENCHMARK_DIR",
+    "DEFAULT_COLLECTION_DIR",
     "list_datasets",
     "load_dataset",
     "get_pk",

@@ -1,8 +1,8 @@
 """
-Shared benchmark utilities using eyefeatures.data (Parquet + meta.json).
+Shared collection utilities using eyefeatures.data (Parquet + meta.json).
 
 - Load data via eyefeatures.data.load_dataset / list_datasets
-- Resolve split groups from data/benchmark/meta.json (labels[*].splitting_column)
+- Resolve split groups from data/collection/meta.json (labels[*].splitting_column)
 - Create and apply train/val/test splits by group (no CSV)
 """
 
@@ -10,22 +10,20 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import pandas as pd
 from sklearn.model_selection import train_test_split
 
 from eyefeatures.data import (
-    get_labels,
-    get_pk,
-    load_dataset,
     list_datasets as _list_datasets,
+    load_dataset,
 )
 
 
-def get_benchmark_dir() -> Path:
-    """Return benchmark root (Parquet + meta.json)."""
-    return Path(__file__).resolve().parent.parent.parent.parent / "data" / "benchmark"
+def get_collection_dir() -> Path:
+    """Return collection root (Parquet + meta.json)."""
+    return Path(__file__).resolve().parent.parent.parent.parent / "data" / "collection"
 
 
 def list_datasets(
@@ -35,13 +33,13 @@ def list_datasets(
     extracted_fixations_only: bool = False,
     extensive_collection_only: bool = False,
     subdir: str | None = None,
-) -> List[str]:
+) -> list[str]:
     """
     List dataset names from the benchmark (Parquet). Uses eyefeatures.data.list_datasets.
     Default: fixation datasets only (same as old experiments that skipped gaze).
     subdir: optional subfolder of benchmark root (e.g. 'extracted_fixations').
     """
-    bdir = get_benchmark_dir() if subdir is None else get_benchmark_dir() / subdir
+    bdir = get_collection_dir() if subdir is None else get_collection_dir() / subdir
     return _list_datasets(
         bdir,
         include_extensive_collection=include_extensive_collection,
@@ -56,13 +54,13 @@ def load_dataset_with_meta(
     dataset_name: str,
     *,
     normalize: bool = True,
-) -> Tuple[pd.DataFrame, Dict[str, Any]]:
+) -> tuple[pd.DataFrame, dict[str, Any]]:
     """
     Load one dataset and its meta using eyefeatures.data.
     Returns (df, meta_info) with meta_info['pk'], 'labels', 'meta', 'info' (from meta.json).
     """
-    bdir = get_benchmark_dir()
-    df, meta_info = load_dataset(dataset_name, benchmark_dir=bdir, normalize=normalize)
+    bdir = get_collection_dir()
+    df, meta_info = load_dataset(dataset_name, collection_dir=bdir, normalize=normalize)
     df = ensure_duration(df)
     return df, meta_info
 
@@ -79,12 +77,24 @@ def ensure_duration(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def col_info_from_meta(df: pd.DataFrame, meta_info: Dict[str, Any]) -> Dict[str, Any]:
+def col_info_from_meta(df: pd.DataFrame, meta_info: dict[str, Any]) -> dict[str, Any]:
     """Build extractor-friendly col_info from loaded df and meta_info (x, y, t, duration, pk)."""
     pk = meta_info.get("pk") or [c for c in df.columns if c.startswith("group_")]
-    x_col = "norm_pos_x" if "norm_pos_x" in df.columns else ("x" if "x" in df.columns else None)
-    y_col = "norm_pos_y" if "norm_pos_y" in df.columns else ("y" if "y" in df.columns else None)
-    t_col = "timestamp" if "timestamp" in df.columns else ("timestamp_start" if "timestamp_start" in df.columns else None)
+    x_col = (
+        "norm_pos_x"
+        if "norm_pos_x" in df.columns
+        else ("x" if "x" in df.columns else None)
+    )
+    y_col = (
+        "norm_pos_y"
+        if "norm_pos_y" in df.columns
+        else ("y" if "y" in df.columns else None)
+    )
+    t_col = (
+        "timestamp"
+        if "timestamp" in df.columns
+        else ("timestamp_start" if "timestamp_start" in df.columns else None)
+    )
     duration_col = "duration" if "duration" in df.columns else None
     return {
         "x_col": x_col,
@@ -97,9 +107,9 @@ def col_info_from_meta(df: pd.DataFrame, meta_info: Dict[str, Any]) -> Dict[str,
 
 
 def get_split_group_cols_from_meta(
-    meta_info: Dict[str, Any],
+    meta_info: dict[str, Any],
     label_col: str,
-) -> Optional[List[str]]:
+) -> list[str] | None:
     """
     Get the list of group columns to use for splitting for a given label.
     Reads from meta_info['info']['labels'][label_col]['splitting_column'].
@@ -117,7 +127,7 @@ def get_split_group_cols_from_meta(
     return [col] if isinstance(col, str) else list(col)
 
 
-def create_composite_index(df: pd.DataFrame, pk_cols: List[str]) -> pd.Series:
+def create_composite_index(df: pd.DataFrame, pk_cols: list[str]) -> pd.Series:
     """Composite index from pk columns (e.g. group_subject_group_trial -> 's1_t1')."""
     if not pk_cols:
         raise ValueError("pk_cols must be non-empty")
@@ -128,14 +138,14 @@ def create_composite_index(df: pd.DataFrame, pk_cols: List[str]) -> pd.Series:
 
 def create_split_info(
     df: pd.DataFrame,
-    pk_cols: List[str],
-    split_group_cols: List[str],
-    label_col: Optional[str] = None,
+    pk_cols: list[str],
+    split_group_cols: list[str],
+    label_col: str | None = None,
     *,
     test_size: float = 0.2,
     val_size: float = 0.2,
     random_state: int = 42,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Create train/val/test split info by splitting at group level, then mapping to scanpath indexes.
     split_group_cols: columns that define the split unit (e.g. [group_subject]).
@@ -158,10 +168,16 @@ def create_split_info(
     )
     # Scanpath-level composite index
     full_index = create_composite_index(df, pk_cols)
-    train_idx = set(full_index[df["_split_group_"].isin(groups_train)].unique().tolist())
+    train_idx = set(
+        full_index[df["_split_group_"].isin(groups_train)].unique().tolist()
+    )
     val_idx = set(full_index[df["_split_group_"].isin(groups_val)].unique().tolist())
     test_idx = set(full_index[df["_split_group_"].isin(groups_test)].unique().tolist())
-    split_pk = split_group_cols[0] if len(split_group_cols) == 1 else "_".join(split_group_cols)
+    split_pk = (
+        split_group_cols[0]
+        if len(split_group_cols) == 1
+        else "_".join(split_group_cols)
+    )
     return {
         "train": sorted(train_idx),
         "val": sorted(val_idx),
@@ -174,14 +190,14 @@ def create_split_info(
 def create_and_save_splits_for_dataset(
     dataset_name: str,
     df: pd.DataFrame,
-    meta_info: Dict[str, Any],
+    meta_info: dict[str, Any],
     splits_dir: Path,
     *,
     test_size: float = 0.2,
     val_size: float = 0.2,
     random_state: int = 42,
     overwrite: bool = False,
-) -> Tuple[Path, List[Tuple[str, Path]]]:
+) -> tuple[Path, list[tuple[str, Path]]]:
     """
     Create per-label train/val/test split info from meta and save to splits_dir.
     Saves {dataset_name}_labels.csv (full) and {dataset_name}_{label}_split_info.json per label.
@@ -205,12 +221,14 @@ def create_and_save_splits_for_dataset(
     labels_path = splits_dir / f"{dataset_name}_labels.csv"
     labels_df.to_csv(labels_path, index=False)
 
-    split_info_paths: List[Tuple[str, Path]] = []
+    split_info_paths: list[tuple[str, Path]] = []
     for label_col in labels_to_use:
         # Per-label labels file so FLAML can find {dataset}_{label}_labels.csv
         if label_col in labels_df.columns:
             per_label_path = splits_dir / f"{dataset_name}_{label_col}_labels.csv"
-            labels_df[["index", label_col]].drop_duplicates().to_csv(per_label_path, index=False)
+            labels_df[["index", label_col]].drop_duplicates().to_csv(
+                per_label_path, index=False
+            )
         split_group_cols = get_split_group_cols_from_meta(meta_info, label_col)
         if not split_group_cols:
             split_group_cols = pk_cols
@@ -234,13 +252,13 @@ def create_and_save_splits_for_dataset(
     return labels_path, split_info_paths
 
 
-def load_split_info(split_info_path: str | Path) -> Dict[str, Any]:
+def load_split_info(split_info_path: str | Path) -> dict[str, Any]:
     """Load split info from JSON."""
     with open(split_info_path, encoding="utf-8") as f:
         return json.load(f)
 
 
-def save_split_info(split_info: Dict[str, Any], output_path: str | Path) -> None:
+def save_split_info(split_info: dict[str, Any], output_path: str | Path) -> None:
     """Save split info to JSON."""
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -250,9 +268,9 @@ def save_split_info(split_info: Dict[str, Any], output_path: str | Path) -> None
 
 def split_dataframe_by_split_info(
     df: pd.DataFrame,
-    pk_cols: List[str],
-    split_info: Dict[str, Any],
-) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    pk_cols: list[str],
+    split_info: dict[str, Any],
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """
     Split a raw DataFrame into train/val/test by composite index (e.g. for distance features:
     fit on train, then transform train/val/test). Returns (train_df, val_df, test_df).
@@ -270,9 +288,9 @@ def split_dataframe_by_split_info(
 
 def get_path_pk_for_split_id(
     split_id: str,
-    pk_cols: List[str],
-    path_pk_per_label: Optional[Dict[str, List[str]]] = None,
-) -> List[str]:
+    pk_cols: list[str],
+    path_pk_per_label: dict[str, list[str]] | None = None,
+) -> list[str]:
     """
     Return path_pk (group columns for expected/reference path) for this split_id.
     From old notebook: PATH_PK_PER_LABEL[split_id]; default = full pk. Independent of split.
@@ -282,7 +300,7 @@ def get_path_pk_for_split_id(
     return list(pk_cols)
 
 
-def get_split_info_paths_for_dataset(splits_dir: Path, dataset_name: str) -> List[Path]:
+def get_split_info_paths_for_dataset(splits_dir: Path, dataset_name: str) -> list[Path]:
     """Return list of split info JSON paths for this dataset (exact or {dataset}_*_split_info.json)."""
     exact = splits_dir / f"{dataset_name}_split_info.json"
     if exact.exists():
@@ -292,16 +310,18 @@ def get_split_info_paths_for_dataset(splits_dir: Path, dataset_name: str) -> Lis
 
 def apply_split_to_features(
     features_df: pd.DataFrame,
-    split_info: Dict[str, Any],
-    index_column: Optional[str] = None,
-) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    split_info: dict[str, Any],
+    index_column: str | None = None,
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """
     Apply pre-defined split to features DataFrame. split_info has 'train', 'val', 'test' lists.
     Returns (train_features, val_features, test_features).
     """
     for key in ("train", "val", "test"):
         if key not in split_info:
-            raise ValueError(f"split_info must contain 'train', 'val', 'test'; missing '{key}'")
+            raise ValueError(
+                f"split_info must contain 'train', 'val', 'test'; missing '{key}'"
+            )
     train_indexes = set(split_info["train"])
     val_indexes = set(split_info["val"])
     test_indexes = set(split_info["test"])
@@ -331,12 +351,14 @@ def apply_split_to_features(
 
 def apply_split_to_labels(
     labels_df: pd.DataFrame,
-    split_info: Dict[str, Any],
+    split_info: dict[str, Any],
     index_column: str = "index",
-) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Apply pre-defined split to labels DataFrame. Returns (train_labels, val_labels, test_labels)."""
     if index_column not in labels_df.columns:
-        raise ValueError(f"Index column '{index_column}' not found. Columns: {list(labels_df.columns)}")
+        raise ValueError(
+            f"Index column '{index_column}' not found. Columns: {list(labels_df.columns)}"
+        )
     train_indexes = set(split_info["train"])
     val_indexes = set(split_info["val"])
     test_indexes = set(split_info["test"])
@@ -357,7 +379,7 @@ def find_datasets_parquet(
     include_extensive_collection: bool = True,
     subdir: str | None = None,
     **kwargs,
-) -> Dict[str, List[Path]]:
+) -> dict[str, list[Path]]:
     """
     Return structure {'fixation': [Path(...), ...], ...} for DL training battery.
     Paths are dummy (stem = dataset name) so load_dataset_parquet can use path.stem.
@@ -381,7 +403,7 @@ def find_datasets_parquet(
 
 def load_dataset_parquet(
     dataset_path: Path,
-) -> Tuple[pd.DataFrame, Dict[str, Any], str]:
+) -> tuple[pd.DataFrame, dict[str, Any], str]:
     """
     Load one dataset by name (dataset_path.stem) using eyefeatures.data.
     Returns (df, col_info, 'fixation') for compatibility with run_dl_training_battery.
@@ -389,8 +411,8 @@ def load_dataset_parquet(
     name = dataset_path.stem
     parts = getattr(dataset_path, "parts", ()) or ()
     if len(parts) >= 2 and parts[1] == "extracted_fixations":
-        bdir = get_benchmark_dir() / "extracted_fixations"
-        df, meta_info = load_dataset(name, benchmark_dir=bdir, normalize=True)
+        bdir = get_collection_dir() / "extracted_fixations"
+        df, meta_info = load_dataset(name, collection_dir=bdir, normalize=True)
         df = ensure_duration(df)
     else:
         df, meta_info = load_dataset_with_meta(name)

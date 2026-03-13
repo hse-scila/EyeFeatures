@@ -40,11 +40,11 @@ Check out our [Full Documentation](https://eyefeatures-docs.readthedocs.io/) and
 - 🎥 [Visualization](https://colab.research.google.com/github/hse-scila/EyeFeatures/blob/main/tutorials/visualization_tutorial.ipynb)
 - ⚡ [Deep Learning](https://colab.research.google.com/github/hse-scila/EyeFeatures/blob/main/tutorials/DL_tutorial.ipynb)
 
-## Benchmark experiments
+## Collection experiments
 
-The **[benchmark_experiments](benchmark_experiments/)** folder contains reproducible pipelines that use the library on benchmark data (`data/benchmark`):
+The **[collection_experiments](collection_experiments/)** folder contains reproducible pipelines that use the library on collection data (`data/collection`):
 
-See [benchmark_experiments/README.md](benchmark_experiments/README.md) for more details.
+See [collection_experiments/README.md](collection_experiments/README.md) for more details.
 
 ## Supported Methods
 

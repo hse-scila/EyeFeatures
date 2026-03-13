@@ -6,9 +6,15 @@ Uses path_pk per split for expected-path computation. Saves one train/val/test s
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import pandas as pd
+
+from eyefeatures.features.dist import (
+    MultiMatchDist,
+    SimpleDistances,
+    TDEDist,
+)
 
 from .benchmark_utils import (
     create_composite_index,
@@ -17,20 +23,13 @@ from .benchmark_utils import (
     load_split_info,
     split_dataframe_by_split_info,
 )
-from eyefeatures.features.dist import (
-    SimpleDistances,
-    ScanMatchDist,
-    TDEDist,
-    MultiMatchDist,
-)
-
 
 SIMPLE_DISTANCE_METHODS = ["euc", "hau", "dtw", "man", "eye", "dfr"]
 ADVANCED_DISTANCE_METHODS = ["tde", "multimatch"]
 EXPECTED_PATH_METHODS = ["mean", "fwp"]
 
 
-def _create_composite_index_for_features(source_df: pd.DataFrame, pk: List[str]):
+def _create_composite_index_for_features(source_df: pd.DataFrame, pk: list[str]):
     """Composite index for feature rows: one per unique group in source_df (order preserved)."""
     comp = create_composite_index(source_df, pk)
     return comp.drop_duplicates(keep="first").values
@@ -41,16 +40,16 @@ def run_distance_extraction_for_split(
     val_df: pd.DataFrame,
     test_df: pd.DataFrame,
     split_id: str,
-    path_pk: List[str],
-    pk: List[str],
-    col_info: Dict[str, Any],
+    path_pk: list[str],
+    pk: list[str],
+    col_info: dict[str, Any],
     output_dir: Path,
     *,
-    simple_methods: List[str] = None,
-    advanced_methods: List[str] = None,
-    expected_path_methods: List[str] = None,
+    simple_methods: list[str] = None,
+    advanced_methods: list[str] = None,
+    expected_path_methods: list[str] = None,
     tde_k: int = 1,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Fit distance transformers on train only, transform train/val/test. Combine all
     method×expected_path combinations, add index, save to output_dir. Returns result dict.
@@ -64,20 +63,26 @@ def run_distance_extraction_for_split(
 
     x_col = col_info["x_col"]
     y_col = col_info["y_col"]
-    has_duration = col_info.get("has_duration", False) and "duration" in train_df.columns
+    has_duration = (
+        col_info.get("has_duration", False) and "duration" in train_df.columns
+    )
 
-    train_frames: List[pd.DataFrame] = []
-    val_frames: List[pd.DataFrame] = []
-    test_frames: List[pd.DataFrame] = []
-    successful: List[str] = []
+    train_frames: list[pd.DataFrame] = []
+    val_frames: list[pd.DataFrame] = []
+    test_frames: list[pd.DataFrame] = []
+    successful: list[str] = []
 
     for ep_method in expected_path_methods:
         for d_method in simple_methods:
             try:
                 trans = SimpleDistances(
                     methods=[d_method],
-                    x=x_col, y=y_col, pk=pk, path_pk=path_pk,
-                    expected_paths_method=ep_method, return_df=True,
+                    x=x_col,
+                    y=y_col,
+                    pk=pk,
+                    path_pk=path_pk,
+                    expected_paths_method=ep_method,
+                    return_df=True,
                 )
                 trans.fit(train_df)
                 t_f = trans.transform(train_df)
@@ -98,13 +103,23 @@ def run_distance_extraction_for_split(
             try:
                 if d_method == "tde":
                     trans = TDEDist(
-                        k=tde_k, x=x_col, y=y_col, pk=pk, path_pk=path_pk,
-                        expected_paths_method=ep_method, return_df=True,
+                        k=tde_k,
+                        x=x_col,
+                        y=y_col,
+                        pk=pk,
+                        path_pk=path_pk,
+                        expected_paths_method=ep_method,
+                        return_df=True,
                     )
                 elif d_method == "multimatch":
                     trans = MultiMatchDist(
-                        x=x_col, y=y_col, duration="duration", pk=pk, path_pk=path_pk,
-                        expected_paths_method=ep_method, return_df=True,
+                        x=x_col,
+                        y=y_col,
+                        duration="duration",
+                        pk=pk,
+                        path_pk=path_pk,
+                        expected_paths_method=ep_method,
+                        return_df=True,
                     )
                 else:
                     continue
@@ -121,7 +136,11 @@ def run_distance_extraction_for_split(
                 pass
 
     if not train_frames:
-        return {"status": "skipped", "reason": "No distance features computed", "split_id": split_id}
+        return {
+            "status": "skipped",
+            "reason": "No distance features computed",
+            "split_id": split_id,
+        }
 
     train_out = pd.concat(train_frames, axis=1)
     val_out = pd.concat(val_frames, axis=1)
@@ -155,16 +174,16 @@ def run_distance_extraction_for_split(
 def extract_and_save_distance_features(
     df: pd.DataFrame,
     dataset_name: str,
-    meta_info: Dict[str, Any],
-    col_info: Dict[str, Any],
-    paths: Dict[str, Path],
+    meta_info: dict[str, Any],
+    col_info: dict[str, Any],
+    paths: dict[str, Path],
     *,
-    simple_methods: List[str] = None,
-    advanced_methods: List[str] = None,
-    expected_path_methods: List[str] = None,
-    path_pk_per_label: Optional[Dict[str, List[str]]] = None,
+    simple_methods: list[str] = None,
+    advanced_methods: list[str] = None,
+    expected_path_methods: list[str] = None,
+    path_pk_per_label: dict[str, list[str]] | None = None,
     check_cache_per_split: bool = True,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """
     For each split: split df into train/val/test; path_pk (reference path grouping) from
     path_pk_per_label[split_id] (old notebook PATH_PK_PER_LABEL), default = full pk.
@@ -177,16 +196,20 @@ def extract_and_save_distance_features(
     if not split_paths:
         return [{"dataset": dataset_name, "status": "error", "error": "No split info"}]
 
-    results: List[Dict[str, Any]] = []
+    results: list[dict[str, Any]] = []
     for split_path in split_paths:
         split_id = split_path.stem.replace("_split_info", "")
         path_pk = get_path_pk_for_split_id(split_id, pk, path_pk_per_label)
         missing = [c for c in path_pk if c not in df.columns]
         if missing:
-            results.append({
-                "dataset": dataset_name, "split_id": split_id, "status": "error",
-                "error": f"path_pk columns missing: {missing}",
-            })
+            results.append(
+                {
+                    "dataset": dataset_name,
+                    "split_id": split_id,
+                    "status": "error",
+                    "error": f"path_pk columns missing: {missing}",
+                }
+            )
             continue
 
         if check_cache_per_split:
@@ -195,11 +218,17 @@ def extract_and_save_distance_features(
             s_p = output_dir / f"{split_id}_distance_features_test.csv"
             if t_p.exists() and v_p.exists() and s_p.exists():
                 tr = pd.read_csv(t_p, index_col=0)
-                results.append({
-                    "dataset": dataset_name, "status": "cached", "split_id": split_id,
-                    "n_train_scanpaths": len(tr), "n_val_scanpaths": len(pd.read_csv(v_p, index_col=0)),
-                    "n_test_scanpaths": len(pd.read_csv(s_p, index_col=0)), "num_features": tr.shape[1] - 1,
-                })
+                results.append(
+                    {
+                        "dataset": dataset_name,
+                        "status": "cached",
+                        "split_id": split_id,
+                        "n_train_scanpaths": len(tr),
+                        "n_val_scanpaths": len(pd.read_csv(v_p, index_col=0)),
+                        "n_test_scanpaths": len(pd.read_csv(s_p, index_col=0)),
+                        "num_features": tr.shape[1] - 1,
+                    }
+                )
                 print(f"  Cached: {split_id}")
                 continue
 
@@ -207,8 +236,16 @@ def extract_and_save_distance_features(
         train_df, val_df, test_df = split_dataframe_by_split_info(df, pk, split_info)
         print(f"  Split: {split_id} (path_pk: {path_pk})")
         res = run_distance_extraction_for_split(
-            train_df, val_df, test_df, split_id, path_pk, pk, col_info, output_dir,
-            simple_methods=simple_methods, advanced_methods=advanced_methods,
+            train_df,
+            val_df,
+            test_df,
+            split_id,
+            path_pk,
+            pk,
+            col_info,
+            output_dir,
+            simple_methods=simple_methods,
+            advanced_methods=advanced_methods,
             expected_path_methods=expected_path_methods,
         )
         res["dataset"] = dataset_name

@@ -79,12 +79,12 @@ class TestListDatasets:
 
     def test_list_returns_sorted_names(self):
         """Test listing datasets from benchmark dir returns sorted names."""
-        benchmark_dir = (
-            Path(__file__).resolve().parent.parent.parent / "data" / "benchmark"
+        collection_dir = (
+            Path(__file__).resolve().parent.parent.parent / "data" / "collection"
         )
-        if not benchmark_dir.exists():
-            pytest.skip("Benchmark data dir not found")
-        result = list_datasets(benchmark_dir=benchmark_dir)
+        if not collection_dir.exists():
+            pytest.skip("Collection data dir not found")
+        result = list_datasets(collection_dir=collection_dir)
         assert isinstance(result, list)
         assert result == sorted(result)
         if result:
@@ -95,15 +95,15 @@ class TestLoadDataset:
     """Tests for load_dataset function."""
 
     def test_load_paris_experiment_fixations(self):
-        """Test loading Paris_experiment_fixations dataset from benchmark."""
-        benchmark_dir = (
-            Path(__file__).resolve().parent.parent.parent / "data" / "benchmark"
+        """Test loading Paris_experiment_fixations dataset from collection."""
+        collection_dir = (
+            Path(__file__).resolve().parent.parent.parent / "data" / "collection"
         )
-        dataset_path = benchmark_dir / "Paris_experiment_fixations.parquet"
+        dataset_path = collection_dir / "Paris_experiment_fixations.parquet"
         if not dataset_path.exists():
             pytest.skip("Paris_experiment_fixations.parquet not found (Git LFS?)")
         df, meta = load_dataset(
-            "Paris_experiment_fixations", benchmark_dir=benchmark_dir
+            "Paris_experiment_fixations", collection_dir=collection_dir
         )
         assert isinstance(df, pd.DataFrame)
         assert len(df) > 0

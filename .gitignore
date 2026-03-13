@@ -3,7 +3,7 @@
 .idea/
 
 data/*
-!data/benchmark/
+!data/collection/
 *.xlsx
 
 __pycache__/

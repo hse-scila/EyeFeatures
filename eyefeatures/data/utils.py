@@ -1,7 +1,7 @@
 """
-Simple data loading utilities for the eye-tracking benchmark.
+Simple data loading utilities for the eye-tracking collection.
 
-Benchmark data lives in this repo at ``data/benchmark`` as Parquet files
+Collection data lives in this repo at ``data/collection`` as Parquet files
 (tracked with Git LFS). You can pass a custom path or use the default.
 
 Column conventions:
@@ -16,8 +16,8 @@ from typing import Any
 
 import pandas as pd
 
-#: Default root directory for benchmark Parquet files (``data/benchmark`` in the repo, Git LFS).
-DEFAULT_BENCHMARK_DIR = Path("data/benchmark")
+#: Default root directory for collection Parquet files (``data/collection`` in the repo, Git LFS).
+DEFAULT_COLLECTION_DIR = Path("data/collection")
 
 
 def _classify_dataset_type(dataset_name: str) -> str:
@@ -31,7 +31,7 @@ def _classify_dataset_type(dataset_name: str) -> str:
 
 
 def list_datasets(
-    benchmark_dir: str | Path | None = None,
+    collection_dir: str | Path | None = None,
     *,
     include_extensive_collection: bool = True,
     extensive_collection_only: bool = False,
@@ -39,13 +39,13 @@ def list_datasets(
     extracted_fixations_only: bool = False,
     dataset_type: str | None = None,
 ) -> list[str]:
-    """List available dataset names in the benchmark directory.
+    """List available dataset names in the collection directory.
 
     Parameters
     ----------
-    benchmark_dir : path, optional
-        Root directory containing benchmark Parquet files.
-        Defaults to ``data/benchmark`` (repo data tracked with Git LFS).
+    collection_dir : path, optional
+        Root directory containing collection Parquet files.
+        Defaults to ``data/collection`` (repo data tracked with Git LFS).
     include_extensive_collection : bool, default True
         If True, also search in extensive_collection subfolder.
         Ignored when extensive_collection_only or extracted_fixations_only is True.
@@ -68,31 +68,31 @@ def list_datasets(
     list of str
         Sorted list of dataset names (without .parquet extension).
     """
-    benchmark_path = (
-        Path(benchmark_dir) if benchmark_dir is not None else DEFAULT_BENCHMARK_DIR
+    collection_path = (
+        Path(collection_dir) if collection_dir is not None else DEFAULT_COLLECTION_DIR
     )
     dataset_names = set()
 
     if extracted_fixations_only:
-        extracted_dir = benchmark_path / "extracted_fixations"
+        extracted_dir = collection_path / "extracted_fixations"
         if extracted_dir.exists():
             for f in extracted_dir.glob("*.parquet"):
                 dataset_names.add(f.stem)
     elif extensive_collection_only:
-        extensive_dir = benchmark_path / "extensive_collection"
+        extensive_dir = collection_path / "extensive_collection"
         if extensive_dir.exists():
             for f in extensive_dir.glob("*.parquet"):
                 dataset_names.add(f.stem)
     else:
-        for f in benchmark_path.glob("*.parquet"):
+        for f in collection_path.glob("*.parquet"):
             dataset_names.add(f.stem)
         if include_extensive_collection:
-            extensive_dir = benchmark_path / "extensive_collection"
+            extensive_dir = collection_path / "extensive_collection"
             if extensive_dir.exists():
                 for f in extensive_dir.glob("*.parquet"):
                     dataset_names.add(f.stem)
         if include_extracted_fixations:
-            extracted_dir = benchmark_path / "extracted_fixations"
+            extracted_dir = collection_path / "extracted_fixations"
             if extracted_dir.exists():
                 for f in extracted_dir.glob("*.parquet"):
                     dataset_names.add(f.stem)
@@ -109,20 +109,20 @@ def list_datasets(
 
 def load_dataset(
     dataset_name: str,
-    benchmark_dir: str | Path | None = None,
+    collection_dir: str | Path | None = None,
     *,
     normalize: bool = True,
 ) -> tuple[pd.DataFrame, dict]:
-    """Load a benchmark dataset by name.
+    """Load a collection dataset by name.
 
     Parameters
     ----------
     dataset_name : str
         Name of the dataset (e.g. "ASD_ready_data_fixations").
-        Will search for {dataset_name}.parquet in benchmark_dir.
-    benchmark_dir : path, optional
-        Root directory containing benchmark Parquet files.
-        Defaults to ``data/benchmark`` (repo data tracked with Git LFS).
+        Will search for {dataset_name}.parquet in collection_dir.
+    collection_dir : path, optional
+        Root directory containing collection Parquet files.
+        Defaults to ``data/collection`` (repo data tracked with Git LFS).
     normalize : bool, default True
         If True and dataset has unnormalized x/y columns, normalize them
         and rename to norm_pos_x/norm_pos_y.
@@ -132,32 +132,32 @@ def load_dataset(
     tuple (DataFrame, meta_info)
         - DataFrame: loaded and optionally normalized data
         - meta_info: dict with 'pk', 'labels', 'meta' column lists and 'info'
-          (from benchmark_dir/meta.json under key dataset_name, if present).
+          (from collection_dir/meta.json under key dataset_name, if present).
     """
-    benchmark_path = (
-        Path(benchmark_dir) if benchmark_dir is not None else DEFAULT_BENCHMARK_DIR
+    collection_path = (
+        Path(collection_dir) if collection_dir is not None else DEFAULT_COLLECTION_DIR
     )
-    dataset_path = benchmark_path / f"{dataset_name}.parquet"
+    dataset_path = collection_path / f"{dataset_name}.parquet"
 
     if not dataset_path.exists():
         # Try in extensive_collection
         extensive_path = (
-            benchmark_path / "extensive_collection" / f"{dataset_name}.parquet"
+            collection_path / "extensive_collection" / f"{dataset_name}.parquet"
         )
         if extensive_path.exists():
             dataset_path = extensive_path
         else:
             # Try in extracted_fixations
             extracted_path = (
-                benchmark_path / "extracted_fixations" / f"{dataset_name}.parquet"
+                collection_path / "extracted_fixations" / f"{dataset_name}.parquet"
             )
             if extracted_path.exists():
                 dataset_path = extracted_path
             else:
                 raise FileNotFoundError(
-                    f"Dataset '{dataset_name}' not found in {benchmark_path}, "
-                    f"{benchmark_path / 'extensive_collection'}, or "
-                    f"{benchmark_path / 'extracted_fixations'}"
+                    f"Dataset '{dataset_name}' not found in {collection_path}, "
+                    f"{collection_path / 'extensive_collection'}, or "
+                    f"{collection_path / 'extracted_fixations'}"
                 )
 
     df = pd.read_parquet(dataset_path)
@@ -192,15 +192,15 @@ def load_dataset(
         "pk": get_pk(df),
         "labels": get_labels(df),
         "meta": get_meta(df),
-        "info": _load_meta_info(benchmark_path, dataset_name),
+        "info": _load_meta_info(collection_path, dataset_name),
     }
 
     return df, meta_info
 
 
-def _load_meta_info(benchmark_path: Path, dataset_name: str) -> Any | None:
-    """Load meta.json from benchmark dir and return value for dataset_name key."""
-    meta_path = benchmark_path / "meta.json"
+def _load_meta_info(collection_path: Path, dataset_name: str) -> Any | None:
+    """Load meta.json from collection dir and return value for dataset_name key."""
+    meta_path = collection_path / "meta.json"
     if not meta_path.exists():
         return None
     try:

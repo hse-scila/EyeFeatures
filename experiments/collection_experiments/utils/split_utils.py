@@ -1,19 +1,14 @@
 """
-Split utilities for benchmark experiments. Thin wrapper over benchmark_utils.
+Split utilities for collection experiments. Thin wrapper over benchmark_utils.
 """
 
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
-
-import pandas as pd
-
 from .benchmark_utils import (
-    create_composite_index,
-    load_split_info,
-    save_split_info,
     apply_split_to_features,
     apply_split_to_labels,
+    create_composite_index,
     get_split_info_paths_for_dataset,
+    load_split_info,
+    save_split_info,
 )
 
 SPLIT_CONFIG = {

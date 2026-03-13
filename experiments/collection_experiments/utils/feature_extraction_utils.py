@@ -5,28 +5,28 @@ Common utilities for feature extraction notebooks. Uses eyefeatures.data and ben
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import pandas as pd
 
 from .benchmark_utils import (
-    get_benchmark_dir,
-    get_split_info_paths_for_dataset,
-    load_split_info,
     apply_split_to_features,
     apply_split_to_labels,
+    get_collection_dir,
+    get_split_info_paths_for_dataset,
+    load_split_info,
 )
 
 
 def setup_paths(
     output_dir: str | Path | None = None,
     splits_dir: str | Path | None = None,
-) -> Dict[str, Path]:
+) -> dict[str, Path]:
     """
     Set up paths for feature extraction.
     output_dir default 'features_output'; splits_dir default output_dir / 'splits'.
     """
-    benchmark_path = get_benchmark_dir()
+    collection_path = get_collection_dir()
     if output_dir is None:
         output_dir = Path("features_output")
     else:
@@ -38,7 +38,7 @@ def setup_paths(
         splits_dir = Path(splits_dir)
     splits_dir.mkdir(parents=True, exist_ok=True)
     return {
-        "benchmark_dir": benchmark_path,
+        "collection_dir": collection_path,
         "output_dir": output_dir,
         "splits_dir": splits_dir,
     }
@@ -48,9 +48,9 @@ def apply_splits_and_save(
     features_df: pd.DataFrame,
     dataset_name: str,
     feature_type: str,
-    paths: Dict[str, Path],
-    split_info: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    paths: dict[str, Path],
+    split_info: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """
     Apply splits to features and save train/val/test files. When multiple label-based
     splits exist, saves one set per label. Optionally saves labels per split.
@@ -83,7 +83,9 @@ def apply_splits_and_save(
 
     for idx, (split_path, si) in enumerate(split_infos):
         split_id = (
-            split_path.stem.replace("_split_info", "") if split_path is not None else dataset_name
+            split_path.stem.replace("_split_info", "")
+            if split_path is not None
+            else dataset_name
         )
         n = len(split_infos)
         if n > 1:
@@ -100,9 +102,13 @@ def apply_splits_and_save(
             p = output_dir / f"{split_id}_{feature_type}_{name}.csv"
             data.to_csv(p)
         if labels_df is not None:
-            train_l, val_l, test_l = apply_split_to_labels(labels_df, si, index_column="index")
+            train_l, val_l, test_l = apply_split_to_labels(
+                labels_df, si, index_column="index"
+            )
             for name, data in (("train", train_l), ("val", val_l), ("test", test_l)):
-                (splits_dir / f"{split_id}_labels_{name}.csv").parent.mkdir(parents=True, exist_ok=True)
+                (splits_dir / f"{split_id}_labels_{name}.csv").parent.mkdir(
+                    parents=True, exist_ok=True
+                )
                 data.to_csv(splits_dir / f"{split_id}_labels_{name}.csv", index=False)
         split_results.append(
             {
@@ -121,17 +127,23 @@ def apply_splits_and_save(
         "n_val_scanpaths": r["n_val_scanpaths"],
         "n_test_scanpaths": r["n_test_scanpaths"],
         "num_features": r["num_features"],
-        "train_output_path": str(output_dir / f"{split_results[0]['split_id']}_{feature_type}_train.csv"),
-        "val_output_path": str(output_dir / f"{split_results[0]['split_id']}_{feature_type}_val.csv"),
-        "test_output_path": str(output_dir / f"{split_results[0]['split_id']}_{feature_type}_test.csv"),
+        "train_output_path": str(
+            output_dir / f"{split_results[0]['split_id']}_{feature_type}_train.csv"
+        ),
+        "val_output_path": str(
+            output_dir / f"{split_results[0]['split_id']}_{feature_type}_val.csv"
+        ),
+        "test_output_path": str(
+            output_dir / f"{split_results[0]['split_id']}_{feature_type}_test.csv"
+        ),
     }
 
 
 def check_cache(
     dataset_name: str,
     feature_type: str,
-    paths: Dict[str, Path],
-) -> Optional[Dict[str, Any]]:
+    paths: dict[str, Path],
+) -> dict[str, Any] | None:
     """Return cached result dict if train/val/test files exist for this dataset and feature_type."""
     output_dir = paths["output_dir"]
     splits_dir = paths["splits_dir"]
@@ -145,9 +157,13 @@ def check_cache(
             if not (t.exists() and v.exists() and s.exists()):
                 return None
         sid = split_ids[0]
-        train_df = pd.read_csv(output_dir / f"{sid}_{feature_type}_train.csv", index_col=0)
+        train_df = pd.read_csv(
+            output_dir / f"{sid}_{feature_type}_train.csv", index_col=0
+        )
         val_df = pd.read_csv(output_dir / f"{sid}_{feature_type}_val.csv", index_col=0)
-        test_df = pd.read_csv(output_dir / f"{sid}_{feature_type}_test.csv", index_col=0)
+        test_df = pd.read_csv(
+            output_dir / f"{sid}_{feature_type}_test.csv", index_col=0
+        )
         return {
             "status": "cached",
             "n_train_scanpaths": len(train_df),
@@ -171,7 +187,7 @@ def check_cache(
 
 
 def print_summary(
-    results: List[Dict[str, Any]],
+    results: list[dict[str, Any]],
     feature_type: str = "features",
 ) -> None:
     """Print summary of extraction results."""
@@ -194,7 +210,9 @@ def print_summary(
                     f"{r.get('num_features', 0):>10}"
                 )
             else:
-                print(f"  {r.get('dataset', '?'):<43} {r.get('num_scanpaths', 0):>8} scanpaths, {r.get('num_features', 0)} features")
+                print(
+                    f"  {r.get('dataset', '?'):<43} {r.get('num_scanpaths', 0):>8} scanpaths, {r.get('num_features', 0)} features"
+                )
     for r in failed:
         print(f"  FAILED {r.get('dataset', '?')}: {r.get('error', '')}")
 
@@ -204,10 +222,10 @@ def extract_and_save_features(
     dataset_name: str,
     feature_type: str,
     extractor,
-    meta_info: Dict[str, Any],
-    paths: Dict[str, Path],
+    meta_info: dict[str, Any],
+    paths: dict[str, Path],
     check_cache_first: bool = True,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Optionally load from cache; else run extractor.fit_transform, then apply splits and save.
     meta_info is the dict returned by load_dataset_with_meta (used only for split resolution).
