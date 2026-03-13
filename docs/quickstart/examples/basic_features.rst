@@ -6,6 +6,6 @@ This example shows how to use the ``Extractor`` class to calculate a mix of feat
 
 .. _extractor_usage_example:
 
-.. literalinclude:: ../../../examples/basic_features.py
+.. literalinclude:: ../../../eyefeatures/examples/basic_features.py
    :language: python
    :linenos:

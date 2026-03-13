@@ -53,7 +53,7 @@ Fixed
 - **Mathematical & Topological Correctness**:
 
   - Fixed ``RuntimeWarning`` (log(0)) in ``persistence_entropy_curve`` and standardized ``float`` return types.
-  - Fixed Fill Path Calculation logic in ``pairwise.py`` to correctly calculate the expected path of expected paths.
+  - Fixed Fill Path Calculation logic in ``scanpath_complex.py`` to correctly calculate the expected path of expected paths.
   - Validated original implementations for ``HurstExponent`` and ``SpectralEntropy`` after architecture refactor.
 
 Removed

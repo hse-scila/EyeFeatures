@@ -4,9 +4,9 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from eyefeatures.features.dist import SimpleDistances
 from eyefeatures.features.extractor import BaseTransformer, Extractor
 from eyefeatures.features.measures import RQAMeasures, ShannonEntropy
+from eyefeatures.features.scanpath_dist import SimpleDistances
 from eyefeatures.features.stats import FixationFeatures, SaccadeFeatures
 
 

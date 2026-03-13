@@ -354,7 +354,6 @@ def get_visualizations(
     pattern: str,
     dpi: float = 100.0,
     pk: list[str] = None,
-    zoom_to_data: bool = True,
 ):
     """Get visualizations.
 
@@ -366,8 +365,6 @@ def get_visualizations(
         pattern: visualization class to use.
         dpi: dpi for images.
         pk: list of column names used to split pd.DataFrame.
-        zoom_to_data: if True, auto-scale to fit data (fills the image).
-            If False, use fixed [0,1] coordinate space.
 
     Returns:
         output: tensor of shape [n, m, fig, fig, c], where\n
@@ -379,13 +376,11 @@ def get_visualizations(
     arr = []
     if pk is None:
         if pattern == "baseline":
-            res = baseline_visualization(data, x, y, shape, zoom_to_data=zoom_to_data)
+            res = baseline_visualization(data, x, y, shape)
         elif pattern == "aoi":
-            res = aoi_visualization(
-                data, x, y, shape, aoi="AOI", zoom_to_data=zoom_to_data
-            )
+            res = aoi_visualization(data, x, y, shape, aoi="AOI")
         elif pattern == "saccades":
-            res = saccade_visualization(data, x, y, shape, zoom_to_data=zoom_to_data)
+            res = saccade_visualization(data, x, y, shape)
         else:
             raise ValueError(f"Unsupported pattern: {pattern}")
         arr.append(res)
@@ -396,34 +391,15 @@ def get_visualizations(
         for group_id, group_X in tqdm(groups):
             if pattern == "baseline":
                 res = baseline_visualization(
-                    group_X,
-                    x,
-                    y,
-                    shape,
-                    show_plot=False,
-                    dpi=dpi,
-                    zoom_to_data=zoom_to_data,
+                    group_X, x, y, shape, show_plot=False, dpi=dpi
                 )
             elif pattern == "aoi":
                 res = aoi_visualization(
-                    group_X,
-                    x,
-                    y,
-                    shape,
-                    aoi="AOI",
-                    show_plot=False,
-                    dpi=dpi,
-                    zoom_to_data=zoom_to_data,
+                    group_X, x, y, shape, aoi="AOI", show_plot=False, dpi=dpi
                 )
             elif pattern == "saccades":
                 res = saccade_visualization(
-                    group_X,
-                    x,
-                    y,
-                    shape,
-                    show_plot=False,
-                    dpi=dpi,
-                    zoom_to_data=zoom_to_data,
+                    group_X, x, y, shape, show_plot=False, dpi=dpi
                 )
             else:
                 raise ValueError(f"Unsupported pattern: {pattern}")
@@ -438,7 +414,6 @@ def baseline_visualization(
     x: str,
     y: str,
     shape: tuple[int, int] = (10, 10),
-    points_width: float = 75,
     path_width: float = 1,
     show_legend: bool = False,
     path_to_img: str = None,
@@ -446,54 +421,20 @@ def baseline_visualization(
     show_plot: bool = False,
     return_ndarray: bool = True,
     dpi: float = 100.0,
-    internal_resolution: int = 256,
-    zoom_to_data: bool = True,
 ):
-    # Render at higher internal resolution for better quality, then resize
-    # Use a reasonable figure size with adjusted DPI
-    internal_dpi = 100.0
-    fig_size = (internal_resolution / internal_dpi, internal_resolution / internal_dpi)
-
-    # Scale sizes proportionally to internal resolution
-    scale_factor = internal_resolution / 256.0  # Normalize to 256 as base
-    scaled_points_width = points_width * scale_factor
-    scaled_path_width = path_width * scale_factor
-
-    # Set axes limits based on zoom_to_data
-    # If zoom_to_data=True, let matplotlib auto-scale (axes_limits=None)
-    # If zoom_to_data=False, use fixed [0,1] coordinate space
-    axes_limits = None if zoom_to_data else (0, 1, 0, 1)
-
-    arr = scanpath_visualization(
+    return scanpath_visualization(
         data_,
         x,
         y,
-        fig_size=fig_size,
+        fig_size=shape,
         show_legend=show_legend,
         path_to_img=path_to_img,
         with_axes=with_axes,
-        axes_limits=axes_limits,
-        points_width=scaled_points_width,
-        path_width=scaled_path_width,
+        path_width=path_width,
         return_ndarray=return_ndarray,
         show_plot=show_plot,
-        dpi=internal_dpi,
+        dpi=dpi,
     )
-
-    # Resize to target shape if needed
-    if (
-        return_ndarray
-        and arr is not None
-        and (arr.shape[0] != shape[0] or arr.shape[1] != shape[1])
-    ):
-        from PIL import Image
-
-        # arr is (H, W, C) with values in [0, 1]
-        img = Image.fromarray((arr * 255).astype(np.uint8))
-        img = img.resize((shape[1], shape[0]), Image.Resampling.LANCZOS)
-        arr = np.array(img) / 255.0
-
-    return arr
 
 
 def aoi_visualization(
@@ -517,32 +458,17 @@ def aoi_visualization(
     show_plot: bool = True,
     only_points: bool = True,
     dpi: float = 100.0,
-    internal_resolution: int = 256,
-    zoom_to_data: bool = True,
 ):
-    # Render at higher internal resolution for better quality, then resize
-    internal_dpi = 100.0
-    fig_size = (internal_resolution / internal_dpi, internal_resolution / internal_dpi)
-
-    # Scale sizes proportionally to internal resolution
-    scale_factor = internal_resolution / 256.0
-    scaled_points_width = points_width * scale_factor
-    scaled_path_width = path_width * scale_factor
-
-    # Set axes limits based on zoom_to_data (if not explicitly provided)
-    if axes_limits is None and not zoom_to_data:
-        axes_limits = (0, 1, 0, 1)
-
-    arr = scanpath_visualization(
+    return scanpath_visualization(
         data_,
         x,
         y,
         shape_column=shape_column,
         aoi=aoi,
         img_path=img_path,
-        fig_size=fig_size,
-        points_width=scaled_points_width,
-        path_width=scaled_path_width,
+        fig_size=shape,
+        points_width=points_width,
+        path_width=path_width,
         points_color=points_color,
         seq_colormap=seq_colormap,
         show_legend=show_legend,
@@ -554,22 +480,8 @@ def aoi_visualization(
         only_points=only_points,
         return_ndarray=return_ndarray,
         show_plot=show_plot,
-        dpi=internal_dpi,
+        dpi=dpi,
     )
-
-    # Resize to target shape if needed
-    if (
-        return_ndarray
-        and arr is not None
-        and (arr.shape[0] != shape[0] or arr.shape[1] != shape[1])
-    ):
-        from PIL import Image
-
-        img = Image.fromarray((arr * 255).astype(np.uint8))
-        img = img.resize((shape[1], shape[0]), Image.Resampling.LANCZOS)
-        arr = np.array(img) / 255.0
-
-    return arr
 
 
 def saccade_visualization(
@@ -579,13 +491,12 @@ def saccade_visualization(
     shape: tuple[int, int] = (10, 10),
     shape_column: str = None,
     img_path: str = None,
-    points_width: float = 75,
     path_width: float = 1,
     path_color: str = "green",
     add_regressions: bool = False,
     regression_color: str = "red",
     is_vectors: bool = False,
-    seq_colormap: bool = True,  # Colors saccades by temporal order (dark to light)
+    seq_colormap: bool = False,
     show_legend: bool = False,
     path_to_img: str = None,
     with_axes: bool = False,
@@ -595,31 +506,15 @@ def saccade_visualization(
     return_ndarray: bool = True,
     show_plot: bool = True,
     dpi: float = 100.0,
-    internal_resolution: int = 256,
-    zoom_to_data: bool = True,
 ):
-    # Render at higher internal resolution for better quality, then resize
-    internal_dpi = 100.0
-    fig_size = (internal_resolution / internal_dpi, internal_resolution / internal_dpi)
-
-    # Scale sizes proportionally to internal resolution
-    scale_factor = internal_resolution / 256.0
-    scaled_points_width = points_width * scale_factor
-    scaled_path_width = path_width * scale_factor
-
-    # Set axes limits based on zoom_to_data (if not explicitly provided)
-    if axes_limits is None and not zoom_to_data:
-        axes_limits = (0, 1, 0, 1)
-
-    arr = scanpath_visualization(
+    return scanpath_visualization(
         data_,
         x,
         y,
         shape_column=shape_column,
         img_path=img_path,
-        fig_size=fig_size,
-        points_width=scaled_points_width,
-        path_width=scaled_path_width,
+        fig_size=shape,
+        path_width=path_width,
         seq_colormap=seq_colormap,
         show_legend=show_legend,
         path_to_img=path_to_img,
@@ -633,19 +528,5 @@ def saccade_visualization(
         is_vectors=is_vectors,
         return_ndarray=return_ndarray,
         show_plot=show_plot,
-        dpi=internal_dpi,
+        dpi=dpi,
     )
-
-    # Resize to target shape if needed
-    if (
-        return_ndarray
-        and arr is not None
-        and (arr.shape[0] != shape[0] or arr.shape[1] != shape[1])
-    ):
-        from PIL import Image
-
-        img = Image.fromarray((arr * 255).astype(np.uint8))
-        img = img.resize((shape[1], shape[0]), Image.Resampling.LANCZOS)
-        arr = np.array(img) / 255.0
-
-    return arr

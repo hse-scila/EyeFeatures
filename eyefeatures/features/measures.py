@@ -9,8 +9,8 @@ from scipy.fftpack import fft2, ifft
 from scipy.spatial.distance import euclidean, pdist, squareform
 from scipy.stats import entropy, kurtosis, skew
 
+from eyefeatures.features.complex import get_rqa, hilbert_huang_transform
 from eyefeatures.features.extractor import BaseTransformer
-from eyefeatures.features.feature_maps import get_rqa, hilbert_huang_transform
 from eyefeatures.utils import _split_dataframe
 
 
@@ -25,8 +25,6 @@ class MeasureTransformer(ABC, BaseTransformer):
         pk: primary key.
         return_df: whether to return output as DataFrame or numpy array.
         feature_name: Column name for resulting feature.
-        ignore_errors: If True, return NaN values when feature computation fails
-            instead of raising an error. Default is False.
     """
 
     def __init__(
@@ -37,12 +35,10 @@ class MeasureTransformer(ABC, BaseTransformer):
         pk: list[str] = None,
         return_df: bool = True,
         feature_name: str = "feature",
-        ignore_errors: bool = False,
     ):
         super().__init__(x=x, y=y, pk=pk, return_df=return_df)
         self.aoi = aoi
         self.feature_name = feature_name
-        self.ignore_errors = ignore_errors
 
     def _check_init(self, X_len: int):
         assert X_len != 0, "Error: there are no fixations"
@@ -58,46 +54,7 @@ class MeasureTransformer(ABC, BaseTransformer):
         return self
 
     def transform(self, X: pd.DataFrame) -> pd.DataFrame | np.ndarray:
-        # Handle empty DataFrame case
-        if X.shape[0] == 0:
-            if self.ignore_errors:
-                # Return DataFrame with NaN values
-                names = self.get_feature_names_out()
-                if self.pk is None:
-                    features_df = pd.DataFrame(
-                        data=[[np.nan] * len(names)], columns=names, index=["all"]
-                    )
-                else:
-                    # Return empty DataFrame with correct columns
-                    features_df = pd.DataFrame(columns=names)
-                return features_df if self.return_df else features_df.values
-            else:
-                self._check_init(X_len=X.shape[0])
-
-        # Check initialization (catch errors if ignore_errors=True)
-        try:
-            self._check_init(X_len=X.shape[0])
-        except (AssertionError, RuntimeError) as e:
-            if self.ignore_errors:
-                # Return NaN for all groups
-                names = self.get_feature_names_out()
-                if self.pk is None:
-                    features_df = pd.DataFrame(
-                        data=[[np.nan] * len(names)], columns=names, index=["all"]
-                    )
-                else:
-                    # For grouped data, return NaN for each group
-                    X_split = _split_dataframe(X, self.pk)
-                    group_names = [group for group, _ in X_split]
-                    gathered_features = [[np.nan] * len(names) for _ in group_names]
-                    features_df = pd.DataFrame(
-                        data=gathered_features, columns=names, index=group_names
-                    )
-                return features_df if self.return_df else features_df.values
-            else:
-                raise type(e)(
-                    f"{e!s} Set ignore_errors=True to return NaN instead."
-                ) from e
+        self._check_init(X_len=X.shape[0])
 
         group_names = []
         gathered_features = []
@@ -105,43 +62,17 @@ class MeasureTransformer(ABC, BaseTransformer):
 
         if self.pk is None:
             group_names.append("all")
-            try:
-                names, values = self.calculate_features(X)
-                columns_names = names
-                gathered_features.append(values)
-            except Exception as e:
-                if self.ignore_errors:
-                    # Get feature names to create appropriate number of NaNs
-                    names = self.get_feature_names_out()
-                    if not columns_names:
-                        columns_names = names
-                    # Create NaN values for all features
-                    gathered_features.append([np.nan] * len(names))
-                else:
-                    raise type(e)(
-                        f"{e!s} Set ignore_errors=True to return NaN instead."
-                    ) from e
+            names, values = self.calculate_features(X)
+            columns_names = names
+            gathered_features.append(values)
         else:
             X_split = _split_dataframe(X, self.pk)
             for group, current_X in X_split:
                 group_names.append(group)
-                try:
-                    names, values = self.calculate_features(current_X)
-                    if not columns_names:
-                        columns_names = names
-                    gathered_features.append(values)
-                except Exception as e:
-                    if self.ignore_errors:
-                        # Get feature names to create appropriate number of NaNs
-                        names = self.get_feature_names_out()
-                        if not columns_names:
-                            columns_names = names
-                        # Create NaN values for all features
-                        gathered_features.append([np.nan] * len(names))
-                    else:
-                        raise type(e)(
-                            f"{e!s} Set ignore_errors=True to return NaN instead."
-                        ) from e
+                names, values = self.calculate_features(current_X)
+                if not columns_names:
+                    columns_names = names
+                gathered_features.append(values)
 
         features_df = pd.DataFrame(
             data=gathered_features, columns=columns_names, index=group_names
@@ -172,7 +103,6 @@ class HurstExponent(MeasureTransformer):
         pk: list of column names used to split pd.DataFrame.
         eps: division epsilon.
         return_df: Return pd.Dataframe object else np.ndarray.
-        ignore_errors: If True, return NaN when feature computation fails; otherwise raise.
 
     Example:
         Quick start with default parameters::
@@ -191,14 +121,9 @@ class HurstExponent(MeasureTransformer):
         pk: list[str] = None,
         eps: float = 1e-22,
         return_df: bool = True,
-        ignore_errors: bool = False,
     ):
         super().__init__(
-            x=coordinate,
-            pk=pk,
-            return_df=return_df,
-            feature_name="hurst_exponent",
-            ignore_errors=ignore_errors,
+            x=coordinate, pk=pk, return_df=return_df, feature_name="hurst_exponent"
         )
         self.coordinate = coordinate
         self.n_iters = n_iters
@@ -217,15 +142,6 @@ class HurstExponent(MeasureTransformer):
         assert self.fill_strategy in fill_strategies, (
             f"Error: 'fill_strategy' must be one of " f"{','.join(fill_strategies)}."
         )
-
-    def get_feature_names_out(self, input_features=None) -> list[str]:
-        """Generate feature name that includes coordinate column and hyperparameters."""
-        # Determine coordinate name (x or y) from the column name
-        # Build feature name with coordinate and hyperparameters
-        feature_name = (
-            f"hurst_{self.coordinate}_n{self.n_iters}_fill_{self.fill_strategy}"
-        )
-        return [feature_name]
 
     def _make_pow2(self, x: np.array) -> np.array:
         n = len(x)
@@ -274,13 +190,15 @@ class HurstExponent(MeasureTransformer):
         # OLS via polynomial fitting
         rs = rs[:cnt]
         bs = bs[:cnt]
-        # Hurst is slope of log(RS) vs log(n)
-        X_ols = np.vstack([np.ones(cnt), np.log(bs)]).T
-        grad = np.linalg.lstsq(X_ols, np.log(rs), rcond=None)[0]
 
-        # Use dynamic feature name that includes coordinate and hyperparameters
-        feature_name = self.get_feature_names_out()[0]
-        return [feature_name], [grad[1]]
+        # Hurst exponent is slope of log(RS) vs log(n)
+        coeffs = np.polyfit(np.log(bs), np.log(rs), 1)
+
+        # Manual OLS (unstable)
+        # X_ols = np.vstack([np.ones(cnt), np.log(bs)]).T  # [1, log(bs)]
+        # grad = (np.linalg.inv(X_ols.T @ X_ols) @ X_ols.T) @ np.log(rs)
+
+        return [self.feature_name], [coeffs[0]]
 
 
 class ShannonEntropy(MeasureTransformer):
@@ -294,7 +212,6 @@ class ShannonEntropy(MeasureTransformer):
         aoi: Area Of Interest column name.
         pk: primary key.
         return_df: whether to return output as DataFrame or numpy array.
-        ignore_errors: If True, return NaN when feature computation fails; otherwise raise.
     """
 
     def __init__(
@@ -302,15 +219,8 @@ class ShannonEntropy(MeasureTransformer):
         aoi: str = None,
         pk: list[str] = None,
         return_df: bool = True,
-        ignore_errors: bool = False,
     ):
-        super().__init__(
-            aoi=aoi,
-            pk=pk,
-            return_df=return_df,
-            feature_name="entropy",
-            ignore_errors=ignore_errors,
-        )
+        super().__init__(aoi=aoi, pk=pk, return_df=return_df, feature_name="entropy")
 
     def _check_init(self, X_len: int):
         assert self.aoi is not None, "Error: Provide aoi column"
@@ -344,7 +254,6 @@ class SpectralEntropy(MeasureTransformer):
         aoi: Area Of Interest column name(-s).
         pk: primary key.
         return_df: whether to return output as DataFrame or numpy array.
-        ignore_errors: If True, return NaN when feature computation fails; otherwise raise.
     """
 
     def __init__(
@@ -354,15 +263,9 @@ class SpectralEntropy(MeasureTransformer):
         aoi: str = None,
         pk: list[str] = None,
         return_df: bool = True,
-        ignore_errors: bool = False,
     ):
         super().__init__(
-            x=x,
-            y=y,
-            pk=pk,
-            return_df=return_df,
-            feature_name="spectral_entropy",
-            ignore_errors=ignore_errors,
+            x=x, y=y, pk=pk, return_df=return_df, feature_name="spectral_entropy"
         )
         self.aoi = aoi
 
@@ -390,7 +293,6 @@ class FuzzyEntropy(MeasureTransformer):
         aoi: Area Of Interest column name(-s).
         pk: primary key.
         return_df: whether to return output as DataFrame or numpy array.
-        ignore_errors: If True, return NaN when feature computation fails; otherwise raise.
     """
 
     def __init__(
@@ -402,15 +304,9 @@ class FuzzyEntropy(MeasureTransformer):
         aoi: str = None,
         pk: list[str] = None,
         return_df: bool = True,
-        ignore_errors: bool = False,
     ):
         super().__init__(
-            x=x,
-            y=y,
-            pk=pk,
-            return_df=return_df,
-            feature_name=f"fuzzy_m_{m}_r_{r}",
-            ignore_errors=ignore_errors,
+            x=x, y=y, pk=pk, return_df=return_df, feature_name=f"fuzzy_m_{m}_r_{r}"
         )
         self.m = m
         self.r = r
@@ -451,7 +347,6 @@ class SampleEntropy(MeasureTransformer):
         aoi: Area Of Interest column name(-s).
         pk: primary key.
         return_df: whether to return output as DataFrame or numpy array.
-        ignore_errors: If True, return NaN when feature computation fails; otherwise raise.
     """
 
     def __init__(
@@ -463,7 +358,6 @@ class SampleEntropy(MeasureTransformer):
         aoi: str = None,
         pk: list[str] = None,
         return_df: bool = True,
-        ignore_errors: bool = False,
     ):
         super().__init__(
             x=x,
@@ -471,7 +365,6 @@ class SampleEntropy(MeasureTransformer):
             pk=pk,
             return_df=return_df,
             feature_name=f"sample_entropy_m={m}_r={r}",
-            ignore_errors=ignore_errors,
         )
         self.m = m
         self.r = r
@@ -505,7 +398,6 @@ class IncrementalEntropy(MeasureTransformer):
         aoi: Area Of Interest column name(-s).
         pk: primary key.
         return_df: whether to return output as DataFrame or numpy array.
-        ignore_errors: If True, return NaN when feature computation fails; otherwise raise.
     """
 
     def __init__(
@@ -515,15 +407,9 @@ class IncrementalEntropy(MeasureTransformer):
         aoi: str = None,
         pk: list[str] = None,
         return_df: bool = True,
-        ignore_errors: bool = False,
     ):
         super().__init__(
-            x=x,
-            y=y,
-            pk=pk,
-            return_df=return_df,
-            feature_name="incremental_entropy",
-            ignore_errors=ignore_errors,
+            x=x, y=y, pk=pk, return_df=return_df, feature_name="incremental_entropy"
         )
         self.aoi = aoi
 
@@ -555,7 +441,6 @@ class GriddedDistributionEntropy(MeasureTransformer):
         aoi: Area Of Interest column name(-s).
         pk: primary key.
         return_df: whether to return output as DataFrame or numpy array.
-        ignore_errors: If True, return NaN when feature computation fails; otherwise raise.
     """
 
     def __init__(
@@ -566,7 +451,6 @@ class GriddedDistributionEntropy(MeasureTransformer):
         aoi: str = None,
         pk: list[str] = None,
         return_df: bool = True,
-        ignore_errors: bool = False,
     ):
         super().__init__(
             x=x,
@@ -574,7 +458,6 @@ class GriddedDistributionEntropy(MeasureTransformer):
             pk=pk,
             return_df=return_df,
             feature_name=f"gridded_entropy_grid_size_{grid_size}",
-            ignore_errors=ignore_errors,
         )
         self.grid_size = grid_size
         self.aoi = aoi
@@ -607,7 +490,6 @@ class PhaseEntropy(MeasureTransformer):
         aoi: Area Of Interest column name(-s).
         pk: primary key.
         return_df: whether to return output as DataFrame or numpy array.
-        ignore_errors: If True, return NaN when feature computation fails; otherwise raise.
 
     Example:
         from eyefeatures.features.measures import PhaseEntropy
@@ -625,7 +507,6 @@ class PhaseEntropy(MeasureTransformer):
         aoi: str = None,
         pk: list[str] = None,
         return_df: bool = True,
-        ignore_errors: bool = False,
     ):
         super().__init__(
             x=x,
@@ -633,7 +514,6 @@ class PhaseEntropy(MeasureTransformer):
             pk=pk,
             return_df=return_df,
             feature_name=f"phase_entropy_m_{m}_tau_{tau}",
-            ignore_errors=ignore_errors,
         )
         self.m = m
         self.tau = tau
@@ -673,7 +553,6 @@ class LyapunovExponent(MeasureTransformer):
         aoi: Area Of Interest column name(-s).
         pk: primary key.
         return_df: whether to return output as DataFrame or numpy array.
-        ignore_errors: If True, return NaN when feature computation fails; otherwise raise.
 
     Example:
         from eyefeatures.features.measures import LyapunovExponent
@@ -692,7 +571,6 @@ class LyapunovExponent(MeasureTransformer):
         aoi: str = None,
         pk: list[str] = None,
         return_df: bool = True,
-        ignore_errors: bool = False,
     ):
         super().__init__(
             x=x,
@@ -700,7 +578,6 @@ class LyapunovExponent(MeasureTransformer):
             pk=pk,
             return_df=return_df,
             feature_name=f"lyapunov_exponent_m_{m}_tau_{tau}_T_{T}",
-            ignore_errors=ignore_errors,
         )
         self.m = m
         self.tau = tau
@@ -756,7 +633,6 @@ class FractalDimension(MeasureTransformer):
         aoi: Area Of Interest column name(-s).
         pk: primary key.
         return_df: whether to return output as DataFrame or numpy array.
-        ignore_errors: If True, return NaN when feature computation fails; otherwise raise.
     """
 
     def __init__(
@@ -768,7 +644,6 @@ class FractalDimension(MeasureTransformer):
         aoi: str = None,
         pk: list[str] = None,
         return_df: bool = True,
-        ignore_errors: bool = False,
     ):
         super().__init__(
             x=x,
@@ -776,7 +651,6 @@ class FractalDimension(MeasureTransformer):
             pk=pk,
             return_df=return_df,
             feature_name=f"fractal_dim_m_{m}_tau_{tau}",
-            ignore_errors=ignore_errors,
         )
         self.m = m
         self.tau = tau
@@ -825,7 +699,6 @@ class CorrelationDimension(MeasureTransformer):
         aoi: Area Of Interest column name(-s).
         pk: primary key.
         return_df: whether to return output as DataFrame or numpy array.
-        ignore_errors: If True, return NaN when feature computation fails; otherwise raise.
     """
 
     def __init__(
@@ -838,7 +711,6 @@ class CorrelationDimension(MeasureTransformer):
         aoi: str = None,
         pk: list[str] = None,
         return_df: bool = True,
-        ignore_errors: bool = False,
     ):
         super().__init__(
             x=x,
@@ -846,7 +718,6 @@ class CorrelationDimension(MeasureTransformer):
             pk=pk,
             return_df=return_df,
             feature_name=f"corr_dim_m_{m}_tau_{tau}_r_{r}",
-            ignore_errors=ignore_errors,
         )
         self.m = m
         self.tau = tau
@@ -897,7 +768,6 @@ class RQAMeasures(MeasureTransformer):
         aoi: Area Of Interest column name(-s).
         pk: primary key.
         return_df: whether to return output as DataFrame or numpy array.
-        ignore_errors: If True, return NaN when feature computation fails; otherwise raise.
     """
 
     def __init__(
@@ -911,18 +781,10 @@ class RQAMeasures(MeasureTransformer):
         aoi: str = None,
         pk: list[str] = None,
         return_df: bool = True,
-        ignore_errors: bool = False,
     ):
         if measures is None:
             measures = ["rec", "det", "lam", "corm"]
-        super().__init__(
-            x=x,
-            y=y,
-            pk=pk,
-            return_df=return_df,
-            feature_name="rqa",
-            ignore_errors=ignore_errors,
-        )
+        super().__init__(x=x, y=y, pk=pk, return_df=return_df, feature_name="rqa")
         self.rho = rho
         self.metric = metric
         self.min_length = min_length
@@ -1035,7 +897,6 @@ class SaccadeUnlikelihood(MeasureTransformer):
         aoi: Area Of Interest column name(-s).
         pk: primary key.
         return_df: whether to return output as DataFrame or numpy array.
-        ignore_errors: If True, return NaN when feature computation fails; otherwise raise.
 
     Returns:
         the cumulative Negative Log-Likelihood (NLL) of the saccades.
@@ -1055,15 +916,9 @@ class SaccadeUnlikelihood(MeasureTransformer):
         aoi: str = None,
         pk: list[str] = None,
         return_df: bool = True,
-        ignore_errors: bool = False,
     ):
         super().__init__(
-            x=x,
-            y=y,
-            pk=pk,
-            return_df=return_df,
-            feature_name="saccade_nll",
-            ignore_errors=ignore_errors,
+            x=x, y=y, pk=pk, return_df=return_df, feature_name="saccade_nll"
         )
         self.mu_p = mu_p
         self.sigma_p1 = sigma_p1
@@ -1136,7 +991,6 @@ class HHTFeatures(MeasureTransformer):
         aoi: Area Of Interest column name(-s).
         pk: primary key.
         return_df: whether to return output as DataFrame or numpy array.
-        ignore_errors: If True, return NaN when feature computation fails; otherwise raise.
 
     Returns:
         features extracted from each IMF of the HHT decomposition.
@@ -1151,18 +1005,10 @@ class HHTFeatures(MeasureTransformer):
         aoi: str = None,
         pk: list[str] = None,
         return_df: bool = True,
-        ignore_errors: bool = False,
     ):
         if features is None:
             features = ["mean", "std"]
-        super().__init__(
-            x=x,
-            y=y,
-            pk=pk,
-            return_df=return_df,
-            feature_name="hht",
-            ignore_errors=ignore_errors,
-        )
+        super().__init__(x=x, y=y, pk=pk, return_df=return_df, feature_name="hht")
         self.max_imfs = max_imfs
         self.features = features
         self.aoi = aoi

@@ -8,9 +8,9 @@ This example shows how to use the ``Extractor`` class to calculate a mix of feat
 
 import pandas as pd
 
-from eyefeatures.features.dist import EucDist
 from eyefeatures.features.extractor import Extractor
 from eyefeatures.features.measures import HurstExponent, SpectralEntropy
+from eyefeatures.features.scanpath_dist import EucDist
 from eyefeatures.features.stats import SaccadeFeatures
 
 fixations_df = pd.read_csv("data/fixations/fixations_subset.csv")

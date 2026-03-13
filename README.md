@@ -22,11 +22,11 @@
 
 ## Installation
 
+**Note**: Latest version in PyPi is `v1.0.1`. Check [Contribution](https://eyefeatures-docs.readthedocs.io/en/latest/contribution.html) page in the documentation for installation with `poetry`.
+
 ```bash
 pip install eyefeatures
 ```
-
-Check [Contribution](https://eyefeatures-docs.readthedocs.io/en/latest/contribution.html) page in the documentation for installation with `poetry`.
 
 ## Documentation & Tutorials
 
@@ -34,17 +34,11 @@ Check out our [Full Documentation](https://eyefeatures-docs.readthedocs.io/) and
 
 - 🚀 [Quickstart Examples](https://eyefeatures-docs.readthedocs.io/en/latest/quickstart/quickstart.html)
 - 📊 [Simple Features](https://colab.research.google.com/github/hse-scila/EyeFeatures/blob/main/tutorials/features_tutorial.ipynb)
-- 🧠 [Feature Maps & Timeseries](https://colab.research.google.com/github/hse-scila/EyeFeatures/blob/main/tutorials/feature_maps_tutorial.ipynb)
-- 🛠️ [Preprocessing](https://colab.research.google.com/github/hse-scila/EyeFeatures/blob/main/tutorials/preprocessing_tutorial.ipynb)
+- 🧠 [Complex Features & Timeseries](https://colab.research.google.com/github/hse-scila/EyeFeatures/blob/main/tutorials/complex_tutorial.ipynb)
+- 🛠️ [Preprocessing & Smoothing](https://colab.research.google.com/github/hse-scila/EyeFeatures/blob/main/tutorials/preprocessing_tutorial.ipynb)
 - 🧿 [AOI Definition](https://colab.research.google.com/github/hse-scila/EyeFeatures/blob/main/tutorials/AOI_definition_tutorial.ipynb)
 - 🎥 [Visualization](https://colab.research.google.com/github/hse-scila/EyeFeatures/blob/main/tutorials/visualization_tutorial.ipynb)
-- ⚡ [Deep Learning](https://colab.research.google.com/github/hse-scila/EyeFeatures/blob/main/tutorials/DL_tutorial.ipynb)
-
-## Collection experiments
-
-The **[collection_experiments](collection_experiments/)** folder contains reproducible pipelines that use the library on collection data (`data/collection`):
-
-See [experiments/collection_experiments/README.md](experiments/collection_experiments/README.md) for more details.
+- ⚡ [Deep Learning with Gaze](https://colab.research.google.com/github/hse-scila/EyeFeatures/blob/main/tutorials/DL_tutorial.ipynb)
 
 ## Supported Methods
 
@@ -118,7 +112,7 @@ Check a comprehensive list of all methods.
 > </details>
 >
 > <details>
-> <summary>Measures</summary>
+> <summary>Complexity & Entropy Measures</summary>
 >
 > | Method | Description | Docs |
 > | :--- | :--- | :---: |
@@ -144,28 +138,28 @@ Check a comprehensive list of all methods.
 >
 > | Method | Description | Docs |
 > | :--- | :--- | :---: |
-> | Euclidean Distance | Point-to-point distance | [EucDist](https://eyefeatures-docs.readthedocs.io/en/latest/api/features.html#eyefeatures.features.dist.EucDist) |
-> | Hausdorff Distance | Max distance between point sets | [HauDist](https://eyefeatures-docs.readthedocs.io/en/latest/api/features.html#eyefeatures.features.dist.HauDist) |
-> | Dynamic Time Warping | Time-invariant scanpath similarity | [DTWDist](https://eyefeatures-docs.readthedocs.io/en/latest/api/features.html#eyefeatures.features.dist.DTWDist) |
-> | Discrete Fréchet Distance | Shape-based curve similarity | [DFDist](https://eyefeatures-docs.readthedocs.io/en/latest/api/features.html#eyefeatures.features.dist.DFDist) |
-> | ScanMatch | String-based scanpath comparison | [ScanMatchDist](https://eyefeatures-docs.readthedocs.io/en/latest/api/features.html#eyefeatures.features.dist.ScanMatchDist) |
-> | MultiMatch | Multi-dimensional scanpath comparison | [MultiMatchDist](https://eyefeatures-docs.readthedocs.io/en/latest/api/features.html#eyefeatures.features.dist.MultiMatchDist) |
-> | Mannan Distance | Fixation position similarity | [MannanDist](https://eyefeatures-docs.readthedocs.io/en/latest/api/features.html#eyefeatures.features.dist.MannanDist) |
-> | EyeAnalysis Distance | Fixation-based scanpath comparison | [EyeAnalysisDist](https://eyefeatures-docs.readthedocs.io/en/latest/api/features.html#eyefeatures.features.dist.EyeAnalysisDist) |
-> | Time Delay Embedding Distance | Phase-space reconstruction similarity | [TDEDist](https://eyefeatures-docs.readthedocs.io/en/latest/api/features.html#eyefeatures.features.dist.TDEDist) |
+> | Euclidean Distance | Point-to-point distance | [EucDist](https://eyefeatures-docs.readthedocs.io/en/latest/api/features.html#eyefeatures.features.scanpath_dist.EucDist) |
+> | Hausdorff Distance | Max distance between point sets | [HauDist](https://eyefeatures-docs.readthedocs.io/en/latest/api/features.html#eyefeatures.features.scanpath_dist.HauDist) |
+> | Dynamic Time Warping | Time-invariant scanpath similarity | [DTWDist](https://eyefeatures-docs.readthedocs.io/en/latest/api/features.html#eyefeatures.features.scanpath_dist.DTWDist) |
+> | Discrete Fréchet Distance | Shape-based curve similarity | [DFDist](https://eyefeatures-docs.readthedocs.io/en/latest/api/features.html#eyefeatures.features.scanpath_dist.DFDist) |
+> | ScanMatch | String-based scanpath comparison | [ScanMatchDist](https://eyefeatures-docs.readthedocs.io/en/latest/api/features.html#eyefeatures.features.scanpath_dist.ScanMatchDist) |
+> | MultiMatch | Multi-dimensional scanpath comparison | [MultiMatchDist](https://eyefeatures-docs.readthedocs.io/en/latest/api/features.html#eyefeatures.features.scanpath_dist.MultiMatchDist) |
+> | Mannan Distance | Fixation position similarity | [MannanDist](https://eyefeatures-docs.readthedocs.io/en/latest/api/features.html#eyefeatures.features.scanpath_dist.MannanDist) |
+> | EyeAnalysis Distance | Fixation-based scanpath comparison | [EyeAnalysisDist](https://eyefeatures-docs.readthedocs.io/en/latest/api/features.html#eyefeatures.features.scanpath_dist.EyeAnalysisDist) |
+> | Time Delay Embedding Distance | Phase-space reconstruction similarity | [TDEDist](https://eyefeatures-docs.readthedocs.io/en/latest/api/features.html#eyefeatures.features.scanpath_dist.TDEDist) |
 >
 > </details>
 >
 > <details>
-> <summary>Feature Maps</summary>
+> <summary>Complex Representations</summary>
 >
 > | Method | Description | Docs |
 > | :--- | :--- | :---: |
-> | Heatmap | Aggregated gaze density visualization | [get_heatmap](https://eyefeatures-docs.readthedocs.io/en/latest/api/features.html#eyefeatures.features.feature_maps.get_heatmap) |
-> | Markov Transition Field | Temporal dynamics as transition probabilities | [get_mtf](https://eyefeatures-docs.readthedocs.io/en/latest/api/features.html#eyefeatures.features.feature_maps.get_mtf) |
-> | Gramian Angular Field | Polar encoding of time series | [get_gaf](https://eyefeatures-docs.readthedocs.io/en/latest/api/features.html#eyefeatures.features.feature_maps.get_gaf) |
-> | Recurrence Plot | Visual representation of dynamical systems | [get_rqa](https://eyefeatures-docs.readthedocs.io/en/latest/api/features.html#eyefeatures.features.feature_maps.get_rqa) |
-> | Hilbert Curve Mapping | Space-filling curve for 2D→1D mapping | [get_hilbert_curve](https://eyefeatures-docs.readthedocs.io/en/latest/api/features.html#eyefeatures.features.feature_maps.get_hilbert_curve) |
+> | Heatmap | Aggregated gaze density visualization | [get_heatmap](https://eyefeatures-docs.readthedocs.io/en/latest/api/features.html#eyefeatures.features.complex.get_heatmap) |
+> | Markov Transition Field | Temporal dynamics as transition probabilities | [get_mtf](https://eyefeatures-docs.readthedocs.io/en/latest/api/features.html#eyefeatures.features.complex.get_mtf) |
+> | Gramian Angular Field | Polar encoding of time series | [get_gaf](https://eyefeatures-docs.readthedocs.io/en/latest/api/features.html#eyefeatures.features.complex.get_gaf) |
+> | Recurrence Plot | Visual representation of dynamical systems | [get_rqa](https://eyefeatures-docs.readthedocs.io/en/latest/api/features.html#eyefeatures.features.complex.get_rqa) |
+> | Hilbert Curve Mapping | Space-filling curve for 2D→1D mapping | [get_hilbert_curve](https://eyefeatures-docs.readthedocs.io/en/latest/api/features.html#eyefeatures.features.complex.get_hilbert_curve) |
 >
 > </details>
 >
@@ -230,12 +224,5 @@ Check a comprehensive list of all methods.
 > | Dynamic Scanpath Animation | Animated visualization of scanpaths | [dynamic_scanpath_plot](https://eyefeatures-docs.readthedocs.io/en/latest/api/visualization.html#eyefeatures.visualization.dynamic.dynamic_scanpath_plot) |
 >
 > </details>
-
-</details>
-
-<details>
-<summary><b>📁 Data</b></summary>
-
-> Utilities to list and load benchmark datasets (Parquet), with column conventions for keys, labels, and meta. [API](https://eyefeatures-docs.readthedocs.io/en/latest/api/data.html)
 
 </details>

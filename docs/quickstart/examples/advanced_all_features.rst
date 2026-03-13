@@ -4,6 +4,6 @@ Advanced All Features
 This comprehensive example calculates all available features in the library,
 demonstrating the full power of the EyeFeatures toolbox.
 
-.. literalinclude:: ../../../examples/advanced_all_features.py
+.. literalinclude:: ../../../eyefeatures/examples/advanced_all_features.py
    :language: python
    :linenos:

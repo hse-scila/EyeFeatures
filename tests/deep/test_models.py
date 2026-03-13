@@ -148,7 +148,6 @@ def test_regressor():
 
 def test_graph_models():
     """Test GCN and GIN."""
-
     from torch_geometric.data import Batch, Data
 
     # Mock some graph data

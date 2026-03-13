@@ -13,7 +13,6 @@ def setup(app):
     def generate_api_index():
         # Modules to scan
         scan_modules = [
-            "eyefeatures.data",
             "eyefeatures.features",
             "eyefeatures.preprocessing",
             "eyefeatures.visualization",

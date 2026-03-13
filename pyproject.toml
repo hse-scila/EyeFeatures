@@ -13,12 +13,12 @@ numba = "0.60.0"
 numpy = "1.26.0"
 pandas = "2.2.2"
 scikit-learn = "1.5.1"
+scikit_multilearn = "0.2.0"
 scipy = "1.14.1"
 tqdm = "4.66.4"
 EMD-signal = "1.6.4"
 gudhi = "3.10.1"
 kaleido = "1.0.0"
-fastparquet = "*"
 
 [tool.poetry.group.docs.dependencies]
 sphinx = "8.1.3"
@@ -33,6 +33,7 @@ optional = true
 
 [tool.poetry.group.dev.dependencies]
 black = "24.10.0"
+isort = "5.12.0"
 flake8 = "6.1"
 openpyxl = "3.1.5"
 plotly = "6.1.1"
@@ -107,6 +108,15 @@ exclude_lines = [
 line-length = 88
 target-version = ['py310', 'py311', 'py312']
 include = '\.pyi?$'
+
+[tool.isort]
+profile = "black"
+line_length = 88
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+ensure_newline_before_comments = true
 
 [tool.flake8]
 max-line-length = 88
