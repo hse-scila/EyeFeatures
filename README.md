@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/images/eyefeatures_logo.png" width="400" alt="EyeFeatures Logo">
+  <img src="https://raw.githubusercontent.com/hse-scila/EyeFeatures/main/docs/images/eyefeatures_logo.png" width="400" alt="EyeFeatures Logo">
 </p>
 
 # EyeFeatures
