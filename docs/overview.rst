@@ -14,4 +14,5 @@ Key Features
 - Statistical analysis of eye movement patterns and direct usage for ML tasks.
 - Algorithms like Markov Transition Field, Hilbert Curve calculation, Vietoris-Rips filtration for complex analysis and potential usage in Deep Learning architectures.
 - Visualization tools for exploring gaze/fixations patterns.
+- Benchmark data loading utilities (Parquet datasets, column conventions for keys/labels/meta).
 - ``scikit-learn`` compatible transformers for ``Pipeline`` integration.

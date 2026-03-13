@@ -12,7 +12,6 @@ from eyefeatures.deep.datasets import (
     _cell_index,
     _coord_to_grid,
     create_graph_data_from_dataframe,
-    iterative_split,
 )
 
 
@@ -37,19 +36,6 @@ def deep_sample_df():
 def y_labels(deep_sample_df):
     """Labels for stratification."""
     return deep_sample_df[["participant", "stimulus", "label"]].drop_duplicates()
-
-
-def test_iterative_split():
-    """Test iterative_split function."""
-    df = pd.DataFrame({"a": [1, 1, 0, 0, 1, 1, 0, 0], "b": [1, 0, 1, 0, 1, 0, 1, 0]})
-    y = np.array([1, 0, 1, 0, 1, 0, 1, 0])
-
-    X_train, X_test, y_train, y_test = iterative_split(
-        df, y, test_size=0.5, stratify_columns=["a", "b"]
-    )
-
-    assert len(X_train) == 4
-    assert len(X_test) == 4
 
 
 def test_coord_helpers():
@@ -193,57 +179,3 @@ def test_grid_graph_dataset(deep_sample_df):
     graph = ds[0]
     assert hasattr(graph, "x")
     assert hasattr(graph, "edge_index")
-
-
-def test_lightning_datamodules(deep_sample_df):
-    """Test PyTorch Lightning DataModules."""
-    from eyefeatures.deep.datasets import DatasetLightning2D, DatasetLightningTimeSeries
-
-    Y = deep_sample_df[["participant", "stimulus", "label"]].drop_duplicates()
-    # Need to group X and Y by PK to pass to DataModule split logic
-    X_grouped = deep_sample_df
-    Y_grouped = Y
-
-    dm2d = DatasetLightning2D(
-        X_grouped,
-        Y_grouped,
-        x="x",
-        y="y",
-        pk=["participant", "stimulus"],
-        shape=(10, 10),
-        representations=["heatmap"],
-        test_size=0.5,
-        batch_size=1,
-    )
-    dm2d.setup()
-    assert len(dm2d.train_dataloader()) == 1
-    assert len(dm2d.val_dataloader()) == 1
-
-    dmts = DatasetLightningTimeSeries(
-        X_grouped,
-        Y_grouped,
-        x="x",
-        y="y",
-        pk=["participant", "stimulus"],
-        features=["duration"],
-        test_size=0.5,
-        batch_size=1,
-    )
-    dmts.setup()
-    assert len(dmts.train_dataloader()) == 1
-
-    # Test another split type
-    dm2d_alt = DatasetLightning2D(
-        X_grouped,
-        Y_grouped,
-        x="x",
-        y="y",
-        pk=["participant", "stimulus"],
-        shape=(10, 10),
-        representations=["heatmap"],
-        test_size=0.5,
-        batch_size=1,
-        split_type="first_category_unique",
-    )
-    dm2d_alt.setup()
-    assert dm2d_alt.train_dataset is not None

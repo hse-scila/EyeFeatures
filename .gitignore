@@ -2,7 +2,8 @@
 .venv
 .idea/
 
-data/
+data/*
+!data/collection/
 *.xlsx
 
 __pycache__/
