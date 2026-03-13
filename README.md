@@ -42,7 +42,7 @@ Check out our [Full Documentation](https://eyefeatures-docs.readthedocs.io/) and
 
 ## Collection experiments
 
-The **[collection_experiments](collection_experiments/)** folder contains reproducible pipelines that use the library on collection data (`data/collection`):
+The **[collection_experiments](experiments/collection_experiments/)** folder contains reproducible pipelines that use the library on collection data (`data/collection`):
 
 See [experiments/collection_experiments/README.md](experiments/collection_experiments/README.md) for more details.
 
