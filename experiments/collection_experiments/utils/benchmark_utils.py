@@ -1,9 +1,9 @@
 """
-Shared collection utilities using eyefeatures.data (Parquet + meta.json).
+Shared collection utilities using eyefeatures.data.
 
 - Load data via eyefeatures.data.load_dataset / list_datasets
 - Resolve split groups from data/collection/meta.json (labels[*].splitting_column)
-- Create and apply train/val/test splits by group (no CSV)
+- Create and apply train/val/test splits by group
 """
 
 from __future__ import annotations
@@ -22,7 +22,7 @@ from eyefeatures.data import (
 
 
 def get_collection_dir() -> Path:
-    """Return collection root (Parquet + meta.json)."""
+    """Return collection root"""
     return Path(__file__).resolve().parent.parent.parent.parent / "data" / "collection"
 
 
@@ -36,7 +36,7 @@ def list_datasets(
 ) -> list[str]:
     """
     List dataset names from the benchmark (Parquet). Uses eyefeatures.data.list_datasets.
-    Default: fixation datasets only (same as old experiments that skipped gaze).
+    Default: fixation datasets only.
     subdir: optional subfolder of benchmark root (e.g. 'extracted_fixations').
     """
     bdir = get_collection_dir() if subdir is None else get_collection_dir() / subdir
@@ -153,6 +153,9 @@ def create_split_info(
     """
     if not split_group_cols or not pk_cols:
         raise ValueError("pk_cols and split_group_cols must be non-empty")
+    # Ensure stable, duplicate-free pk columns (meta can contain duplicates).
+    pk_cols = list(dict.fromkeys(pk_cols))
+    split_group_cols = list(dict.fromkeys(split_group_cols))
     # Group-level id
     df = df.copy()
     df["_split_group_"] = create_composite_index(df, split_group_cols)
@@ -184,6 +187,8 @@ def create_split_info(
         "test": sorted(test_idx),
         "split_pk": split_pk,
         "label_col": label_col,
+        "pk_cols": pk_cols,
+        "split_group_cols": split_group_cols,
     }
 
 
@@ -207,6 +212,8 @@ def create_and_save_splits_for_dataset(
     label_cols = meta_info.get("labels") or []
     if not pk_cols:
         pk_cols = [c for c in df.columns if c.startswith("group_")]
+    # Deduplicate pk columns (meta can contain duplicates).
+    pk_cols = list(dict.fromkeys(pk_cols))
     if not pk_cols:
         raise ValueError(f"No pk columns for dataset {dataset_name}")
 
@@ -214,15 +221,28 @@ def create_and_save_splits_for_dataset(
     meta_labels = (info.get("labels") or {}).keys()
     labels_to_use = [c for c in label_cols if c in meta_labels] or label_cols
 
-    # Full labels CSV (pk + label columns)
-    cols_to_save = [c for c in pk_cols + label_cols if c in df.columns]
-    labels_df = df[cols_to_save].drop_duplicates()
-    labels_df["index"] = create_composite_index(labels_df, pk_cols)
-    labels_path = splits_dir / f"{dataset_name}_labels.csv"
-    labels_df.to_csv(labels_path, index=False)
-
     split_info_paths: list[tuple[str, Path]] = []
     for label_col in labels_to_use:
+        split_info_path = splits_dir / f"{dataset_name}_{label_col}_split_info.json"
+        if split_info_path.exists() and not overwrite:
+            # If split info is cached, prefer its pk_cols so labels index matches cached split ids.
+            try:
+                cached = load_split_info(split_info_path)
+                cached_pk_cols = cached.get("pk_cols")
+                if isinstance(cached_pk_cols, list) and cached_pk_cols:
+                    pk_cols = list(dict.fromkeys([str(c) for c in cached_pk_cols]))
+            except Exception:
+                # Fall back to meta-derived pk_cols.
+                pass
+
+        # Full labels CSV (pk + label columns) — written/updated per label so pk_cols stays consistent.
+        cols_to_save = [c for c in pk_cols + label_cols if c in df.columns]
+        cols_to_save = list(dict.fromkeys(cols_to_save))
+        labels_df = df[cols_to_save].drop_duplicates()
+        labels_df["index"] = create_composite_index(labels_df, pk_cols)
+        labels_path = splits_dir / f"{dataset_name}_labels.csv"
+        labels_df.to_csv(labels_path, index=False)
+
         # Per-label labels file so FLAML can find {dataset}_{label}_labels.csv
         if label_col in labels_df.columns:
             per_label_path = splits_dir / f"{dataset_name}_{label_col}_labels.csv"
@@ -232,23 +252,33 @@ def create_and_save_splits_for_dataset(
         split_group_cols = get_split_group_cols_from_meta(meta_info, label_col)
         if not split_group_cols:
             split_group_cols = pk_cols
-        split_info_path = splits_dir / f"{dataset_name}_{label_col}_split_info.json"
         if split_info_path.exists() and not overwrite:
+            split_info = load_split_info(split_info_path)
             split_info_paths.append((label_col, split_info_path))
-            continue
-        split_info = create_split_info(
-            df,
-            pk_cols,
-            split_group_cols,
-            label_col=label_col,
-            test_size=test_size,
-            val_size=val_size,
-            random_state=random_state,
+        else:
+            split_info = create_split_info(
+                df,
+                pk_cols,
+                split_group_cols,
+                label_col=label_col,
+                test_size=test_size,
+                val_size=val_size,
+                random_state=random_state,
+            )
+            split_info_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(split_info_path, "w", encoding="utf-8") as f:
+                json.dump(split_info, f, indent=2)
+            split_info_paths.append((label_col, split_info_path))
+
+        # Always create split label CSVs for this label_col.
+        # These are used directly by downstream training scripts and are convenient for inspection.
+        train_l, val_l, test_l = apply_split_to_labels(
+            labels_df, split_info, index_column="index"
         )
-        split_info_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(split_info_path, "w", encoding="utf-8") as f:
-            json.dump(split_info, f, indent=2)
-        split_info_paths.append((label_col, split_info_path))
+        for name, data in (("train", train_l), ("val", val_l), ("test", test_l)):
+            data.to_csv(
+                splits_dir / f"{dataset_name}_{label_col}_labels_{name}.csv", index=False
+            )
     return labels_path, split_info_paths
 
 
