@@ -5,6 +5,7 @@ Expects collection_experiments layout produced by create_splits + feature_extrac
 - Splits: splits_dir with {dataset}_{label_col}_split_info.json and {dataset}_{label_col}_labels.csv
   (or per-split labels: {split_id}_labels_train/val/test.csv from apply_splits_and_save).
 - Features: features_dir with {split_id}_{battery}_train/val/test.csv (split_id = dataset_label).
+- No Parquet loading here; works on pre-extracted feature CSVs and label CSVs.
 """
 
 import warnings
