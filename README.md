@@ -40,6 +40,17 @@ Check out our [Full Documentation](https://eyefeatures-docs.readthedocs.io/) and
 - 🎥 [Visualization](https://colab.research.google.com/github/hse-scila/EyeFeatures/blob/main/tutorials/visualization_tutorial.ipynb)
 - ⚡ [Deep Learning](https://colab.research.google.com/github/hse-scila/EyeFeatures/blob/main/tutorials/DL_tutorial.ipynb)
 
+## Datasets collection
+
+All datasets in **[data/collection/](data/collection/)** folder are available for download via Git LFS:
+
+```
+git lfs install
+git lfs pull
+```
+
+The collection is also available at [Google Drive](https://drive.google.com/drive/folders/1M23PVM7s4ZbkzJ0maP7EJiCsJtoGXSoo).
+
 ## Collection experiments
 
 The **[collection_experiments](experiments/collection_experiments/)** folder contains reproducible pipelines that use the library on collection data (`data/collection`):
